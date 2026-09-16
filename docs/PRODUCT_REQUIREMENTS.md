@@ -1,18 +1,18 @@
 # FlowPilot — Hackathon MVP Product Requirements Document
 
 **Document status:** Development baseline  
-**Version:** 0.3  
+**Version:** 0.4\
 **Date:** 16 September 2026  
 **Target event:** AI Horizon Solution Challenge 2026 — NSW Automation  
 **Team assumption:** Two developers, approximately three build days  
 
-**Version 0.3 revision:** Locked the three-day implementation scope around an operator-reported defect, deterministic synthetic image validation, controlled machine-log import, provisional evidence, falsifiable diagnosis branches, and separate inspection, corrective-action, and verification states. Deferred knowledge administration, rich annotations, PDF generation, email integration, and arbitrary data ingestion.
+**Version 0.4 revision:** Replaced the assumed rectangular machine-log CSV with the supplied industry-style, headerless event-log profile. Added lossless raw-event retention, typed event classification, explicit-only board correlation, timezone and ordering warnings, unknown-event coverage, and safe evidence projection. The detailed adapter contract is in [LOG_INGESTION.md](LOG_INGESTION.md).
 
 ## 1. Executive summary
 
 FlowPilot is an AI-assisted investigation tool for industrial fluid-dispensing defects. It helps process engineers move from an observed defect to an evidence-backed root-cause hypothesis, the most useful next diagnostic test, a guided troubleshooting procedure, and verified recovery.
 
-The hackathon MVP will demonstrate one complete scenario: an operator reports visibly undersized epoxy dots, and FlowPilot investigates a possible partial restriction in the dispensing cartridge/nozzle path. The product combines a labelled synthetic inspection image, a controlled machine-log CSV, approximately five adaptive discovery questions, technician observations, multiple specialist reasoning roles, deterministic evidence scoring, and an interactive 3D troubleshooting guide.
+The hackathon MVP will demonstrate one complete scenario: an operator reports visibly undersized epoxy dots, and FlowPilot investigates a possible partial restriction in the dispensing cartridge/nozzle path. The product combines a labelled synthetic inspection image, a controlled industry-style machine event log, approximately five adaptive discovery questions, technician observations, multiple specialist reasoning roles, deterministic evidence scoring, and an interactive 3D troubleshooting guide.
 
 The MVP is not a generic chatbot, an autonomous machine controller, or a production-grade computer-vision system. Its core product story is:
 
@@ -73,7 +73,7 @@ Domain expert or senior engineer who validates the diagnostic rules and troubles
 - Demonstrate one polished, end-to-end cartridge/nozzle-restriction investigation triggered by an operator report.
 - Accept a preselected or uploaded synthetic dispensing image and visibly identify controlled dot abnormalities against known ground truth.
 - Ask approximately five relevant discovery questions, adapting later questions to earlier answers and image evidence.
-- Import one controlled machine-log CSV format and turn supported fields into traceable evidence.
+- Import one controlled industry-style machine event-log format and turn supported events into traceable evidence without discarding unknown lines.
 - Start reasoning immediately while marking unreviewed derived evidence as provisional.
 - Use multiple reasoning roles to consider competing root causes.
 - Keep the final ranking grounded in explicit evidence and inspectable rules.
@@ -113,7 +113,7 @@ Domain expert or senior engineer who validates the diagnostic rules and troubles
 
 ### Operator-reported undersized epoxy dots
 
-The demo begins when an operator reports that the latest inspected tray contains consistently undersized epoxy dots. The user selects a deterministic synthetic inspection image with known ground truth and attaches a simulated machine-log CSV. FlowPilot quantifies the current image, normalizes supported log fields, and opens an investigation without waiting for every derived fact to be confirmed.
+The demo begins when an operator reports that the latest inspected tray contains consistently undersized epoxy dots. The user selects a deterministic synthetic inspection image with known ground truth and attaches a controlled industry-style event log. FlowPilot quantifies the current image, extracts recognized machine events with line-level provenance, and opens an investigation without waiting for every derived fact to be confirmed. Because the supplied log contains timing, alignment, and height context rather than dispense pressure, temperature, or dot measurements, absent diagnostic telemetry remains visibly missing.
 
 The system compares three causes:
 
@@ -133,7 +133,7 @@ The polished demo follows the positive branch. Inspection, corrective action, an
 1. Operator reports visibly undersized epoxy dots.
 2. User selects or uploads a controlled synthetic inspection image; the UI labels it as synthetic.
 3. System overlays abnormal dots, displays quantitative measurements, and stores the derived facts as provisional evidence with visible source links.
-4. User selects or uploads the sample machine-log CSV. Recognized fields are previewed, normalized, and attached to the same case.
+4. User selects or uploads the sample machine event log. Recognized event families, unknown-event coverage, warnings, and evidence candidates are previewed before attachment to the same case.
 5. User answers approximately five smart questions; at least one follow-up changes based on prior answers or available evidence.
 6. FlowPilot begins specialist analysis without blocking on full evidence review.
 7. Evidence ledger shows verified, provisional, rejected, and missing evidence with provenance.
@@ -156,7 +156,7 @@ The polished demo follows the positive branch. Inspection, corrective action, an
 - Upload or select a controlled dispensing image.
 - Deterministic synthetic normal and abnormal images with known ground truth and clear labelling.
 - Quantitative image overlay for controlled missing, undersized, and oversized dots; the golden journey focuses on undersized dots.
-- One controlled machine-log CSV importer plus **Use sample log**.
+- One controlled industry event-log importer plus **Use sample log**.
 - Approximately five smart, adaptive discovery questions.
 - Defect identification and an explained quality summary.
 - Structured evidence ledger with provenance and verification state.
@@ -200,10 +200,19 @@ The polished demo follows the positive branch. Inspection, corrective action, an
 **FR-001E:** After initial problem input, the system shall ask approximately five smart discovery questions covering material, size/shape symptom, frequency, recent changes, and location or distribution. Questions already answered by confirmed image evidence or user input may be skipped or replaced.  
 **FR-001F:** At least one follow-up question shall change based on an earlier answer, and the interface shall explain briefly why each question matters.  
 
-**FR-001G:** The user shall be able to upload the controlled CSV format or select **Use sample machine log**.  
-**FR-001H:** The import preview shall show filename, time range, recognized fields, units, warnings, and unsupported columns before committing normalized evidence.  
-**FR-001I:** Supported canonical fields are `timestamp`, `cycle_id`, `recipe_id`, `pressure_setpoint_kpa`, `actual_pressure_kpa`, `valve_open_time_ms`, `material_temperature_c`, and `alarm_code`; all fields except timestamp/cycle identity may be absent.  
-**FR-001J:** The parser shall never interpret a missing numeric value as zero or infer output dot diameter from machine telemetry.  
+**FR-001G:** The user shall be able to upload the controlled `.log` or `.txt` event-log format or select **Use sample machine log**.
+
+**FR-001H:** The import preview shall show filename, source digest, local time range, timezone state, recognized and unknown event counts, board-run completeness, evidence candidates, units, and warnings before committing evidence.
+
+**FR-001I:** The adapter shall recognize board run start/finish, timer-between-boards start/stop/instruction results, fiducial search/results, frame-location correction/relative position, and height-sense start/finish/results.
+
+**FR-001J:** The parser shall split the event envelope at the first two commas only, preserve the raw logical event and source-line range, and retain unmatched payloads as `unknown` rather than dropping them.
+
+**FR-001K:** Missing numeric values shall remain missing and shall never become zero. The importer shall not infer output dot diameter, dispense pressure, material condition, or root cause from fields that are not present.
+
+**FR-001L:** Timestamps without an explicit timezone shall remain local and produce a visible warning. Source order shall be preserved when timestamps move backwards.
+
+**FR-001M:** Board runs shall be paired only through explicit board IDs. Unlabelled measurement events shall not be silently assigned to the nearest board, and machine `PASS` status shall not be presented as proof of product quality.
 
 **FR-001:** The dashboard shall show current mean dot diameter, expected diameter, deviation, variation, and case status.  
 **FR-002:** If historical inspection measurements are present, the dashboard shall plot them with the golden range and specification limits.  
@@ -314,21 +323,40 @@ Obsidian is treated as an optional knowledge-authoring surface, not the runtime 
 }
 ```
 
-### Machine-cycle record
+### Machine-event record
 
 ```json
 {
-  "timestamp": "2026-09-16T10:20:54+08:00",
-  "cycle_id": "CYCLE-0091",
-  "recipe_id": "EPOXY-DOT-A",
-  "pressure_setpoint_kpa": 280,
-  "actual_pressure_kpa": 279,
-  "valve_open_time_ms": 18,
-  "material_temperature_c": 24.1,
-  "alarm_code": null,
-  "source_ref": "demo-machine-log.csv#row-92"
+  "id": "LOG-a42f10b8344bb5727115",
+  "kind": "timer_between_boards_stopped",
+  "occurred_at": "2026-09-13T01:15:34.095+08:00",
+  "local_timestamp": "2026-09-13T01:15:34.095",
+  "source_ref": "demo-machine.log#L4",
+  "raw": "2026-09-13,01:15:34.095,End of Timer Between Boards,Conveyor 1 Timer Between Boards Stopped, Duration = 123.493 sec.",
+  "fields": {
+    "conveyor": 1,
+    "duration_seconds": 123.493
+  }
 }
 ```
+
+Unknown events use the same envelope with `kind: "unknown"`, an empty `fields` object, and the original payload intact. A machine-event record does not require or imply membership in a board run.
+
+### Machine-run summary
+
+```json
+{
+  "board_id": "78",
+  "started_at": "2026-09-13T01:13:30.268+08:00",
+  "finished_at": "2026-09-13T01:15:34.934+08:00",
+  "status": "PASS",
+  "start_source_ref": "demo-machine.log#L1",
+  "finish_source_ref": "demo-machine.log#L3",
+  "complete": true
+}
+```
+
+This summary correlates only explicit `Run Started` and `Run Finished` board IDs. `status` is a machine-run fact whose quality meaning remains unverified.
 
 ### Agent finding
 
@@ -392,7 +420,7 @@ The `no_obstruction_found` outcome returns the case from `inspection_completed` 
 Operator report
       │
       ├── synthetic inspection image → deterministic measurements
-      ├── controlled CSV → format adapter → canonical machine records
+      ├── controlled event log → format adapter → lossless events + evidence candidates
       └── adaptive questions → technician observations
                               │
                               ▼
@@ -436,7 +464,7 @@ Recommended implementation choices for a fast MVP:
 
 - Image upload or curated sample selector.
 - Annotated result overlay and explainable quality summary.
-- Machine-log upload plus **Use sample log**, import preview, and warnings.
+- Machine event-log upload plus **Use sample log**, import preview, recognition coverage, and warnings.
 - A focused question flow of approximately five adaptive questions.
 - Visible progress and a short **Why this matters** explanation for each question.
 - Non-blocking notice that provisional evidence can be reviewed while diagnosis runs.
@@ -492,7 +520,7 @@ Knowledge Library, document ingestion, PDF export, email integration, rich case 
 
 - A judge completes the full scenario without developer intervention.
 - A judge can select a labelled synthetic image, see abnormal dots highlighted, and understand how the quality summary was derived against known ground truth.
-- A judge can attach the sample machine log and see recognized fields become traceable evidence.
+- A judge can attach the sample machine log, inspect recognized and unknown events, and see safe normalized facts become traceable evidence.
 - The system asks approximately five relevant questions and visibly adapts at least one question to a prior answer.
 - At least two specialist agents and one critic produce visibly distinct, evidence-linked findings.
 - Partial cartridge/nozzle restriction ranks first for the main scenario without being presented as confirmed before inspection.
@@ -531,7 +559,7 @@ The schedule below assumes two developers and three focused build days. P1 is fr
 | Milestone | Outcome | Developer A — Reasoning & backend | Developer B — Experience & 3D | Shared checkpoint |
 |---|---|---|---|---|
 | **M0: Contract and demo lock** (first 2–3 hours) | One scenario, shared schemas, fixtures, and procedure boundary | Define canonical image/log evidence, findings, scores, test outcomes, and case-state schemas | Wireframe the golden screens; define semantic 3D node names and a 2D fallback | The same versioned golden fixture loads in frontend and backend |
-| **M1: Thin vertical slice** (remainder of Day 1) | Complete clickable journey with fixtures | Implement synthetic image generation/measurement, controlled CSV adapter, scoring rules, case API, and cached findings | Build report intake, overlays, log preview, questions, evidence/ranking UI, and procedure shell | Full report → diagnose → inspect → fix → verify flow works, even if visually rough |
+| **M1: Thin vertical slice** (remainder of Day 1) | Complete clickable journey with fixtures | Implement synthetic image generation/measurement, controlled event-log adapter, scoring rules, case API, and cached findings | Build report intake, overlays, log preview, questions, evidence/ranking UI, and procedure shell | Full report → diagnose → inspect → fix → verify flow works, even if visually rough |
 | **M2: Core differentiators** (Day 2) | Real reasoning and guided inspection integrated | Implement specialist prompts, critic, validation, negative branch, recomputation, and persistence | Implement simplified 3D assembly, semantic highlights, state transitions, verification, and text fallback | Both inspection outcomes change the case correctly; capture a backup screen recording |
 | **M3: Validation and submission** (Day 3) | Reliable prototype and 6–10 minute submission video | Add tests, fallback validation, reset endpoint, and failure handling | Polish accessibility, demo reset, recording layout, and in-app summary | Two clean rehearsals, expert procedure review recorded, final video uploaded and checked signed-out |
 
@@ -576,9 +604,14 @@ The schedule below assumes two developers and three focused build days. P1 is fr
 
 - Deterministic synthetic normal image yields the expected ground-truth measurements.
 - Deterministic synthetic abnormal image detects the expected missing, undersized, and oversized dots.
-- Recognized CSV fields normalize with correct units and source-row references.
-- Missing or blank numeric CSV values remain missing and never become zero.
-- Unsupported CSV columns produce warnings without failing the import.
+- The parser splits only the first two commas and retains the remaining payload verbatim.
+- Recognized event payloads normalize with correct units and source-line references.
+- A wrapped, non-timestamped continuation is retained with the preceding event and produces a warning.
+- Missing numeric values remain missing and never become zero.
+- Unknown events are retained and counted without failing the import.
+- Timestamp regressions preserve source order and produce a warning.
+- Runs correlate only through explicit board IDs; incomplete file slices remain importable with warnings.
+- No absent pressure, temperature, recipe, valve-time, or dot-diameter evidence is manufactured.
 - Question path changes after an intermittent-versus-continuous answer.
 - A confirmed image-derived answer is not redundantly asked again.
 - Provisional evidence can influence a ranking but cannot confirm a cause or resolve a case.
@@ -593,6 +626,8 @@ The schedule below assumes two developers and three focused build days. P1 is fr
 ### Integration tests
 
 - Investigation creation copies image, log, and technician observations into evidence with provenance.
+- Re-importing identical content can be detected from the source digest without relying on the filename.
+- Import preview can be cancelled without writing events or evidence to the case.
 - Every displayed agent claim resolves to evidence or a cited source.
 - Inspection submission recalculates ranking and appends the timeline.
 - Corrective action cannot be completed before the positive inspection observation is verified.
@@ -615,7 +650,7 @@ The schedule below assumes two developers and three focused build days. P1 is fr
 | Multi-agent responses are slow or contradictory | Demo delay and loss of trust | Enforce structured outputs, parallelize specialists, use deterministic scoring, cache the golden scenario |
 | Agents invent evidence or citations | Unsafe and unconvincing reasoning | Validate evidence IDs and source references; reject unsupported findings; show critic output |
 | Real production image is unavailable | Vision claims look weak | Use deterministic synthetic images with known ground truth; label them clearly and avoid production-accuracy claims |
-| Real machine log arrives late or uses different columns | Parser rework delays integration | Normalize through a format-specific adapter and keep the canonical fields optional |
+| Vendor log spelling or layout differs from the photographed sample | Recognition coverage falls or fields are misread | Keep a lossless raw-event layer, isolate the format adapter, retain unknown events, show recognition coverage, and validate against the original file |
 | Procedure is unsafe or unrealistic | Loss of trust and potential harm | Require domain-expert review; keep guidance illustrative and defer unverified disassembly steps |
 | 3D asset lacks semantic parts | Animation cannot target components | Build a simplified close-up from primitives with fixed semantic nodes; keep a 2D/text fallback |
 | Evidence review creates friction | Slow investigation | Diagnose with visible provisional evidence; gate only ambiguous or consequential facts |
@@ -654,7 +689,7 @@ A second high-value improvement is **one-click demo replay**. It makes the produ
 The official statement already proposes questions, cause ranking, image recognition, a learning database, and PDF reporting. Implementing only those suggestions would satisfy the brief but would not clearly differentiate the team. FlowPilot should therefore present the following as one connected investigation experience:
 
 1. **See it:** upload a dispensing image and display measurable visual evidence rather than only a label.
-2. **Combine evidence quickly:** normalize a controlled machine log and ask approximately five adaptive questions without blocking on full review.
+2. **Combine evidence quickly:** normalize safe facts from a controlled machine event log, expose what remains unknown, and ask approximately five adaptive questions without blocking on full review.
 3. **Debate transparently:** show specialist agents proposing different causes and a critic challenging weak reasoning.
 4. **Choose the next best test:** explain which uncertainty the test resolves instead of giving a static checklist.
 5. **Show the technician exactly where:** animate the expert-validated inspection on a semantic, illustrative 3D assembly.
@@ -669,9 +704,9 @@ The submission should target approximately eight minutes within the required 6�
 
 1. **0:00–0:50 — Problem and objective:** explain slow, experience-dependent diagnosis after an operator notices a dispensing defect.
 2. **0:50–1:30 — Solution and differentiation:** introduce evidence-led diagnosis, adaptive questions, next-best-test selection, guided inspection, and verified recovery.
-3. **1:30–2:20 — Technical design:** show the image measurement, CSV adapter, evidence ledger, specialist/critic flow, deterministic ranker, case state machine, and cached fallback.
+3. **1:30–2:20 — Technical design:** show the image measurement, event-log adapter, evidence ledger, specialist/critic flow, deterministic ranker, case state machine, and cached fallback.
 4. **2:20–5:50 — Functional prototype:** report undersized dots; select the labelled synthetic image; attach the sample log; answer the adaptive questions; review provisional and verified evidence; compare hypotheses; show why inspection is recommended; play the 3D guide; record **obstruction found**; record the approved corrective action; verify recovery.
-5. **5:50–6:50 — Testing and validation:** show ground-truth image tests, CSV normalization tests, evidence-ID validation, the **no obstruction found** branch, 3D text fallback, and offline agent fallback.
+5. **5:50–6:50 — Testing and validation:** show ground-truth image tests, event-log normalization and lossless-fallback tests, evidence-ID validation, the **no obstruction found** branch, 3D text fallback, and offline agent fallback.
 6. **6:50–7:40 — Industry value and feasibility:** explain expert procedure validation, format adapters, human control, case traceability, and future production integration.
 7. **7:40–8:00 — Close:** “Inspection tells you something is wrong. FlowPilot helps determine why, what to check next, and whether the fix worked.”
 
@@ -686,7 +721,7 @@ Record the functioning interface rather than relying on slides alone. Upload the
 | Primary process and defect | Epoxy dot dispensing with undersized dots; suspected cartridge/nozzle restriction |
 | Production mechanism | Working default: non-contact precision jetting; replace terminology/model if the domain expert confirms needle dispensing |
 | Vision input | Confirmed: deterministic synthetic images with known ground truth and explicit labelling; no production-accuracy claim |
-| Machine log | Confirmed: mocked controlled CSV behind a format adapter until the real sample arrives |
+| Machine log | Confirmed: controlled adapter for the supplied industry-style event-log pattern; validate exact encoding, wrapping, timezone, and semantics against the original file before production use |
 | Evidence review | Confirmed: non-blocking provisional evidence with selective confirmation gates |
 | Diagnostic branches | Confirmed: both obstruction-found and no-obstruction-found outcomes; polish the positive path |
 | 3D model | Simplified close-up dispensing assembly with semantic nodes and an illustrative/not-OEM-certified label |
@@ -701,7 +736,7 @@ Do not call the MVP complete until all of the following are true:
 
 - The main scenario works from operator report through verified recovery.
 - A labelled synthetic image produces the expected ground-truth abnormalities.
-- The controlled sample CSV imports with provenance, units, and warnings.
+- The controlled sample event log imports with lossless raw events, provenance, units, recognition coverage, and warnings.
 - Approximately five discovery questions are asked, with at least one adaptive branch.
 - Multi-agent findings are distinct, structured, and grounded.
 - The cause ranking remains explainable without reading hidden prompts.

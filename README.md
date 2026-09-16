@@ -5,6 +5,7 @@ FlowPilot is an evidence-led investigation assistant for industrial fluid-dispen
 ## Project documents
 
 - [Product requirements](docs/PRODUCT_REQUIREMENTS.md) — development baseline, scope, contracts, delivery plan, tests, and video script.
+- [Industry event-log ingestion profile](docs/LOG_INGESTION.md) — observed legacy format, parser contract, safe evidence, warnings, and production follow-ups.
 - [Domain-expert questionnaire](docs/DOMAIN_EXPERT_QUESTIONNAIRE.md) — short review form for validating the process model and troubleshooting procedure.
 - [Agent issue-tracker rules](docs/agents/issue-tracker.md)
 - [Agent domain-documentation rules](docs/agents/domain.md)
