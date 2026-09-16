@@ -18,7 +18,8 @@ import {
 import { ApplicationFrame } from "./components/ApplicationFrame";
 import { EvidencePreview } from "./components/EvidencePreview";
 import { EventViewer } from "./components/EventViewer";
-import { ProcedureDiagram } from "./prototype/ProcedureDiagram";
+import { ProcedureViewer } from "./components/ProcedureViewer";
+import { EvidenceCorrection } from "./components/EvidenceCorrection";
 import { candidateValue, humanize } from "./presentation";
 import "./prototype/prototype.css";
 import "./case.css";
@@ -131,32 +132,111 @@ function ImageMeasurement({
   );
 }
 
-function Diagnosis({ value }: { value: Case }) {
+function Diagnosis({
+  value,
+  onCorrect,
+}: {
+  value: Case;
+  onCorrect: (action: Command) => Promise<void>;
+}) {
+  const [source, setSource] = useState("all");
+  const [verification, setVerification] = useState("all");
+  const [citationTarget, setCitationTarget] = useState<{ id: string } | null>(
+    null,
+  );
+  useEffect(() => {
+    if (!citationTarget) return;
+    const target = document.getElementById(citationTarget.id);
+    target?.focus({ preventScroll: true });
+    target?.scrollIntoView({ block: "center" });
+  }, [citationTarget]);
+  function revealEvidence(
+    event: React.MouseEvent<HTMLAnchorElement>,
+    id: string,
+  ) {
+    event.preventDefault();
+    setSource("all");
+    setVerification("all");
+    setCitationTarget({ id });
+    window.history.replaceState(null, "", `#${encodeURIComponent(id)}`);
+  }
+  const inspection = value.investigation.evidence?.find(
+    (e) => e.key === "inspection" && e.verification_state === "verified",
+  );
+  const locked = value.investigation.evidence?.some(
+    (e) => e.key === "inspection" && e.verification_state === "verified",
+  );
   return (
     <div className="prototype-diagnosis">
       <section aria-label="Evidence ledger">
         <p className="eyebrow">01 / Evidence</p>
         <h2>What we know</h2>
-        {value.investigation.evidence?.map((e) => (
-          <article
-            className="prototype-ledger-row"
-            key={e.id}
-            id={e.id}
-            tabIndex={-1}
-          >
-            <span className="status">{humanize(e.verification_state)}</span>
-            <h3>{humanize(e.key)}</h3>
-            <p>{candidateValue(e)}</p>
-            <small>
-              {e.id} · {humanize(e.source_type)}
-            </small>
-            <details>
-              <summary>Source reference</summary>
-              <p>{e.source_ref}</p>
-              <time>{e.timestamp}</time>
-            </details>
-          </article>
-        ))}
+        <div className="evidence-filters">
+          <label>
+            Evidence source
+            <select value={source} onChange={(e) => setSource(e.target.value)}>
+              <option value="all">All sources</option>
+              {[
+                ...new Set(
+                  (value.investigation.evidence ?? []).map(
+                    (e) => e.source_type,
+                  ),
+                ),
+              ].map((s) => (
+                <option key={s} value={s}>
+                  {humanize(s)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Evidence status
+            <select
+              value={verification}
+              onChange={(e) => setVerification(e.target.value)}
+            >
+              <option value="all">All statuses</option>
+              {["verified", "provisional", "rejected"].map((s) => (
+                <option key={s}>{s}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {locked && (
+          <p>
+            Evidence is locked after confirmed inspection. Start another case
+            for later corrections.
+          </p>
+        )}
+        {value.investigation.evidence
+          ?.filter(
+            (e) =>
+              (source === "all" || e.source_type === source) &&
+              (verification === "all" || e.verification_state === verification),
+          )
+          .map((e) => (
+            <article
+              className="prototype-ledger-row"
+              key={e.id}
+              id={e.id}
+              tabIndex={-1}
+            >
+              <span className="status">{humanize(e.verification_state)}</span>
+              <h3>{humanize(e.key)}</h3>
+              <p>{candidateValue(e)}</p>
+              <small>
+                {e.id} · {humanize(e.source_type)}
+              </small>
+              <details>
+                <summary>Source reference</summary>
+                <p>{e.source_ref}</p>
+                <time>{e.timestamp}</time>
+              </details>
+              {!locked && e.verification_state !== "rejected" && (
+                <EvidenceCorrection evidence={e} onCorrect={onCorrect} />
+              )}
+            </article>
+          ))}
         <p>
           Missing telemetry stays unknown. Machine PASS is a run-status fact,
           not a product-quality result.
@@ -180,7 +260,12 @@ function Diagnosis({ value }: { value: Case }) {
             <ul>
               {cause.contributions.map((c, i) => (
                 <li key={i}>
-                  <a href={`#${c.evidence_id}`}>{c.evidence_id}</a>{" "}
+                  <a
+                    href={`#${c.evidence_id}`}
+                    onClick={(event) => revealEvidence(event, c.evidence_id)}
+                  >
+                    {c.evidence_id}
+                  </a>{" "}
                   {c.weight > 0 ? "+" : ""}
                   {c.weight}: {c.explanation}
                 </li>
@@ -189,10 +274,32 @@ function Diagnosis({ value }: { value: Case }) {
             <p>Missing: {cause.missing_evidence.join(", ") || "None listed"}</p>
           </article>
         ))}
-        <h3>Cached specialist and critic findings</h3>
+        <h3>
+          {value.findings_mode === "live"
+            ? "Live specialist and critic findings"
+            : "Cached specialist and critic findings"}
+        </h3>
         <p>
-          Deterministic templates populated from this case; no live model calls.
+          {value.reasoning?.mode === "live"
+            ? `Gemini ${value.reasoning.model} · reviewed by the diagnostic critic.`
+            : `Deterministic templates. ${value.reasoning?.fallback_reason ?? "Live reasoning has not run."}`}
         </p>
+        {value.reasoning && (
+          <details>
+            <summary>Reasoning run</summary>
+            <p>
+              Evidence revision {value.reasoning.evidence_revision} · prompt{" "}
+              {value.reasoning.prompt_version} · {value.reasoning.timestamp}
+            </p>
+            {value.reasoning.critic && (
+              <p>
+                Critic:{" "}
+                {value.reasoning.critic.accepted ? "Accepted" : "Rejected"}.{" "}
+                {value.reasoning.critic.reasons.join(" ")}
+              </p>
+            )}
+          </details>
+        )}
         {value.findings.map((finding, i) => (
           <details key={i}>
             <summary>
@@ -202,7 +309,11 @@ function Diagnosis({ value }: { value: Case }) {
             <p>
               Supporting:{" "}
               {finding.supporting_evidence_ids.map((id) => (
-                <a key={id} href={`#${id}`}>
+                <a
+                  key={id}
+                  href={`#${id}`}
+                  onClick={(event) => revealEvidence(event, id)}
+                >
                   {id}{" "}
                 </a>
               ))}
@@ -210,7 +321,11 @@ function Diagnosis({ value }: { value: Case }) {
             <p>
               Conflicting:{" "}
               {finding.conflicting_evidence_ids.map((id) => (
-                <a key={id} href={`#${id}`}>
+                <a
+                  key={id}
+                  href={`#${id}`}
+                  onClick={(event) => revealEvidence(event, id)}
+                >
                   {id}{" "}
                 </a>
               ))}
@@ -223,7 +338,23 @@ function Diagnosis({ value }: { value: Case }) {
       </section>
       <aside>
         <p className="eyebrow">03 / Next check</p>
-        <h2>{value.recommendation?.name ?? "Inspection recorded"}</h2>
+        <h2>
+          {!value.diagnosis_supported
+            ? "Image evidence rejected"
+            : (value.recommendation?.name ??
+              (inspection
+                ? "Inspection recorded"
+                : "No diagnostic check available"))}
+        </h2>
+        {!value.diagnosis_supported && (
+          <div role="status">
+            <p>
+              The image evidence and its derived measurements have been
+              rejected. This case cannot proceed to inspection from that image.
+            </p>
+            <a href="/">Start a new case with a valid image sample</a>
+          </div>
+        )}
         {value.recommendation && (
           <>
             <p>{value.recommendation.rationale}</p>
@@ -242,12 +373,13 @@ function Diagnosis({ value }: { value: Case }) {
             </p>
           </>
         )}
-        {value.investigation.state === "diagnosing" && (
-          <p role="status">
-            Case remains open. Material review is the next handoff; further
-            repair workflows belong to M2.
-          </p>
-        )}
+        {inspection?.value === "no_obstruction_found" &&
+          value.recommendation?.id === "material" && (
+            <p role="status">
+              Case remains open. Material review is the next handoff; further
+              repair workflows require additional reviewed procedures.
+            </p>
+          )}
       </aside>
     </div>
   );
@@ -275,6 +407,7 @@ export function CaseApp() {
   const [verificationSample, setVerificationSample] =
     useState<Measurement["sample_id"]>("normal");
   const heading = useRef<HTMLHeadingElement>(null);
+  const retainedLog = useRef<HTMLDetailsElement>(null);
   const lock = useRef(false);
   const returnTarget = useRef("open-events");
 
@@ -328,16 +461,20 @@ export function CaseApp() {
     );
     requestAnimationFrame(() => heading.current?.focus());
   }
-  function command(action: Command) {
+  async function command(action: Command) {
     if (value)
-      void run(async () =>
+      await run(async () => {
+        if (action.action === "correct_evidence") {
+          setInspecting(false);
+          setStep(0);
+        }
         accept(
           await actOnCase(value.investigation.id, {
             ...action,
             revision: value.revision,
           }),
-        ),
-      );
+        );
+      });
   }
   const state = value?.investigation.state;
   const phase =
@@ -379,7 +516,7 @@ export function CaseApp() {
           <span>
             {value
               ? `Saved case · revision ${value.revision}`
-              : "M1 / Controlled dispensing investigation"}
+              : "M2 / Controlled dispensing investigation"}
           </span>
           <a href="/prototype">Offline M0 prototype</a>
           <a href="/log-preview">Standalone log preview</a>
@@ -466,7 +603,7 @@ export function CaseApp() {
                   ))}
                 </select>
                 <p>
-                  All samples are generated demo images. M1 diagnoses the
+                  All samples are generated demo images. This demo diagnoses the
                   undersizing scenario; other samples demonstrate measured
                   defect detection.
                 </p>
@@ -494,7 +631,7 @@ export function CaseApp() {
                   {!value.diagnosis_supported && (
                     <p role="status">
                       This sample is measured, but its diagnosis is outside the
-                      M1 undersizing rules. Start another case with the
+                      controlled undersizing rules. Start another case with the
                       undersized sample to explore the complete journey.
                     </p>
                   )}
@@ -643,7 +780,7 @@ export function CaseApp() {
                   </div>
                 </section>
               )}
-              {value.questions_complete && (
+              {value.questions_complete && value.diagnosis_supported && (
                 <section className="case-section">
                   <h2>Discovery complete</h2>
                   <p>
@@ -663,7 +800,26 @@ export function CaseApp() {
             <>
               {phase === "Diagnose" && (
                 <>
-                  <Diagnosis value={value} />
+                  <Diagnosis value={value} onCorrect={command} />
+                  {value.log && (
+                    <details ref={retainedLog}>
+                      <summary>Retained machine events and raw log</summary>
+                      <EventViewer
+                        result={value.log}
+                        selectedId={eventId}
+                        onSelect={setEventId}
+                        onClose={() => {
+                          setEventId(null);
+                          if (retainedLog.current) {
+                            retainedLog.current.open = false;
+                            retainedLog.current
+                              .querySelector("summary")
+                              ?.focus();
+                          }
+                        }}
+                      />
+                    </details>
+                  )}
                   {state === "inspection_recommended" && (
                     <button
                       className="primary"
@@ -679,7 +835,11 @@ export function CaseApp() {
               )}
               {phase === "Inspect" && !value.pending_outcome && (
                 <div className="prototype-two">
-                  <ProcedureDiagram step={value.procedure[step]} />
+                  <ProcedureViewer
+                    steps={value.procedure}
+                    index={step}
+                    onStep={setStep}
+                  />
                   <section>
                     <p className="eyebrow">
                       Step {step + 1} of {value.procedure.length}
@@ -689,37 +849,6 @@ export function CaseApp() {
                     <p className="prototype-caution">
                       {value.procedure[step].caution}
                     </p>
-                    <div className="prototype-options">
-                      <button
-                        className="secondary"
-                        disabled={step === 0}
-                        onClick={() => setStep(step - 1)}
-                      >
-                        Previous step
-                      </button>
-                      <button
-                        className="secondary"
-                        disabled={step === value.procedure.length - 1}
-                        onClick={() => setStep(step + 1)}
-                      >
-                        Next step
-                      </button>
-                    </div>
-                    <h3>Text alternative</h3>
-                    <ol>
-                      {value.procedure.map((p, i) => (
-                        <li key={p.step_id}>
-                          <button
-                            className="prototype-text-step"
-                            onClick={() => setStep(i)}
-                            aria-current={step === i ? "step" : undefined}
-                          >
-                            {p.title}
-                          </button>
-                          <p>{p.instruction}</p>
-                        </li>
-                      ))}
-                    </ol>
                     <p>
                       Illustrative guide; expert review pending. These
                       observations are simulated.
@@ -779,6 +908,14 @@ export function CaseApp() {
                     Confirm observation
                   </button>
                 </section>
+              )}
+              {phase === "Inspect" && (
+                <details className="case-section">
+                  <summary>
+                    Review or correct evidence before confirming
+                  </summary>
+                  <Diagnosis value={value} onCorrect={command} />
+                </details>
               )}
               {state === "cause_confirmed" && (
                 <section className="prototype-question">

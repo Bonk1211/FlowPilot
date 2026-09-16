@@ -1,0 +1,49 @@
+.procedure-viewer {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+}
+.assembly-canvas {
+  width: 100%;
+  height: 390px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--surface-instrument-panel);
+  touch-action: none;
+}
+.assembly-canvas canvas {
+  display: block;
+  max-width: 100%;
+}
+.assembly-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+.assembly-tools button {
+  min-height: 44px;
+}
+.evidence-correction {
+  padding: 0.75rem;
+  border: 1px solid var(--border-default);
+}
+.evidence-correction label {
+  display: block;
+  margin: 0.5rem 0;
+}
+.evidence-correction textarea,
+.evidence-correction select {
+  width: 100%;
+}
+.evidence-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+@media (max-width: 600px) {
+  .assembly-canvas {
+    height: 300px;
+  }
+}

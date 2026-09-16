@@ -9,11 +9,15 @@ import type {
   Measurement,
 } from "@flowpilot/contracts";
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(
+  path: string,
+  init?: RequestInit,
+  timeout = 15000,
+): Promise<T> {
   try {
     const response = await fetch(`/api${path}`, {
       ...init,
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(timeout),
     });
     if (!response.ok) {
       const problem = await response.json().catch(() => null);
@@ -59,8 +63,12 @@ export const createCase = (body: CreateCase) =>
     body: JSON.stringify(body),
   });
 export const actOnCase = (id: string, body: CaseAction) =>
-  request<Case>(`/investigations/${encodeURIComponent(id)}/actions`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  request<Case>(
+    `/investigations/${encodeURIComponent(id)}/actions`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    45000,
+  );
