@@ -72,6 +72,221 @@
         "title": "AgentFinding",
         "type": "object"
       },
+      "Answer": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "const": "answer",
+            "title": "Action",
+            "type": "string"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision",
+          "action",
+          "question_id",
+          "value"
+        ],
+        "title": "Answer",
+        "type": "object"
+      },
+      "AttachLog": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "const": "attach_log",
+            "title": "Action",
+            "type": "string"
+          },
+          "log": {
+            "$ref": "#/components/schemas/LogPreviewRequest"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision",
+          "action",
+          "log"
+        ],
+        "title": "AttachLog",
+        "type": "object"
+      },
+      "Case": {
+        "additionalProperties": false,
+        "properties": {
+          "answers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Answers",
+            "type": "object"
+          },
+          "diagnosis_supported": {
+            "title": "Diagnosis Supported",
+            "type": "boolean"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/AgentFinding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "findings_mode": {
+            "const": "cached_templates",
+            "default": "cached_templates",
+            "title": "Findings Mode",
+            "type": "string"
+          },
+          "investigation": {
+            "$ref": "#/components/schemas/Investigation"
+          },
+          "log": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IngestionResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "measurement": {
+            "$ref": "#/components/schemas/Measurement"
+          },
+          "next_question": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DiscoveryQuestion"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pending_outcome": {
+            "anyOf": [
+              {
+                "enum": [
+                  "obstruction_found",
+                  "no_obstruction_found"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Outcome"
+          },
+          "procedure": {
+            "items": {
+              "$ref": "#/components/schemas/ProcedureStep"
+            },
+            "title": "Procedure",
+            "type": "array"
+          },
+          "questions_complete": {
+            "default": false,
+            "title": "Questions Complete",
+            "type": "boolean"
+          },
+          "ranking": {
+            "items": {
+              "$ref": "#/components/schemas/RankedCause"
+            },
+            "title": "Ranking",
+            "type": "array"
+          },
+          "recommendation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TestRecommendation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "default": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "rules_version": {
+            "const": "1.0",
+            "default": "1.0",
+            "title": "Rules Version",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CaseSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "timeline": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineEntry"
+            },
+            "title": "Timeline",
+            "type": "array"
+          },
+          "verification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Measurement"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "investigation",
+          "revision",
+          "rules_version",
+          "measurement",
+          "verification",
+          "log",
+          "answers",
+          "next_question",
+          "questions_complete",
+          "ranking",
+          "findings",
+          "findings_mode",
+          "recommendation",
+          "procedure",
+          "timeline",
+          "pending_outcome",
+          "summary",
+          "diagnosis_supported"
+        ],
+        "title": "Case",
+        "type": "object"
+      },
       "CaseSummary": {
         "additionalProperties": false,
         "properties": {
@@ -107,6 +322,64 @@
           "evidence_ids"
         ],
         "title": "CaseSummary",
+        "type": "object"
+      },
+      "Confirm": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "confirm_observation",
+              "complete_action",
+              "resolve"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision",
+          "action",
+          "confirmed"
+        ],
+        "title": "Confirm",
+        "type": "object"
+      },
+      "CreateCase": {
+        "additionalProperties": false,
+        "properties": {
+          "report": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Report",
+            "type": "string"
+          },
+          "sample_id": {
+            "default": "undersized",
+            "enum": [
+              "normal",
+              "undersized",
+              "oversized",
+              "missing"
+            ],
+            "title": "Sample Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "report"
+        ],
+        "title": "CreateCase",
         "type": "object"
       },
       "DemoLogMetadata": {
@@ -172,6 +445,27 @@
           "log_metadata"
         ],
         "title": "DemoScenario",
+        "type": "object"
+      },
+      "Diagnose": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "const": "diagnose",
+            "title": "Action",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision",
+          "action"
+        ],
+        "title": "Diagnose",
         "type": "object"
       },
       "DiscoveryQuestion": {
@@ -289,6 +583,12 @@
             "anyOf": [
               {
                 "type": "string"
+              },
+              {
+                "additionalProperties": {
+                  "type": "string"
+                },
+                "type": "object"
               },
               {
                 "type": "null"
@@ -883,6 +1183,36 @@
         "title": "IngestionWarning",
         "type": "object"
       },
+      "Inspect": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "const": "inspect",
+            "title": "Action",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "obstruction_found",
+              "no_obstruction_found"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision",
+          "action",
+          "outcome"
+        ],
+        "title": "Inspect",
+        "type": "object"
+      },
       "InspectionOutcome": {
         "additionalProperties": false,
         "properties": {
@@ -1161,6 +1491,155 @@
           "complete"
         ],
         "title": "MachineRun",
+        "type": "object"
+      },
+      "MeasuredDot": {
+        "additionalProperties": false,
+        "properties": {
+          "classification": {
+            "enum": [
+              "normal",
+              "undersized",
+              "oversized",
+              "missing"
+            ],
+            "title": "Classification",
+            "type": "string"
+          },
+          "diameter_px": {
+            "title": "Diameter Px",
+            "type": "number"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "position_error_px": {
+            "title": "Position Error Px",
+            "type": "number"
+          },
+          "shape_consistency": {
+            "title": "Shape Consistency",
+            "type": "number"
+          },
+          "x": {
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "x",
+          "y",
+          "diameter_px",
+          "classification",
+          "position_error_px",
+          "shape_consistency"
+        ],
+        "title": "MeasuredDot",
+        "type": "object"
+      },
+      "Measurement": {
+        "additionalProperties": false,
+        "properties": {
+          "abnormal_count": {
+            "title": "Abnormal Count",
+            "type": "integer"
+          },
+          "deviation_px": {
+            "title": "Deviation Px",
+            "type": "number"
+          },
+          "dots": {
+            "items": {
+              "$ref": "#/components/schemas/MeasuredDot"
+            },
+            "title": "Dots",
+            "type": "array"
+          },
+          "golden_max_px": {
+            "default": 32,
+            "title": "Golden Max Px",
+            "type": "number"
+          },
+          "golden_min_px": {
+            "default": 28,
+            "title": "Golden Min Px",
+            "type": "number"
+          },
+          "height": {
+            "default": 160,
+            "title": "Height",
+            "type": "integer"
+          },
+          "image_url": {
+            "title": "Image Url",
+            "type": "string"
+          },
+          "mean_diameter_px": {
+            "title": "Mean Diameter Px",
+            "type": "number"
+          },
+          "mean_position_error_px": {
+            "title": "Mean Position Error Px",
+            "type": "number"
+          },
+          "mean_shape_consistency": {
+            "title": "Mean Shape Consistency",
+            "type": "number"
+          },
+          "missing_count": {
+            "title": "Missing Count",
+            "type": "integer"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "sample_id": {
+            "enum": [
+              "normal",
+              "undersized",
+              "oversized",
+              "missing"
+            ],
+            "title": "Sample Id",
+            "type": "string"
+          },
+          "simulated": {
+            "const": true,
+            "default": true,
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "variation_px": {
+            "title": "Variation Px",
+            "type": "number"
+          },
+          "width": {
+            "default": 360,
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sample_id",
+          "image_url",
+          "dots",
+          "mean_diameter_px",
+          "variation_px",
+          "deviation_px",
+          "missing_count",
+          "abnormal_count",
+          "mean_position_error_px",
+          "mean_shape_consistency",
+          "passed"
+        ],
+        "title": "Measurement",
         "type": "object"
       },
       "ProcedureStep": {
@@ -1511,6 +1990,38 @@
         ],
         "title": "VerificationComparison",
         "type": "object"
+      },
+      "Verify": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "const": "verify",
+            "title": "Action",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "sample_id": {
+            "enum": [
+              "normal",
+              "undersized",
+              "oversized",
+              "missing"
+            ],
+            "title": "Sample Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision",
+          "action",
+          "sample_id"
+        ],
+        "title": "Verify",
+        "type": "object"
       }
     }
   },
@@ -1539,6 +2050,77 @@
         "summary": "Golden Scenario",
         "tags": [
           "demo"
+        ]
+      }
+    },
+    "/api/demo/images": {
+      "get": {
+        "operationId": "images_api_demo_images_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Measurement"
+                  },
+                  "title": "Response Images Api Demo Images Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Images",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/demo/images/{sample_id}.png": {
+      "get": {
+        "operationId": "image_api_demo_images__sample_id__png_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sample_id",
+            "required": true,
+            "schema": {
+              "enum": [
+                "normal",
+                "undersized",
+                "oversized",
+                "missing"
+              ],
+              "title": "Sample Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Image",
+        "tags": [
+          "cases"
         ]
       }
     },
@@ -1582,6 +2164,174 @@
         "summary": "Health",
         "tags": [
           "system"
+        ]
+      }
+    },
+    "/api/investigations": {
+      "post": {
+        "operationId": "new_case_api_investigations_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCase"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Case"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "New Case",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/investigations/{case_id}": {
+      "get": {
+        "operationId": "get_case_api_investigations__case_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Case"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Case",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/investigations/{case_id}/actions": {
+      "post": {
+        "operationId": "act_api_investigations__case_id__actions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "discriminator": {
+                  "mapping": {
+                    "answer": "#/components/schemas/Answer",
+                    "attach_log": "#/components/schemas/AttachLog",
+                    "complete_action": "#/components/schemas/Confirm",
+                    "confirm_observation": "#/components/schemas/Confirm",
+                    "diagnose": "#/components/schemas/Diagnose",
+                    "inspect": "#/components/schemas/Inspect",
+                    "resolve": "#/components/schemas/Confirm",
+                    "verify": "#/components/schemas/Verify"
+                  },
+                  "propertyName": "action"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/AttachLog"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Answer"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Diagnose"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Inspect"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Confirm"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Verify"
+                  }
+                ],
+                "title": "Action"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Case"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Act",
+        "tags": [
+          "cases"
         ]
       }
     },

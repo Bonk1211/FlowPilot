@@ -8,7 +8,7 @@ import {
 import type { GoldenScenario, GoldenSnapshot } from "@flowpilot/contracts";
 import goldenJson from "../../../../fixtures/v1/golden-scenario.json";
 import { loadGoldenScenario } from "../api";
-import { humanize } from "../presentation";
+import { candidateValue, humanize } from "../presentation";
 import { ProcedureDiagram } from "./ProcedureDiagram";
 import "./prototype.css";
 
@@ -111,9 +111,7 @@ function Diagnosis({
             >
               <span className="status">{humanize(e.verification_state)}</span>
               <h3>{humanize(e.key)}</h3>
-              <p>
-                {String(e.value)} {e.unit}
-              </p>
+              <p>{candidateValue(e)}</p>
               <small>
                 {e.id} · {humanize(e.source_type)}
               </small>
@@ -612,7 +610,7 @@ export function Prototype() {
               .filter((e) => data.summary.evidence_ids.includes(e.id))
               .map((e) => (
                 <p key={e.id}>
-                  {e.id}: {String(e.value)} {e.unit}
+                  {e.id}: {candidateValue(e)}
                 </p>
               ))}
             <p>

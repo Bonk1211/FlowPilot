@@ -9,3 +9,13 @@ export type AgentFinding = components["schemas"]["AgentFinding"];
 export type ProcedureStep = components["schemas"]["ProcedureStep"];
 export type GoldenScenario = components["schemas"]["GoldenScenario"];
 export type GoldenSnapshot = components["schemas"]["GoldenSnapshot"];
+export type Case = components["schemas"]["Case"];
+export type Measurement = components["schemas"]["Measurement"];
+export type CreateCase = components["schemas"]["CreateCase"];
+export type CaseAction =
+  | components["schemas"]["AttachLog"]
+  | components["schemas"]["Answer"]
+  | components["schemas"]["Diagnose"]
+  | components["schemas"]["Inspect"]
+  | components["schemas"]["Confirm"]
+  | components["schemas"]["Verify"];

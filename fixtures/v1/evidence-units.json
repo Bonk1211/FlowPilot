@@ -1,0 +1,14 @@
+[
+  {
+    "value": { "x": 0.012, "y": -0.014, "rotation": -0.01 },
+    "unit": { "x": "inch", "y": "inch", "rotation": "deg" },
+    "display": "x: 0.012 inch · y: -0.014 inch · rotation: -0.01 deg"
+  },
+  { "value": 18, "unit": "px", "display": "18 px" },
+  { "value": null, "unit": "inch", "display": "Not recorded" },
+  {
+    "value": { "x": null, "y": 0 },
+    "unit": { "x": "inch", "y": "inch" },
+    "display": "x: Not recorded · y: 0 inch"
+  }
+]

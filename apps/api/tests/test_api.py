@@ -60,5 +60,5 @@ def test_empty_preview_is_valid(client):
     assert response.json()["stats"]["eventCount"] == 0
 
 
-def test_unknown_routes_do_not_pretend_to_implement_workflows(client):
-    assert client.post("/api/investigations").status_code == 404
+def test_case_creation_requires_a_valid_report(client):
+    assert client.post("/api/investigations").status_code == 422

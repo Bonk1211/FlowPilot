@@ -2,6 +2,7 @@ from typing import Literal
 
 from fastapi import APIRouter, FastAPI
 
+from flowpilot.cases import router as case_router
 from flowpilot.demo import DemoScenario, load_scenario
 from flowpilot.golden import GoldenScenario, load_golden_scenario
 from flowpilot.ingestion.industry_event_log import parse_industry_event_log
@@ -56,6 +57,7 @@ def preview_log(request: LogPreviewRequest):
 def create_app() -> FastAPI:
     app = FastAPI(title="FlowPilot API", version="0.1.0")
     app.include_router(router)
+    app.include_router(case_router)
     return app
 
 

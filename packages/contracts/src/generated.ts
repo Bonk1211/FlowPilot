@@ -19,6 +19,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/demo/images": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Images */
+        get: operations["images_api_demo_images_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/demo/images/{sample_id}.png": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Image */
+        get: operations["image_api_demo_images__sample_id__png_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/demo/scenario": {
         parameters: {
             query?: never;
@@ -50,6 +84,57 @@ export interface paths {
         get: operations["health_api_health_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/investigations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** New Case */
+        post: operations["new_case_api_investigations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/investigations/{case_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Case */
+        get: operations["get_case_api_investigations__case_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/investigations/{case_id}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Act */
+        post: operations["act_api_investigations__case_id__actions_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -105,6 +190,79 @@ export interface components {
             /** Supporting Evidence Ids */
             supporting_evidence_ids: string[];
         };
+        /** Answer */
+        Answer: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "answer";
+            /** Question Id */
+            question_id: string;
+            /** Revision */
+            revision: number;
+            /** Value */
+            value: string;
+        };
+        /** AttachLog */
+        AttachLog: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "attach_log";
+            log: components["schemas"]["LogPreviewRequest"];
+            /** Revision */
+            revision: number;
+        };
+        /** Case */
+        Case: {
+            /** Answers */
+            answers: {
+                [key: string]: string;
+            };
+            /** Diagnosis Supported */
+            diagnosis_supported: boolean;
+            /** Findings */
+            findings: components["schemas"]["AgentFinding"][];
+            /**
+             * Findings Mode
+             * @default cached_templates
+             * @constant
+             */
+            findings_mode: "cached_templates";
+            investigation: components["schemas"]["Investigation"];
+            log: components["schemas"]["IngestionResult"] | null;
+            measurement: components["schemas"]["Measurement"];
+            next_question: components["schemas"]["DiscoveryQuestion"] | null;
+            /** Pending Outcome */
+            pending_outcome: ("obstruction_found" | "no_obstruction_found") | null;
+            /** Procedure */
+            procedure: components["schemas"]["ProcedureStep"][];
+            /**
+             * Questions Complete
+             * @default false
+             */
+            questions_complete: boolean;
+            /** Ranking */
+            ranking: components["schemas"]["RankedCause"][];
+            recommendation: components["schemas"]["TestRecommendation"] | null;
+            /**
+             * Revision
+             * @default 0
+             */
+            revision: number;
+            /**
+             * Rules Version
+             * @default 1.0
+             * @constant
+             */
+            rules_version: "1.0";
+            summary: components["schemas"]["CaseSummary"] | null;
+            /** Timeline */
+            timeline: components["schemas"]["TimelineEntry"][];
+            verification: components["schemas"]["Measurement"] | null;
+        };
         /** CaseSummary */
         CaseSummary: {
             /** Confirmed Cause */
@@ -117,6 +275,32 @@ export interface components {
             problem: string;
             /** Verification */
             verification: string;
+        };
+        /** Confirm */
+        Confirm: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "complete_action" | "confirm_observation" | "resolve";
+            /**
+             * Confirmed
+             * @constant
+             */
+            confirmed: true;
+            /** Revision */
+            revision: number;
+        };
+        /** CreateCase */
+        CreateCase: {
+            /** Report */
+            report: string;
+            /**
+             * Sample Id
+             * @default undersized
+             * @enum {string}
+             */
+            sample_id: "normal" | "undersized" | "oversized" | "missing";
         };
         /** DemoLogMetadata */
         DemoLogMetadata: {
@@ -144,6 +328,16 @@ export interface components {
              * @constant
              */
             schema_version: "1.0";
+        };
+        /** Diagnose */
+        Diagnose: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "diagnose";
+            /** Revision */
+            revision: number;
         };
         /** DiscoveryQuestion */
         DiscoveryQuestion: {
@@ -193,7 +387,9 @@ export interface components {
             /** Timestamp */
             timestamp: string;
             /** Unit */
-            unit?: string | null;
+            unit?: string | {
+                [key: string]: string;
+            } | null;
             value: components["schemas"]["JsonValue"];
             /**
              * Verification State
@@ -405,6 +601,21 @@ export interface components {
             /** Relatedline */
             relatedLine?: number | null;
         };
+        /** Inspect */
+        Inspect: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "inspect";
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "obstruction_found" | "no_obstruction_found";
+            /** Revision */
+            revision: number;
+        };
         /** InspectionOutcome */
         InspectionOutcome: {
             /** Evidence Id */
@@ -497,6 +708,80 @@ export interface components {
             startedAt: string | null;
             /** Status */
             status: string | null;
+        };
+        /** MeasuredDot */
+        MeasuredDot: {
+            /**
+             * Classification
+             * @enum {string}
+             */
+            classification: "normal" | "undersized" | "oversized" | "missing";
+            /** Diameter Px */
+            diameter_px: number;
+            /** Id */
+            id: string;
+            /** Position Error Px */
+            position_error_px: number;
+            /** Shape Consistency */
+            shape_consistency: number;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+        };
+        /** Measurement */
+        Measurement: {
+            /** Abnormal Count */
+            abnormal_count: number;
+            /** Deviation Px */
+            deviation_px: number;
+            /** Dots */
+            dots: components["schemas"]["MeasuredDot"][];
+            /**
+             * Golden Max Px
+             * @default 32
+             */
+            golden_max_px: number;
+            /**
+             * Golden Min Px
+             * @default 28
+             */
+            golden_min_px: number;
+            /**
+             * Height
+             * @default 160
+             */
+            height: number;
+            /** Image Url */
+            image_url: string;
+            /** Mean Diameter Px */
+            mean_diameter_px: number;
+            /** Mean Position Error Px */
+            mean_position_error_px: number;
+            /** Mean Shape Consistency */
+            mean_shape_consistency: number;
+            /** Missing Count */
+            missing_count: number;
+            /** Passed */
+            passed: boolean;
+            /**
+             * Sample Id
+             * @enum {string}
+             */
+            sample_id: "normal" | "undersized" | "oversized" | "missing";
+            /**
+             * Simulated
+             * @default true
+             * @constant
+             */
+            simulated: true;
+            /** Variation Px */
+            variation_px: number;
+            /**
+             * Width
+             * @default 360
+             */
+            width: number;
         };
         /** ProcedureStep */
         ProcedureStep: {
@@ -616,6 +901,21 @@ export interface components {
             /** Passed */
             passed: boolean;
         };
+        /** Verify */
+        Verify: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "verify";
+            /** Revision */
+            revision: number;
+            /**
+             * Sample Id
+             * @enum {string}
+             */
+            sample_id: "normal" | "undersized" | "oversized" | "missing";
+        };
     };
     responses: never;
     parameters: never;
@@ -641,6 +941,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GoldenScenario"];
+                };
+            };
+        };
+    };
+    images_api_demo_images_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Measurement"][];
+                };
+            };
+        };
+    };
+    image_api_demo_images__sample_id__png_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                sample_id: "normal" | "undersized" | "oversized" | "missing";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -681,6 +1032,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Health"];
+                };
+            };
+        };
+    };
+    new_case_api_investigations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCase"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Case"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_case_api_investigations__case_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Case"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    act_api_investigations__case_id__actions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttachLog"] | components["schemas"]["Answer"] | components["schemas"]["Diagnose"] | components["schemas"]["Inspect"] | components["schemas"]["Confirm"] | components["schemas"]["Verify"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Case"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

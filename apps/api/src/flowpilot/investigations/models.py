@@ -23,7 +23,7 @@ class Evidence(Contract):
     id: str
     key: str
     value: JsonValue
-    unit: str | None = None
+    unit: str | dict[str, str] | None = None
     source_type: Literal[
         "synthetic_image_measurement", "machine_log", "technician_input", "heuristic_inference"
     ]

@@ -1,0 +1,16 @@
+{
+  "version": "1.0",
+  "labels": {
+    "partial_cartridge_nozzle_restriction": "Cartridge / nozzle restriction",
+    "material_viscosity_change": "Material viscosity change",
+    "trapped_air_bubble": "Trapped air bubble"
+  },
+  "rules": [
+    {"key": "undersized", "value": true, "weights": [35, 20, 15], "explanation": "Undersizing is compatible with this cause."},
+    {"key": "continuous", "value": "yes", "weights": [25, 0, -10], "explanation": "Persistent symptoms distinguish restriction from intermittent air."},
+    {"key": "intermittent", "value": "yes", "weights": [-10, 0, 30], "explanation": "Recovery between runs makes trapped air worth checking."},
+    {"key": "change", "value": "yes", "weights": [0, 20, 10], "explanation": "A recent material change can affect viscosity or introduce air."},
+    {"key": "inspection", "value": "no_obstruction_found", "weights": [-50, 20, 0], "explanation": "A clear path lowers restriction and motivates material checks."},
+    {"key": "inspection", "value": "obstruction_found", "weights": [40, -10, -10], "explanation": "The confirmed inspection observation supports restriction."}
+  ]
+}

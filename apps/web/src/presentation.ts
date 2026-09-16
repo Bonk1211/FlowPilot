@@ -1,7 +1,6 @@
 import type { IngestionResult } from "@flowpilot/contracts";
 
 export type MachineEvent = IngestionResult["events"][number];
-type Candidate = IngestionResult["evidenceCandidates"][number];
 
 export const humanize = (value: string) =>
   value
@@ -23,7 +22,10 @@ export function displayValue(value: unknown): string {
   return String(value);
 }
 
-export function candidateValue(candidate: Candidate): string {
+export function candidateValue(candidate: {
+  value: unknown;
+  unit?: string | Record<string, string> | null;
+}): string {
   if (candidate.value === null) return "Not recorded";
   if (
     candidate.unit &&
