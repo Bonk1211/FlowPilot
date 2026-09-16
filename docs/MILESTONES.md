@@ -32,7 +32,7 @@ it does not assert progress on another developer's branch.
 | --- | --- | --- | --- | --- |
 | M0 — Contract and demo lock | In progress | Contracts and corrected negative timeline ready for review | Golden-screen prototype, node mapping, and 2D fallback complete | Shared fixture loads in API and UI; joint contract freeze pending |
 | M1 — Thin vertical slice | Complete | Raster measurements, deterministic scoring, case APIs, cached findings, and persistence implemented | API-backed intake, discovery, diagnosis, 2D inspection, verification, and summary implemented | Positive journey passes from a fresh database/browser; both outcomes and reload verified |
-| M2 — Core differentiators | Not started | Live specialists/critic and general evidence recomputation remain; deterministic outcomes and persistence exist | 3D assembly and animation remain; API-driven transitions exist | Integrate live reasoning and 3D; capture backup recording |
+| M2 — Core differentiators | Complete | Critic known-gap validation, recomputation, and persistence verified | Rejected-image messaging and filtered citation navigation corrected; 3D/fallback verified | Audit regressions pass; live browser-to-database acceptance passes both outcomes; backup recordings retained |
 | M3 — Validation and submission | Not started | End-to-end fallback/reset validation remains | Accessibility polish, rehearsals, and final video remain | Two clean rehearsals, recorded expert review, and checked submission |
 
 ## M0 — Contract and demo lock
@@ -169,6 +169,18 @@ unchecked until both developers have accepted the corresponding boundary.
 | Schema / fixture versions | `1.0` / `1.0` |
 | Decision and unresolved concerns | Pending joint review; freeze not yet effective |
 
+#### 2026-09-16 — Review package prepared; freeze intentionally pending
+
+Prepared [the joint review package](M0_CONTRACT_REVIEW.md) and a reproducible
+[candidate manifest](contract-review-candidate.json), including the current M2
+contract extensions. Candidate SHA-256:
+`cdd057e54410aaea7fb0737332e038090f6735c85ff34477a50b377e0204890b`.
+`node scripts/contract-review.mjs --check` detects changes to the covered contract,
+fixture, and workflow files. This identifies review material, not acceptance.
+When asked about joint acceptance, Developer B explicitly instructed **“keep pending.”**
+Both acceptance records, final reviewed commit, and acceptance date remain Pending.
+M0 stays In progress; no sign-off is inferred from the implementation or tests.
+
 ## M1 — Thin vertical slice
 
 **Goal:** A complete clickable journey integrated with the case API, even if rough.
@@ -276,19 +288,204 @@ M0 acceptance remains pending and no reviewer sign-off is implied by these fixes
 
 **Goal:** Integrate real reasoning and guided inspection with both outcome branches.
 
-- [ ] **Developer A:** Implement specialists, critic validation, negative-branch
-  recomputation, and persisted case transitions.
-- [ ] **Developer B:** Integrate the simplified 3D assembly, semantic highlights,
+- [x] **Developer A:** Implement specialists, critic validation, negative-branch
+  recomputation, and persisted case transitions. FR-011 audit correction verified below.
+- [x] **Developer B:** Integrate the simplified 3D assembly, semantic highlights,
   procedure animation, state transitions, verification, and text/2D fallback.
-- [ ] **Shared checkpoint:** Verify that both outcomes update the real case and its
+  Evidence presentation/navigation audit corrections verified below.
+- [x] **Shared checkpoint:** Verify that both outcomes update the real case and its
   next recommendation correctly; capture a backup screen recording.
 
-**Next handoff:** Start after the M1 journey works. Reuse the M0 semantic node IDs
-and camera presets; keep contract and fixture changes synchronized.
+**Next handoff:** Proceed to M3 reliability/rehearsals and expert review. M0's
+separately recorded joint contract freeze remains pending by explicit user direction.
 
 ### Development history
 
-No M2 implementation session recorded yet.
+#### 2026-09-16 — Developer B: M2 implementation and acceptance
+
+**Status change:** Not started → Complete. This session implemented the authorized
+backend and experience work together, with tests and local backup footage.
+
+**Backend delivered:** Added Google GenAI orchestration: concurrent Fluid Path and
+Material/Process specialists, then a critic. Strict structured output, assigned
+hypothesis coverage, citation/source validation, and whole-run fallback protect
+deterministic scoring and confirmation gates. Model calls run outside database
+transactions; a revision-checked commit prevents stale results from overwriting
+newer cases. Persisted mode/model/prompt/evidence revision/timestamp/fallback/critic
+metadata is compatible with older case documents. GET never calls the model.
+
+**Evidence delivered:** Technician reports/answers can be edited and evidence can
+be rejected with a reason and explicit confirmation. Prior values/states remain in
+the timeline. Upstream answer changes retire dependent answers and resume the
+appropriate discovery branch; completed discovery can be diagnosed again. Other
+eligible changes recompute scores, missing evidence, findings, and recommendation.
+Rejecting image evidence retires its derived contribution. Corrections clear any
+pending observation, and both confirmed inspection outcomes lock further corrections.
+
+**Experience delivered:** Evidence source/status filters, correction forms, retained
+raw-log access, live/cached labels and run metadata, and pre-confirmation evidence
+review. Added a lazy-loaded Three.js assembly with seven semantic meshes, shared
+camera presets, highlighted active parts, play/pause, previous/next, reset, and
+keyboard/pointer camera controls. Reduced motion disables autoplay/pulsing and snaps
+camera changes. Missing mappings, renderer failure, context loss, and explicit 2D
+selection preserve diagram/text guidance. Playback stops at the final step and never
+records an observation. GPU resources and interaction listeners are disposed.
+
+**Integration findings resolved:** The live API rejected the SDK's `response_schema`
+conversion of `additionalProperties`; switched to `response_json_schema` while
+keeping strict local Pydantic validation. Clarified critic rejection semantics:
+a correctly described, weakened hypothesis is not an unsupported finding. Added
+regression coverage for the transport schema and persisted live findings on GET.
+The planned Gemini 3.8 Flash and tested 3.7 Flash returned overload responses;
+2.5 Flash generation returned 404 despite appearing in model discovery. Selected
+the verified `gemini-3.5-flash-lite` default, configurable through `.env`.
+
+**Verification recorded:**
+
+- `npm run check` passed lint, types, 9 reference-parser tests, the then-current
+  95 backend tests, contract drift, and production build. After final coverage was
+  added, all **97 backend tests** passed; lint/type/build and contract generation
+  were checked again. `git diff --check` passed.
+- The full **33-test browser suite** passed, including both outcome journeys,
+  correction invalidation/filtering, 3D controls/highlights/playback, reduced motion,
+  mobile layout, WebGL creation/context failure, unknown mapping, and reload.
+  The added pre-confirmation correction test and updated raw-log/positive journey
+  passed targeted reruns, bringing the suite to **34 distinct browser tests**.
+- The opt-in synthetic live check passed initial diagnosis, positive inspection,
+  and negative inspection with critic-accepted findings, plus forced cached mode.
+  The safe result artifact is `artifacts/demo/live-reasoning-check.json` (ignored).
+  Model runs did not alter deterministic scores or observations.
+- Both real API journeys passed again under the recording configuration. Local
+  backup videos are `artifacts/demo/positive.webm` and `negative.webm`; originals
+  are under `artifacts/demo/recordings/`. These use visibly labelled cached mode,
+  not live model responses. Decoded frames were inspected, including resolved
+  summary and negative inspection history. They are short backup footage, not
+  the final narrated submission. Desktop and mobile 3D screenshots were inspected.
+- Windows checks used workspace uv/pytest caches and isolated test databases.
+  Chromium and live network verification required execution outside the sandbox.
+  Existing TestClient deprecations and the lazy Three.js bundle-size warning are
+  nonblocking; Three.js is loaded only when the inspection viewer opens.
+
+**Remaining boundaries:** Domain-expert procedure approval, M0 joint freeze, M3
+rehearsals/reset work, and final submission remain pending. The guide highlights
+parts and moves its camera; it does not demonstrate or authorize cartridge removal.
+Provider availability can change, so the cached fallback remains part of acceptance.
+
+**Issue/PR/commit:** Working-tree implementation; no new commit or issue publication
+was requested in this session. See [development instructions](DEVELOPMENT.md#m2-reasoning-evidence-corrections-and-3d)
+for configuration and repeatable acceptance/recording commands.
+
+#### 2026-09-16 — Critical checkpoint audit of M0–M2
+
+**Status change:** M0 remains In progress; M1 remains Complete; M2 Complete →
+In progress. The preceding implementation entry is historical, not the current
+acceptance decision. No application fixes were made during this audit.
+
+**Checkpoint assessment:**
+
+- **M0:** Canonical schemas, shared versioned fixture, prototype screens, semantic
+  nodes, negative timeline, and fallback have passing checks. The technical shared
+  checkpoint is met. The PRD's end-of-M0 schema freeze is not met: both reviewer
+  acceptances, reviewed revision, and acceptance date remain Pending. Automated
+  checks cannot stand in for joint acceptance.
+- **M1:** Backend measurements/log adapter/questions/scoring/API/persistence and
+  frontend intake/overlays/discovery/diagnosis/procedure/verification are present.
+  The complete report-to-verification journey passes with an isolated migrated
+  database and fresh browser context, including failure/retry and reload. No new
+  M1-specific blocker was reproduced. Synthetic sample selection is the previously
+  recorded boundary; this is not arbitrary production-image recognition.
+- **M2:** Specialists, critic calls, negative recomputation, revision-safe persistence,
+  3D controls/playback/fallback, and both confirmed branches are implemented. The
+  literal shared checkpoint (both outcomes update cases, backup recording exists)
+  is met. Full acceptance is reopened because the following defects undermine the
+  critic and evidence-review deliverables.
+
+**Reproduced findings, in priority order:**
+
+1. **High — critic can omit known uncertainty (FR-011).** The saved live positive
+   result has an accepted critic with no missing evidence, no counterargument,
+   and a generic “fully grounded” endorsement while material temperature/open-time
+   gaps still exist. A controlled provider response reproduced acceptance in live
+   mode with an empty critic gap list and no concern in its summary despite known
+   ranking gaps. `diagnosis/reasoning.py` validates roles, IDs, sources, and structure
+   but does not enforce this critic obligation. Add a grounded uncertainty check
+   and a regression that rejects/falls back when a critic merely endorses findings.
+2. **Medium — image rejection displays a nonexistent inspection/handoff.** After
+   diagnosis, reject the `undersized` image evidence. The API correctly returns
+   `diagnosis_supported=false`, no inspection evidence, and `recommendation=null`.
+   `CaseApp.tsx` nevertheless displays “Inspection recorded” and “Material review
+   is the next handoff.” The browser audit reproduced both messages. Render a
+   specific unsupported/rejected-image state with an appropriate next action;
+   reserve inspection/material-review messages for actual confirmed outcomes.
+3. **Medium — filters break evidence citation navigation.** Choose the verified
+   evidence filter and click a ranking citation for provisional image evidence.
+   The citation remains visible, but its target row has been removed; the browser
+   audit confirmed zero matching targets after the click. Citation navigation
+   must reveal the referenced evidence (for example, clear conflicting filters)
+   and then focus/scroll to it. Cover ranking and specialist citation links.
+
+**Fresh verification:** `npm run check` passed (97 backend tests, 9 reference-parser
+tests, lint, formatting, types, generated-contract drift, and production build).
+`npm run test:e2e -- --workers=4` passed all 34 browser tests in one run. Additional
+isolated audit probes reproduced the two UI defects; a controlled in-memory
+reasoning call reproduced the critic gap. Passing regression suites therefore do
+not cover these acceptance failures yet. `git diff --check` passed.
+
+**Evidence limits:** Reviewed the existing live artifact and confirmed both backup
+videos exist. No new Gemini request was made during this audit. The live acceptance
+script exercises in-memory workflow/reasoning; provider-mocked API tests cover
+persistence, and browser/recording suites force cached mode. This is layered evidence,
+not a recorded fresh-browser → live-provider → persisted-case rehearsal. Such a live
+integration rehearsal would strengthen acceptance after the fixes. The short backup
+videos are not the M3 narrated submission, and expert review remains an M3 checkpoint.
+
+**Next handoff:** Address these three findings with regressions, rerun affected
+checks, and append the results. Separately obtain genuine joint M0 acceptance;
+do not infer it from implementation progress. No commit, push, or issue publication
+was performed for this audit.
+
+#### 2026-09-16 — Audit fixes and live integration acceptance
+
+**Status change:** M2 In progress → Complete. M1 remains Complete. M0 remains
+In progress at the user's explicit request to keep the joint freeze pending.
+
+**Corrected:** Prompt `m2.3` includes deterministic known gaps and requires the
+critic to report at least one when gaps exist. Application validation rejects an
+empty or invented-only critic gap list, retaining the entire cached finding set.
+This applies before inspection and after either confirmed outcome. Nine backend
+regression cases cover all three stages, including normalized matching.
+
+Rejected image evidence now displays its own recovery message and a new-case link;
+it does not claim inspection or material handoff. Material-review messaging requires
+the verified negative observation and actual material recommendation. Ranking and
+specialist supporting/conflicting citations clear both filters, reveal the target,
+and focus/scroll to it after rendering. Browser regressions cover keyboard navigation,
+both filter types, image rejection, and reload persistence.
+
+**Acceptance gap closed:** Added the explicit opt-in `playwright.live.config.ts`
+suite, with a fresh migrated database, fresh browser contexts, real backend Gemini
+calls, case creation/discovery through the UI, and equality checks on saved API
+documents after reload. Both tests passed: the positive branch continued through
+corrective action, measured verification, and resolved summary; the negative branch
+stayed diagnosing with the material recommendation. Initial and post-inspection
+reasoning was live, critic-reviewed, and contained known gaps in both tests.
+The suite fails on cached fallback, so this is evidence of live integration rather
+than a silent substitution. Local screenshots/results are under
+`artifacts/demo/live-browser/`; the regular suites remain offline by default.
+
+**Verification:** `npm run check` passed lint, formatting, types, 106 backend tests,
+9 parser tests, contract drift checks, and production build. All 36 regular browser
+tests passed together. The two real live-browser tests passed in 48.3 seconds.
+`node scripts/contract-review.mjs --check` and `git diff --check` passed. Existing
+TestClient deprecations and the lazy Three.js bundle-size warning remain nonblocking.
+
+**M0 handoff prepared:** Added a review guide and reproducible SHA-256 manifest of
+the current contracts, fixtures, and workflow boundary. Both acceptance records
+remain Pending; no reviewer name, date, or final reviewed commit was invented.
+The user explicitly chose to keep the freeze pending after receiving the package.
+
+**Remaining:** M0 joint acceptance and M3 expert review/rehearsals/submission remain.
+No commit, push, or issue publication was requested or performed in this session.
 
 ## M3 — Validation and submission
 

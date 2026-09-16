@@ -26,12 +26,17 @@ npm run dev
 ```
 
 Open http://127.0.0.1:5173. On Windows, use `npm.cmd` if the PowerShell npm launcher
-is broken. The main workspace provides the M1 API-backed investigation journey:
+is broken. The main workspace provides the M2 API-backed investigation journey:
 generated raster measurements, log attachment, adaptive questions, deterministic
 ranking, confirmed inspection outcomes, simulated corrective action, verification,
 and a persisted summary. Case URLs survive refresh. Run migrations when updating
 an existing checkout. `/prototype` retains the offline M0 storyboard, and
-`/log-preview` retains the standalone log viewer. Live agents and 3D remain M2 work.
+`/log-preview` retains the standalone log viewer. M2 adds reviewed Gemini findings,
+audited evidence corrections, and an interactive 3D guide with 2D/text fallback.
+Copy `.env.example` to the ignored `.env` and set `GEMINI_API_KEY` for live reasoning;
+without a key, the journey uses clearly labelled deterministic findings. See the
+[M2 development notes](docs/DEVELOPMENT.md#m2-reasoning-evidence-corrections-and-3d)
+for configuration, acceptance checks, and backup recordings.
 
 Run `npm run check` for build, lint, types, contracts, and unit/integration tests.
 Run `npx playwright install chromium`, then `npm run test:e2e` for browser checks.

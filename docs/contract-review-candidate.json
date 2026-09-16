@@ -1,0 +1,19 @@
+{
+  "base_commit": "42441362a3006f009cceac83c2d496037b0073b6",
+  "candidate_sha256": "cdd057e54410aaea7fb0737332e038090f6735c85ff34477a50b377e0204890b",
+  "files": {
+    "apps/api/src/flowpilot/cases.py": "49d61e5ed6a72ae948bc9f864a749675a309d00d9ac08995df74a451e6bb4669",
+    "apps/api/src/flowpilot/diagnosis/models.py": "186f69cb8b610c869f5e1849dfbfaa82cc736514be0d0c0c20b294a3824f9bbb",
+    "apps/api/src/flowpilot/diagnosis/reasoning.py": "ce25fe87aee997cc807e7a98898ea831c486aa2ce6c9c1fe9190a098cebc12da",
+    "apps/api/src/flowpilot/golden.py": "731182dd789dac446bf640b5d769be174e711e91f18891d400a473891e3ebf25",
+    "apps/api/src/flowpilot/investigations/models.py": "2d7166d55b387da58085bbe936df6fdec7f81a837c7a4d26020bd09d96a18fc1",
+    "apps/api/src/flowpilot/procedures/models.py": "10ef84c10007af4095965ae1bef70c1dc4e29883ee61fa09fee27e18cd1e51f7",
+    "apps/web/src/prototype/model.ts": "0c7c0a68ca21246dc358085764462f173a579dbab799f8e5402a00ccb7ee0fb5",
+    "fixtures/v1/evidence-units.json": "f28bbca5595d12a24ba1cd22a0649e05f862f37841d284001dd781cd8648f14b",
+    "fixtures/v1/golden-scenario.json": "9984173072dedba38f5d2717fc4eef985e0aa2863aa366f40c4a444f09367046",
+    "fixtures/v1/scoring-rules.json": "51acd2fb529a53c6528958229232f62dd4822ac7161162bd5277b2bf825e2e24",
+    "packages/contracts/openapi.json": "ea931bd79fb87da262ad8910bdbe7e8e462925fde825c5e4ef6f31603e9cbc92",
+    "packages/contracts/src/generated.ts": "edc0ed580217b743a47ec45c11fc49d6c21d3cf3a12e6b12d5ea25297b869604",
+    "packages/contracts/src/index.ts": "206f50959dc5797c6dbc64526c08c278cda0f2b3dc10dcacdf3ddbe29996c34c"
+  }
+}

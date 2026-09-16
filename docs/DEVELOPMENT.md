@@ -161,8 +161,9 @@ persists the normalized case atomically; no database migration is required.
 
 `fixtures/v1/scoring-rules.json` holds explainable rule weights. The initial golden
 ranking matches the M0 fixture, while intermittent recovery and confirmed outcomes
-change actual case scores. Findings use cached deterministic templates populated
-with current evidence IDs; they are not live model responses. Observation selection
+change actual case scores. M1 findings use cached deterministic templates populated
+with current evidence IDs; M2 optionally enriches them with reviewed Gemini output.
+Observation selection
 alone does not confirm a cause. Both outcomes require explicit confirmation and
 record inspection completion; the negative path remains open at material review.
 
@@ -172,9 +173,8 @@ revision, preserving the original `investigation_snapshots` table. The case ID i
 **Start another case** creates a separate investigation without deleting history.
 
 M1 reuses the existing design tokens, source viewer, and semantic 2D/text guide.
-Live specialists, 3D rendering/animation, general evidence editing, additional repair
-workflows, model fallback orchestration, and expert procedure approval remain later
-work. API outages preserve readable loaded state and link to the labelled offline
+M2 extends these as documented below. Additional repair workflows and expert
+procedure approval remain later work. API outages preserve readable loaded state and link to the labelled offline
 M0 prototype; they never silently switch a saved case to fabricated success.
 
 ### M0 golden prototype
@@ -214,8 +214,8 @@ The standalone Report screen at `/log-preview` loads a simulated operator report
 and previews the sample log without saving a case. The M0 prototype is also read-only;
 only the main M1 workspace executes and persists the case workflow.
 
-Live agent execution, approved procedures, 3D, production reset/replay,
-authentication, and deployment remain future implementation. Generated sample
+Approved procedures, production reset/replay, authentication, and deployment remain
+future implementation. Generated sample
 measurement is implemented; arbitrary production-image recognition is not.
 
 Procedure wording still requires domain-expert review. Machine PASS is never product
@@ -224,3 +224,114 @@ telemetry. Refer to the product requirements and ingestion profile before extend
 
 Framework references: [FastAPI application structure](https://fastapi.tiangolo.com/tutorial/bigger-applications/),
 [Vite setup](https://vite.dev/guide/), and [uv projects](https://docs.astral.sh/uv/guides/projects/).
+
+### M2 reasoning, evidence corrections, and 3D
+
+Set `GEMINI_API_KEY` in the ignored root `.env`. It is read only by the backend.
+`FLOWPILOT_GEMINI_MODEL` defaults to `gemini-3.5-flash-lite`, verified with synthetic
+cases during M2 acceptance. The planned 3.8 Flash and an attempted 3.7 Flash returned
+provider overload responses during verification; the configured key could list 2.5
+Flash but generation returned 404. Model selection remains configurable. Consult the
+[Google model catalog](https://ai.google.dev/gemini-api/docs/models) for current availability.
+`FLOWPILOT_REASONING_ENABLED=false` forces deterministic fallback.
+`FLOWPILOT_REASONING_TIMEOUT_SECONDS` may shorten the 30-second maximum budget.
+Never use a `VITE_*` variable for credentials.
+
+`diagnosis/reasoning.py` runs the Fluid Path and Material/Process specialists
+concurrently, followed by a diagnostic critic. Each specialist must cover its
+assigned hypotheses. Pydantic validates structured JSON; application validation checks
+roles, hypothesis coverage, evidence IDs, source references, and conflicting citations.
+Only current, non-rejected evidence enters the prompt. Reports, machine values, and
+specialist findings are treated as untrusted data. The critic reviews whether findings
+are grounded, rather than rejecting a candidate merely because its likelihood falls.
+An invalid response, unsupported citation, critic rejection, missing key, provider
+failure, or timeout retains the entire deterministic finding set. No partial live
+finding set is published. This is an explanatory model layer, not proof of causality.
+
+The SDK uses `response_json_schema` with Pydantic's JSON schema and validates the
+returned JSON locally; `response_schema` rejected `additionalProperties` in the live
+API. See the [official SDK JSON-schema examples](https://googleapis.github.io/python-genai/).
+Scores, recommendations, physical observations, state gates, and confirmations remain
+server-owned. Reasoning runs after diagnosis, eligible corrections, and confirmed
+inspection outcomes. Network calls occur after the read transaction closes; a final
+compare-and-swap update rejects stale revisions. Action requests allow 45 seconds on
+the client and prevent duplicate submissions while busy. GET never calls the model.
+
+Prompt `m2.3` supplies the deterministic ranker's `known_gaps`. If any exist, the
+critic must include at least one of those gaps in its assessment's missing-evidence
+list (case/outer whitespace are normalized for matching). A generic endorsement or
+invented-only gap list fails validation and retains the complete cached finding set.
+This applies even after a confirmed obstruction: a confirmed cause does not erase
+other unknown material conditions. Explicit known-gap reporting enforces FR-011
+without trying to infer the meaning of free-form prose.
+
+`Case.reasoning` records mode, model, prompt version, evidence revision, timestamp,
+safe fallback reason, and critic review. Old documents default to `reasoning=null`
+and cached mode. The existing JSON case table needs no new migration. Reads preserve
+reviewed live findings; only cached finding presentation receives legacy normalization.
+
+The new `correct_evidence` action takes `revision`, `evidence_id`, `operation`
+(`edit` or `reject`), an optional replacement `value`, a required `reason`, and
+`confirmed: true`. Technician reports and discovery answers can be edited. Machine
+and image values can only be rejected. Every correction retains the original evidence
+as rejected and records its before-value, before-state, reason, replacement, and any
+invalidated dependent evidence in the timeline. Editing/rejecting an upstream answer
+retires the previous downstream answers and resumes discovery at the correct branch;
+old rankings are cleared until that branch is completed and diagnosed again.
+Other eligible corrections immediately recompute scores, missing evidence, findings,
+and recommendation. Rejecting image evidence also retires its derived undersizing
+contribution and disables inspection based on that image. A pending outcome is cleared.
+Either confirmed inspection outcome locks corrections; later corrections need a new case.
+
+The diagnosis ledger filters by source and status, retains rejected evidence, and
+allows review of raw machine records after diagnosis. The inspection screen also
+offers evidence review before confirmation. The lazy-loaded Three.js viewer builds
+seven named meshes matching the M0 semantic IDs, with shared camera presets. Play
+advances every five seconds and stops at the final step. Manual navigation, camera
+interaction, mode changes, and reduced-motion changes pause playback. Reduced motion
+uses immediate camera updates and disables autoplay/pulsing. Keyboard-accessible
+camera buttons accompany orbit/pan/zoom gestures. 2D mode, WebGL failure/context loss,
+missing mappings, and renderer loading failures retain the diagram/text alternatives.
+Playback only moves the camera and highlights components; it does not animate an
+unapproved removal procedure or record outcomes. Renderer resources are disposed on unmount.
+
+Ranking and specialist evidence links clear both filters, reveal the cited row,
+and move keyboard focus to it after rendering. A rejected image now shows an
+explicit rejection state with a link to create a new case. It does not claim that
+inspection happened or recommend material review. Material-review messaging requires
+an actual confirmed negative inspection and the material recommendation.
+
+Verification commands (from the repository root):
+
+```sh
+npm run check
+npm run test:e2e -- --workers=4
+uv run python scripts/check_live_reasoning.py
+npm run test:e2e -- --config=playwright.demo.config.ts
+npm run test:e2e -- --config=playwright.live.config.ts
+node scripts/contract-review.mjs --check
+```
+
+The regular backend/browser suites force cached mode and never consume the configured
+key. The explicit live command sends only generated synthetic case evidence and checks
+initial, positive, and negative reasoning plus forced fallback; it saves safe results
+to `artifacts/demo/live-reasoning-check.json` and exits unsuccessfully if live acceptance
+fails. `--list-models` lists names available to the configured key without generating text.
+The recording configuration uses a fresh migrated database and captures both real API
+journeys in **labelled cached mode**, including verification failure/retry and reload,
+to `artifacts/demo/recordings/*/video.webm`. These are local backup footage, not a
+narrated submission video or proof of live model availability. All `artifacts/demo/`
+files are ignored by Git. M3 still owns final rehearsals, expert review, and submission.
+
+`playwright.live.config.ts` is an explicit opt-in integration check, separate from
+regular offline tests. It starts a fresh migrated database with live reasoning,
+creates synthetic cases through the browser, verifies live critic-reviewed results
+and known gaps, confirms each outcome, and compares the saved API document after
+browser reloads. The positive branch proceeds through corrective action, measured
+verification, and resolution. It fails if the provider falls back; it never treats
+cached mode as proof of live acceptance. Safe case attachments and screenshots are
+written to `artifacts/demo/live-browser/`. No key enters the browser.
+
+The pending M0 freeze can be reviewed using [the review package](M0_CONTRACT_REVIEW.md).
+`node scripts/contract-review.mjs` prepares its exact candidate hashes; `--check`
+verifies that the reviewed material has not changed. Neither command grants acceptance.
