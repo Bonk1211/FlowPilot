@@ -75,6 +75,19 @@ test("complete persisted journey with sample log, failed verification and refres
       .filter({ hasText: /Attached demo-industry-machine.log/ }),
   ).toBeVisible();
   await discovery(page);
+  const rawLog = page
+    .locator("details")
+    .filter({
+      has: page.locator("summary", {
+        hasText: "Retained machine events and raw log",
+      }),
+    });
+  await rawLog.locator(":scope > summary").click();
+  await expect(
+    rawLog.getByRole("heading", { name: "Raw machine events" }),
+  ).toBeVisible();
+  await rawLog.getByRole("button", { name: "Back to preview" }).first().click();
+  await expect(rawLog).not.toHaveAttribute("open", "");
   await expect(
     page.getByRole("heading", { name: "1. Cartridge / nozzle restriction" }),
   ).toBeVisible();
