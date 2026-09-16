@@ -45,8 +45,9 @@ Migrations are explicit; health, demo loading, and log preview never create a da
 
 - `apps/web`: React application, local fonts, semantic CSS tokens, and typed API adapter.
 - `apps/api/src/flowpilot`: API composition and domain modules. Ingestion is a pure
-  adapter; investigations, diagnosis, and procedures define contracts for future work.
-  Persistence stores versioned investigation snapshots with caller-owned transactions.
+  adapter; `imaging.py` generates and measures controlled rasters; `cases.py` owns
+  deterministic case actions, scoring, contracts, and atomic persistence.
+  The original snapshot repository remains available alongside M1 case storage.
 - `apps/api/migrations`: Alembic migrations; no runtime `create_all` or automatic migrations.
 - `packages/contracts`: generated OpenAPI and TypeScript declarations; do not hand-edit generated files.
 - `fixtures`: versioned scenario and parity cases plus the original log and provenance metadata.
@@ -64,6 +65,11 @@ Update contracts and affected fixtures in the same change.
 | `GET /api/health` | Process liveness; not a database readiness check |
 | `GET /api/demo/scenario` | Validated version 1.0 sample report, raw sample log, and provenance metadata |
 | `POST /api/logs/preview` | `{text, sourceName?, timezoneOffset?}` to parsed events, runs, warnings, statistics, and provisional evidence; no persistence |
+| `GET /api/demo/images` | Four generated sample measurements and raster image URLs |
+| `GET /api/demo/images/{sample_id}.png` | Deterministic normal, undersized, oversized, or missing-dot PNG |
+| `POST /api/investigations` | `{report, sample_id}` creates a measured, persisted demo case |
+| `GET /api/investigations/{id}` | Complete saved case, revision, evidence, answers, rankings, and timeline |
+| `POST /api/investigations/{id}/actions` | Revision-checked typed action; returns the complete updated case |
 
 Log preview accepts up to 2,000,000 text characters. Empty text returns an empty
 preview. Unknown events remain visible. Invalid requests return FastAPI's 422
@@ -97,6 +103,9 @@ pytest, contract drift detection, and the production web build. The browser suit
 starts its own API and web processes on ports 8100 and 5174, leaving normal
 development servers on 8000 and 5173 undisturbed. `FLOWPILOT_API_URL` overrides
 the Vite development proxy target for this isolated test setup.
+The browser API launcher migrates a new database under `.cache/e2e-*` for every
+suite; it never uses the developer database. Each test creates its own case and
+browser context. These ignored test directories may be removed after testing.
 CI runs foundation checks on Windows and Linux, plus Chromium tests on Linux.
 
 If browser downloads are unavailable, set `PLAYWRIGHT_CHANNEL=chrome` to use an
@@ -111,10 +120,67 @@ temporary SQLite database, round-trip and update a snapshot, and test rollback o
 
 ## Current boundary
 
+### M1 integrated workspace
+
+Open `/` to create a case. Choose a generated sample, write an operator report,
+optionally preview and attach a sample/uploaded log, and answer discovery questions.
+The undersized sample supports the full diagnosis journey. Other samples demonstrate
+measurement only, explicitly without unsupported cause rankings.
+
+Raster generation uses a fixed 12-location layout. Measurement thresholds actual
+pixel intensities, finds connected components, matches expected locations, and
+reports bounding-box diameter, standard deviation, positional deviation, and filled
+area relative to a fitted circle. Missing locations are excluded from geometric
+averages and counted independently. Results are pixels, not calibrated physical
+units. A verification sample passes only when all 12 dots are present and within
+28–32 px. No external image dependency or image upload is needed for this boundary.
+
+Case actions are `attach_log`, `answer`, `diagnose`, `inspect`,
+`confirm_observation`, `complete_action`, `verify`, and `resolve`. All require the
+current `revision`; the confirmation actions also require `confirmed: true`.
+Unknown cases return 404, invalid input 422, stale revisions or invalid transitions
+409, and unavailable/unmigrated storage 503. Each mutation updates the case and its
+timeline atomically. Repeating a request with its old revision cannot duplicate it.
+After an interrupted request, reload the saved case before retrying.
+
+Log attachment reparses the previewed text on the server and retains events,
+warnings, units, and provenance in the case's log document. Projected evidence is
+provisional; an unknown event timestamp is recorded as `unknown`, never the import
+time. The complete parser record retains compound units and context. `Evidence.unit`
+accepts a scalar unit string, a per-field unit map, or null. Log projection retains
+the original units, and the ledger uses the same formatter as the import preview.
+
+Existing M1 cases are normalized on reads and before actions: missing compound units
+are recovered only from a unique retained log candidate matching key, source reference,
+and value. Existing units and ambiguous matches are left unchanged. Missing-evidence
+labels are refreshed from current observations; verified intermittent recovery is
+not listed as missing. Unknown, absent, provisional, or rejected observations do not
+satisfy that evidence requirement. GET requests do not write these repairs to storage
+or change revisions, scores, confirmations, or history. The next successful action
+persists the normalized case atomically; no database migration is required.
+
+`fixtures/v1/scoring-rules.json` holds explainable rule weights. The initial golden
+ranking matches the M0 fixture, while intermittent recovery and confirmed outcomes
+change actual case scores. Findings use cached deterministic templates populated
+with current evidence IDs; they are not live model responses. Observation selection
+alone does not confirm a cause. Both outcomes require explicit confirmation and
+record inspection completion; the negative path remains open at material review.
+
+Migration `0002` adds the `cases` table with a JSON case document and integer
+revision, preserving the original `investigation_snapshots` table. The case ID in
+`/?case=...` restores the persisted journey. No automatic production reset exists:
+**Start another case** creates a separate investigation without deleting history.
+
+M1 reuses the existing design tokens, source viewer, and semantic 2D/text guide.
+Live specialists, 3D rendering/animation, general evidence editing, additional repair
+workflows, model fallback orchestration, and expert procedure approval remain later
+work. API outages preserve readable loaded state and link to the labelled offline
+M0 prototype; they never silently switch a saved case to fabricated success.
+
 ### M0 golden prototype
 
 Open `/prototype` (or **Explore the M0 prototype** from the Report footer) for the
-fixture-backed screen wireframes. The main Report/log-preview workflow is unchanged.
+fixture-backed screen wireframes. The standalone Report/log-preview is at `/log-preview`.
 The prototype demonstrates five discovery answers, two inspection outcomes, explicit
 observation confirmation, simulated corrective action, verification, and a summary.
 Answers demonstrate question branching; diagnosis always uses the labelled fixed
@@ -135,25 +201,22 @@ not calibrated probabilities. The embedded log preview is actual parser output.
 Synthetic image measurements are precomputed; no image analysis is implemented here.
 
 Developer B owns presentation, `apps/web/src/prototype/model.ts`, and the 2D guide.
-Developer A owns the authoritative contracts and their future execution engines.
-Both own fixture changes. M1 should connect real intake, question/evidence processing,
-ranking and case APIs; M2 should add 3D and real workflow integration. The existing
-Report route's inactive later phases remain accurate for that workflow.
+Developer A owns authoritative contracts and execution engines. Both own fixture
+changes. M1 now connects intake, question processing, ranking and case APIs at `/`;
+M2 adds live reasoning and 3D. The standalone log viewer is read-only.
 
 The guide uses SVG plus text and requires no WebGL or external assets. Unknown node
 references keep the instructions visible and report an unavailable diagram highlight.
 Camera presets reserve illustrative coordinates for M2; no 3D renderer, animation,
 or camera controls are implied. All procedure wording is pending expert review.
 
-The starter Report screen loads a simulated operator report and previews the sample
-log. Later phases are visibly inactive. There is no case creation or evidence
-attachment API yet. The snapshot repository is infrastructure, not a complete
-case audit model; extend its schema when implementing timeline/history requirements.
+The standalone Report screen at `/log-preview` loads a simulated operator report
+and previews the sample log without saving a case. The M0 prototype is also read-only;
+only the main M1 workspace executes and persists the case workflow.
 
-Live image analysis, backend question branching, agent execution, deterministic
-ranking, persisted workflow gates, approved procedures, 3D, production reset/replay,
-authentication, and deployment remain future implementation. The M0 prototype only
-previews these experiences. Do not represent them as complete or approved.
+Live agent execution, approved procedures, 3D, production reset/replay,
+authentication, and deployment remain future implementation. Generated sample
+measurement is implemented; arbitrary production-image recognition is not.
 
 Procedure wording still requires domain-expert review. Machine PASS is never product
 quality evidence, and the sample lacks pressure, temperature, diameter, and obstruction

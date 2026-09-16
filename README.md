@@ -26,9 +26,12 @@ npm run dev
 ```
 
 Open http://127.0.0.1:5173. On Windows, use `npm.cmd` if the PowerShell npm launcher
-is broken. The foundation includes a React Report screen, FastAPI sample-log preview,
-generated shared contracts, and SQLite migration/repository infrastructure. Full
-diagnosis and the remaining investigation phases are not implemented yet.
+is broken. The main workspace provides the M1 API-backed investigation journey:
+generated raster measurements, log attachment, adaptive questions, deterministic
+ranking, confirmed inspection outcomes, simulated corrective action, verification,
+and a persisted summary. Case URLs survive refresh. Run migrations when updating
+an existing checkout. `/prototype` retains the offline M0 storyboard, and
+`/log-preview` retains the standalone log viewer. Live agents and 3D remain M2 work.
 
 Run `npm run check` for build, lint, types, contracts, and unit/integration tests.
 Run `npx playwright install chromium`, then `npm run test:e2e` for browser checks.
