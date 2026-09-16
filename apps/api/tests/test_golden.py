@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -44,6 +45,20 @@ def test_positive_and_negative_outcomes_are_distinct_and_verification_is_separat
     assert not any(c.confirmed for c in negative.ranking)
     assert negative.ranking[0].hypothesis_id == "material_viscosity_change"
     assert negative.recommendation_id == "material"
+
+
+def test_negative_inspection_is_recorded_before_reassessment():
+    scenario = load_golden_scenario()
+    negative = next(s for s in scenario.snapshots if s.id == "negative")
+    completed, reassessed = negative.timeline[-2:]
+    assert [completed.state, reassessed.state] == ["inspection_completed", "diagnosing"]
+    timestamps = [datetime.fromisoformat(entry.timestamp) for entry in negative.timeline]
+    assert timestamps == sorted(timestamps)
+    assert timestamps[-2] < timestamps[-1]
+    observation = next(e for e in scenario.investigation.evidence if e.id == "EV-CLEAR")
+    assert timestamps[-2] == datetime.fromisoformat(observation.timestamp)
+    assert "EV-CLEAR" in negative.evidence_ids
+    assert "EV-FOUND" not in negative.evidence_ids
 
 
 @pytest.mark.parametrize("kind", ["evidence", "transition", "question", "score", "node"])

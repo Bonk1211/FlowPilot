@@ -112,6 +112,17 @@ test("negative branch stays open and changes the recommendation", async ({
     }),
   ).toBeVisible();
   await expect(page.getByText(/Case remains open/)).toBeVisible();
+  await page.getByText("Snapshot timeline · precomputed", { exact: true }).click();
+  const timelineEntries = page.locator(".prototype-timeline li");
+  const count = await timelineEntries.count();
+  await expect(timelineEntries.nth(count - 2)).toContainText(
+    "Inspection completed; no obstruction found.",
+  );
+  await expect(timelineEntries.nth(count - 2)).toBeVisible();
+  await expect(timelineEntries.nth(count - 1)).toContainText(
+    "diagnosing — A clear path changes the next check",
+  );
+  await expect(timelineEntries.nth(count - 1)).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Resolve demo case" }),
   ).toHaveCount(0);

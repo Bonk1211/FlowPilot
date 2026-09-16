@@ -1404,7 +1404,12 @@
           "description": "Inspect the cartridge and nozzle"
         },
         {
-          "timestamp": "2026-09-16T10:24:00+08:00",
+          "timestamp": "2026-09-16T10:25:00+08:00",
+          "state": "inspection_completed",
+          "description": "Inspection completed; no obstruction found."
+        },
+        {
+          "timestamp": "2026-09-16T10:26:00+08:00",
           "state": "diagnosing",
           "description": "A clear path changes the next check"
         }
