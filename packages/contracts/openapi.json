@@ -150,8 +150,11 @@
             "type": "array"
           },
           "findings_mode": {
-            "const": "cached_templates",
             "default": "cached_templates",
+            "enum": [
+              "cached_templates",
+              "live"
+            ],
             "title": "Findings Mode",
             "type": "string"
           },
@@ -215,6 +218,16 @@
             "title": "Ranking",
             "type": "array"
           },
+          "reasoning": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReasoningRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "recommendation": {
             "anyOf": [
               {
@@ -277,6 +290,7 @@
           "ranking",
           "findings",
           "findings_mode",
+          "reasoning",
           "recommendation",
           "procedure",
           "timeline",
@@ -355,6 +369,66 @@
         "title": "Confirm",
         "type": "object"
       },
+      "CorrectEvidence": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "const": "correct_evidence",
+            "title": "Action",
+            "type": "string"
+          },
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "evidence_id": {
+            "title": "Evidence Id",
+            "type": "string"
+          },
+          "operation": {
+            "enum": [
+              "edit",
+              "reject"
+            ],
+            "title": "Operation",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "maxLength": 2000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "revision",
+          "action",
+          "evidence_id",
+          "operation",
+          "reason",
+          "confirmed"
+        ],
+        "title": "CorrectEvidence",
+        "type": "object"
+      },
       "CreateCase": {
         "additionalProperties": false,
         "properties": {
@@ -380,6 +454,43 @@
           "report"
         ],
         "title": "CreateCase",
+        "type": "object"
+      },
+      "CriticResult": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted": {
+            "description": "True only when ALL supplied specialist findings are grounded.",
+            "title": "Accepted",
+            "type": "boolean"
+          },
+          "assessment": {
+            "$ref": "#/components/schemas/AgentFinding"
+          },
+          "reasons": {
+            "description": "Reasons for accepting or rejecting the supplied findings.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Reasons",
+            "type": "array"
+          },
+          "rejected_hypotheses": {
+            "description": "Hypothesis IDs of supplied findings rejected for unsupported CLAIMS. Not hypotheses made less likely by evidence. Empty when accepted is true.",
+            "items": {
+              "type": "string"
+            },
+            "title": "Rejected Hypotheses",
+            "type": "array"
+          }
+        },
+        "required": [
+          "accepted",
+          "rejected_hypotheses",
+          "reasons",
+          "assessment"
+        ],
+        "title": "CriticResult",
         "type": "object"
       },
       "DemoLogMetadata": {
@@ -1776,6 +1887,72 @@
         "title": "RankedCause",
         "type": "object"
       },
+      "ReasoningRun": {
+        "additionalProperties": false,
+        "properties": {
+          "critic": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CriticResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evidence_revision": {
+            "title": "Evidence Revision",
+            "type": "integer"
+          },
+          "fallback_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback Reason"
+          },
+          "mode": {
+            "enum": [
+              "live",
+              "cached"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "prompt_version": {
+            "default": "m2.3",
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "model",
+          "evidence_revision",
+          "timestamp"
+        ],
+        "title": "ReasoningRun",
+        "type": "object"
+      },
       "ScoreContribution": {
         "additionalProperties": false,
         "properties": {
@@ -2274,6 +2451,7 @@
                     "attach_log": "#/components/schemas/AttachLog",
                     "complete_action": "#/components/schemas/Confirm",
                     "confirm_observation": "#/components/schemas/Confirm",
+                    "correct_evidence": "#/components/schemas/CorrectEvidence",
                     "diagnose": "#/components/schemas/Diagnose",
                     "inspect": "#/components/schemas/Inspect",
                     "resolve": "#/components/schemas/Confirm",
@@ -2299,6 +2477,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/Verify"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CorrectEvidence"
                   }
                 ],
                 "title": "Action"

@@ -1,5 +1,6 @@
 """M1 deterministic case workflow. All mutation decisions live on the server."""
 
+import asyncio
 import json
 from datetime import UTC, datetime
 from typing import Annotated, Literal
@@ -8,11 +9,12 @@ from uuid import uuid4
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
 from pydantic import ConfigDict, Field
-from sqlalchemy import JSON, Integer, String, select, update
+from sqlalchemy import JSON, Integer, String, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from flowpilot.diagnosis.models import AgentFinding
+from flowpilot.diagnosis.reasoning import ReasoningRun, enrich
 from flowpilot.golden import (
     CaseSummary,
     DiscoveryQuestion,
@@ -51,7 +53,8 @@ class Case(Contract):
     questions_complete: bool = False
     ranking: list[RankedCause] = Field(default_factory=list)
     findings: list[AgentFinding] = Field(default_factory=list)
-    findings_mode: Literal["cached_templates"] = "cached_templates"
+    findings_mode: Literal["cached_templates", "live"] = "cached_templates"
+    reasoning: ReasoningRun | None = None
     recommendation: TestRecommendation | None = None
     procedure: list[ProcedureStep] = Field(default_factory=list)
     timeline: list[TimelineEntry] = Field(default_factory=list)
@@ -99,8 +102,18 @@ class Verify(ActionBase):
     sample_id: SampleId
 
 
+class CorrectEvidence(ActionBase):
+    action: Literal["correct_evidence"]
+    evidence_id: str
+    operation: Literal["edit", "reject"]
+    value: str | None = Field(default=None, max_length=2000)
+    reason: str = Field(min_length=1, max_length=500)
+    confirmed: Literal[True]
+
+
 CaseAction = Annotated[
-    AttachLog | Answer | Diagnose | Inspect | Confirm | Verify, Field(discriminator="action")
+    AttachLog | Answer | Diagnose | Inspect | Confirm | Verify | CorrectEvidence,
+    Field(discriminator="action"),
 ]
 
 
@@ -204,7 +217,7 @@ def normalize_case(case: Case) -> Case:
     for cause in case.ranking:
         cause.missing_evidence = missing_evidence(case, cause.hypothesis_id)
     for finding in case.findings:
-        if finding.agent != "diagnostic_critic":
+        if case.findings_mode == "cached_templates" and finding.agent != "diagnostic_critic":
             cause = next(
                 (c for c in case.ranking if c.hypothesis_id == finding.hypothesis_id), None
             )
@@ -214,6 +227,8 @@ def normalize_case(case: Case) -> Case:
 
 
 def rank(case: Case):
+    case.findings_mode = "cached_templates"
+    case.reasoning = None
     rules = json.loads(fixture_path("v1/scoring-rules.json").read_text(encoding="utf-8"))
     causes = []
     confirmed = any(
@@ -283,6 +298,92 @@ def rank(case: Case):
     )
 
 
+def correct_evidence(case: Case, action: CorrectEvidence):
+    items = case.investigation.evidence
+    if any(e.key == "inspection" and e.verification_state == "verified" for e in items):
+        raise HTTPException(
+            409, "Evidence is locked after a confirmed inspection. Create a new case."
+        )
+    item = next((e for e in items if e.id == action.evidence_id), None)
+    if item is None or item.verification_state == "rejected":
+        raise HTTPException(409, "Select current evidence to correct.")
+    if not action.reason.strip():
+        raise HTTPException(422, "A correction reason is required.")
+    questions = {q.id: q for q in load_golden_scenario().questions}
+    editable = item.source_type == "technician_input" and (
+        item.key == "operator_report" or item.key in questions
+    )
+    if action.operation == "edit":
+        if not editable:
+            raise HTTPException(422, "Machine and image evidence can be rejected, not edited.")
+        if not action.value or not action.value.strip():
+            raise HTTPException(422, "A replacement value is required.")
+        if item.key in questions and action.value not in {
+            o.value for o in questions[item.key].options
+        }:
+            raise HTTPException(422, "Unknown answer option.")
+    before = item.model_dump(mode="json")
+    item.verification_state = "rejected"
+    invalidated = []
+    if item.key in questions:
+        # Follow the previously answered path, retiring all dependent answers.
+        cursor = item.key
+        while cursor and cursor in case.answers:
+            previous = case.answers.pop(cursor)
+            for dependent in items:
+                if dependent.key == cursor and dependent.verification_state != "rejected":
+                    invalidated.append(dependent.model_dump(mode="json"))
+                    dependent.verification_state = "rejected"
+            option = next(o for o in questions[cursor].options if o.value == previous)
+            cursor = option.next_question_id
+        case.next_question = question(item.key)
+        if action.operation == "edit":
+            case.answers[item.key] = action.value
+            option = next(o for o in questions[item.key].options if o.value == action.value)
+            case.next_question = (
+                question(option.next_question_id) if option.next_question_id else None
+            )
+        case.questions_complete = case.next_question is None
+    if action.operation == "edit":
+        evidence(case, item.key, action.value.strip(), source_ref=item.source_ref, verified=True)
+        if item.key == "operator_report":
+            case.investigation.title = action.value.strip()
+    if item.source_type == "synthetic_image_measurement":
+        for derived in items:
+            if derived.source_ref == item.source_ref and derived.verification_state != "rejected":
+                invalidated.append(derived.model_dump(mode="json"))
+                derived.verification_state = "rejected"
+        case.diagnosis_supported = False
+    case.pending_outcome = None
+    case.recommendation = None
+    had_ranking = bool(case.ranking)
+    case.ranking = []
+    case.findings = []
+    case.findings_mode = "cached_templates"
+    case.reasoning = None
+    state = "diagnosing"
+    if had_ranking and case.questions_complete:
+        rank(case)
+        if case.diagnosis_supported:
+            case.recommendation = load_golden_scenario().recommendations[0]
+            state = "inspection_recommended"
+    transition(
+        case,
+        state,
+        "Evidence correction: "
+        + json.dumps(
+            {
+                "operation": action.operation,
+                "before": before,
+                "replacement": action.value if action.operation == "edit" else None,
+                "invalidated": invalidated,
+                "reason": action.reason.strip(),
+            },
+            ensure_ascii=False,
+        ),
+    )
+
+
 def apply_action(case: Case, action: CaseAction) -> Case:
     state = case.investigation.state
 
@@ -290,7 +391,9 @@ def apply_action(case: Case, action: CaseAction) -> Case:
         if not condition:
             raise HTTPException(409, message)
 
-    if action.action == "attach_log":
+    if action.action == "correct_evidence":
+        correct_evidence(case, action)
+    elif action.action == "attach_log":
         require(state in ("reported", "diagnosing") and not case.ranking and case.log is None)
         case.log = IngestionResult.model_validate(
             parse_industry_event_log(
@@ -447,15 +550,15 @@ def get_case(case_id: str):
 
 @router.post("/investigations/{case_id}/actions", response_model=Case)
 def act(case_id: str, action: CaseAction):
+    case = get_case(case_id)
+    if case.revision != action.revision:
+        raise HTTPException(409, "Case changed. Reload the saved case before trying again.")
+    case = apply_action(case, action)
+    if case.ranking and action.action in ("diagnose", "confirm_observation", "correct_evidence"):
+        # The read transaction has closed. Never hold SQLite locks across network I/O.
+        asyncio.run(enrich(case))
+
     def change(session):
-        record = session.execute(
-            select(CaseRecord).where(CaseRecord.id == case_id)
-        ).scalar_one_or_none()
-        if record is None:
-            raise HTTPException(404, "Case not found.")
-        if record.revision != action.revision:
-            raise HTTPException(409, "Case changed. Reload the saved case before trying again.")
-        case = apply_action(normalize_case(Case.model_validate(record.payload)), action)
         result = session.execute(
             update(CaseRecord)
             .where(

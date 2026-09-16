@@ -228,9 +228,9 @@ export interface components {
             /**
              * Findings Mode
              * @default cached_templates
-             * @constant
+             * @enum {string}
              */
-            findings_mode: "cached_templates";
+            findings_mode: "cached_templates" | "live";
             investigation: components["schemas"]["Investigation"];
             log: components["schemas"]["IngestionResult"] | null;
             measurement: components["schemas"]["Measurement"];
@@ -246,6 +246,7 @@ export interface components {
             questions_complete: boolean;
             /** Ranking */
             ranking: components["schemas"]["RankedCause"][];
+            reasoning: components["schemas"]["ReasoningRun"] | null;
             recommendation: components["schemas"]["TestRecommendation"] | null;
             /**
              * Revision
@@ -291,6 +292,32 @@ export interface components {
             /** Revision */
             revision: number;
         };
+        /** CorrectEvidence */
+        CorrectEvidence: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "correct_evidence";
+            /**
+             * Confirmed
+             * @constant
+             */
+            confirmed: true;
+            /** Evidence Id */
+            evidence_id: string;
+            /**
+             * Operation
+             * @enum {string}
+             */
+            operation: "edit" | "reject";
+            /** Reason */
+            reason: string;
+            /** Revision */
+            revision: number;
+            /** Value */
+            value?: string | null;
+        };
         /** CreateCase */
         CreateCase: {
             /** Report */
@@ -301,6 +328,25 @@ export interface components {
              * @enum {string}
              */
             sample_id: "normal" | "undersized" | "oversized" | "missing";
+        };
+        /** CriticResult */
+        CriticResult: {
+            /**
+             * Accepted
+             * @description True only when ALL supplied specialist findings are grounded.
+             */
+            accepted: boolean;
+            assessment: components["schemas"]["AgentFinding"];
+            /**
+             * Reasons
+             * @description Reasons for accepting or rejecting the supplied findings.
+             */
+            reasons: string[];
+            /**
+             * Rejected Hypotheses
+             * @description Hypothesis IDs of supplied findings rejected for unsupported CLAIMS. Not hypotheses made less likely by evidence. Empty when accepted is true.
+             */
+            rejected_hypotheses: string[];
         };
         /** DemoLogMetadata */
         DemoLogMetadata: {
@@ -830,6 +876,28 @@ export interface components {
             /** Score */
             score: number;
         };
+        /** ReasoningRun */
+        ReasoningRun: {
+            critic?: components["schemas"]["CriticResult"] | null;
+            /** Evidence Revision */
+            evidence_revision: number;
+            /** Fallback Reason */
+            fallback_reason?: string | null;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "live" | "cached";
+            /** Model */
+            model: string | null;
+            /**
+             * Prompt Version
+             * @default m2.3
+             */
+            prompt_version: string;
+            /** Timestamp */
+            timestamp: string;
+        };
         /** ScoreContribution */
         ScoreContribution: {
             /** Evidence Id */
@@ -1111,7 +1179,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AttachLog"] | components["schemas"]["Answer"] | components["schemas"]["Diagnose"] | components["schemas"]["Inspect"] | components["schemas"]["Confirm"] | components["schemas"]["Verify"];
+                "application/json": components["schemas"]["AttachLog"] | components["schemas"]["Answer"] | components["schemas"]["Diagnose"] | components["schemas"]["Inspect"] | components["schemas"]["Confirm"] | components["schemas"]["Verify"] | components["schemas"]["CorrectEvidence"];
             };
         };
         responses: {

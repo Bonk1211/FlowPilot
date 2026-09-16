@@ -13,6 +13,7 @@ export type Case = components["schemas"]["Case"];
 export type Measurement = components["schemas"]["Measurement"];
 export type CreateCase = components["schemas"]["CreateCase"];
 export type CaseAction =
+  | components["schemas"]["CorrectEvidence"]
   | components["schemas"]["AttachLog"]
   | components["schemas"]["Answer"]
   | components["schemas"]["Diagnose"]

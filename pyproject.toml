@@ -10,6 +10,7 @@ dependencies = [
   "pydantic-settings>=2.7,<3",
   "sqlalchemy>=2.0,<3",
   "alembic>=1.14,<2",
+  "google-genai>=2.23.0",
 ]
 
 [dependency-groups]
