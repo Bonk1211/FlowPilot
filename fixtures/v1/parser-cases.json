@@ -1,0 +1,49 @@
+[
+  { "name": "empty", "text": "", "timezoneOffset": null },
+  { "name": "whitespace", "text": "\n \r\n\t", "timezoneOffset": null },
+  {
+    "name": "unknown",
+    "text": "2026-09-13,01:00:00.000,Vendor-specific message,with,commas",
+    "timezoneOffset": null
+  },
+  {
+    "name": "orphan-and-continuation",
+    "text": "header\n  extra context\n2026-09-13,01:00:00.000,Run Started,Board #1:\n",
+    "timezoneOffset": "+08:00"
+  },
+  {
+    "name": "bom-crlf",
+    "text": "\ufeff2026-09-13,01:00:00.000,Run Started,Board #1:\r\n2026-09-13,01:00:01.000,Run Finished,Board #1, Status: PASS\r\n",
+    "timezoneOffset": "+08:00"
+  },
+  {
+    "name": "duplicate-start",
+    "text": "2026-09-13,01:00:00.000,Run Started,Board #1:\n2026-09-13,01:00:01.000,Run Started,Board #1:\n2026-09-13,01:00:02.000,Run Finished,Board #1, Status: FAIL",
+    "timezoneOffset": null
+  },
+  {
+    "name": "unmatched-finish",
+    "text": "2026-09-13,01:00:00,Run Finished,Board #unseen, Status: PASS",
+    "timezoneOffset": "-05:30"
+  },
+  {
+    "name": "missing-numeric",
+    "text": "2026-09-13,01:00:00.000,Fid Found,jedec:Fid 1,,9.390,inch,Fid Score = 74",
+    "timezoneOffset": null
+  },
+  {
+    "name": "wrapped-instruction",
+    "text": "2026-09-13,01:00:00.000,TIME_BETWEEN_BOARDS Results,Instruction: TIME_BETWEEN_BOARDS_LANE1 <= 120.000; Run Time:\rTIME_BETWEEN_BOARDS_LANE1 = 123.493",
+    "timezoneOffset": "+08:00"
+  },
+  {
+    "name": "source-order",
+    "text": "2026-09-13,01:00:02.000,Height Sense Begin\n2026-09-13,01:00:01.000,Height Sense End",
+    "timezoneOffset": null
+  },
+  {
+    "name": "signed-decimals",
+    "text": "2026-09-13,01:00:00.123456,Frame Location-Corr Local,( +.012 INCH,-.014 inch,-0.01 deg)\n2026-09-13,01:00:01.123456,Height Sense Results,Z-1.2626 at -5.1900,-2.0165 (inch rel to Wkpc)",
+    "timezoneOffset": "+00:00"
+  }
+]

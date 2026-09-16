@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "id": "CASE-DEMO-001",
+  "title": "Undersized epoxy dots",
+  "process": "Precision epoxy dispensing",
+  "state": "reported",
+  "simulated": true,
+  "reported_at": "2026-09-16T10:20:00+08:00",
+  "evidence": [
+    {
+      "id": "EV-DEMO-001",
+      "key": "operator_report",
+      "value": "The latest inspected tray has consistently undersized epoxy dots.",
+      "unit": null,
+      "source_type": "technician_input",
+      "source_ref": "demo-operator-report",
+      "quality": "medium",
+      "verification_state": "provisional",
+      "timestamp": "2026-09-16T10:20:00+08:00"
+    }
+  ]
+}

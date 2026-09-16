@@ -49,6 +49,13 @@ It returns data and performs no database writes. This lets the upload flow show 
 
 The reference implementation is in `src/ingestion/industryEventLog.mjs`. It deliberately keeps unknown events instead of dropping them. `fixtures/demo-industry-machine.log` is a manually reconstructed, simulated demo input; its companion metadata records the provenance and limitations that the UI must display.
 
+The FastAPI runtime uses the Python port at
+`apps/api/src/flowpilot/ingestion/industry_event_log.py`. Full-output parity tests
+compare it with the JavaScript reference. Both retain the same camelCase ingestion
+contract; investigation contracts use the separate PRD snake_case vocabulary.
+`POST /api/logs/preview` exposes the adapter without database writes. See
+[Development](DEVELOPMENT.md) for setup and contract-generation commands.
+
 ## Ingestion stages
 
 1. **Fingerprint:** hash the original bytes/text and retain the filename.
