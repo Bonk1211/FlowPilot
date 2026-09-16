@@ -12,6 +12,7 @@ export default tseslint.config(
       ".venv/**",
       ".tools/**",
       ".cache/**",
+      ".pytest_cache/**",
       "packages/contracts/src/generated.ts",
       "playwright-report/**",
       "test-results/**",
