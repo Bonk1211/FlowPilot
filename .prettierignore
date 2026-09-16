@@ -1,0 +1,12 @@
+node_modules
+dist
+.venv
+.tools
+.cache
+.agents
+.codex
+packages/contracts/src/generated.ts
+packages/contracts/openapi.json
+package-lock.json
+test-results
+playwright-report

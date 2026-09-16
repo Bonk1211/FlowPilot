@@ -1,0 +1,43 @@
+{
+  "name": "flowpilot",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "apps/web",
+    "packages/contracts"
+  ],
+  "engines": {
+    "node": ">=22.12.0",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "dev": "concurrently --kill-others --names api,web \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:api": "uv run uvicorn flowpilot.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir apps/api/src",
+    "dev:web": "npm run dev --workspace @flowpilot/web",
+    "db:migrate": "uv run alembic -c apps/api/alembic.ini upgrade head",
+    "build": "npm run build --workspace @flowpilot/web",
+    "lint": "eslint . && uv run ruff check apps/api && uv run ruff format --check apps/api",
+    "typecheck": "npm run typecheck --workspace @flowpilot/web",
+    "test": "npm run test:reference && npm run test:api",
+    "test:reference": "node --test test/industryEventLog.test.mjs",
+    "test:api": "uv run pytest",
+    "test:e2e": "playwright test",
+    "contracts:generate": "node scripts/contracts.mjs",
+    "contracts:check": "node scripts/contracts.mjs --check",
+    "check": "npm run lint && npm run typecheck && npm test && npm run contracts:check && npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.0",
+    "@playwright/test": "^1.58.0",
+    "concurrently": "^9.2.0",
+    "eslint": "^9.39.0",
+    "eslint-plugin-react-hooks": "^7.0.0",
+    "eslint-plugin-react-refresh": "^0.5.0",
+    "globals": "^17.0.0",
+    "openapi-typescript": "^7.10.0",
+    "prettier": "^3.8.0",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.50.0"
+  }
+}
