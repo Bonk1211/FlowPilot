@@ -1,0 +1,12 @@
+{
+  "label": "Demo / Simulated Data",
+  "source": "Manually reconstructed from user-supplied photographs",
+  "format_profile": "industry_event_log_v1",
+  "assumed_timezone_offset": "+08:00",
+  "limitations": [
+    "Not the original machine file",
+    "Encoding and physical line wrapping are unverified",
+    "Event wording and numeric transcription must not be treated as production ground truth",
+    "Machine PASS status is not interpreted as product quality"
+  ]
+}
