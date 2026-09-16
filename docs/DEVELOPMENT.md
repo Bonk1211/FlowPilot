@@ -1,5 +1,14 @@
 # Development
 
+## Record milestone progress
+
+Use the [milestone development log](MILESTONES.md) to track M0–M3. Read the current
+handoff before starting work, then append a session entry and update its status and
+checklist in the same change as the implementation. Include actual validation
+results, remaining work, and the next developer's handoff. Preserve previous entries
+and distinguish prototype behavior from integrated functionality. GitHub Issues
+remain the task tracker; link issues and PRs from the log when available.
+
 ## Prerequisites and first run
 
 Use Node.js 22.12+ (22 LTS recommended), npm 10+, Python 3.12, and uv. On Windows,
@@ -102,14 +111,49 @@ temporary SQLite database, round-trip and update a snapshot, and test rollback o
 
 ## Current boundary
 
+### M0 golden prototype
+
+Open `/prototype` (or **Explore the M0 prototype** from the Report footer) for the
+fixture-backed screen wireframes. The main Report/log-preview workflow is unchanged.
+The prototype demonstrates five discovery answers, two inspection outcomes, explicit
+observation confirmation, simulated corrective action, verification, and a summary.
+Answers demonstrate question branching; diagnosis always uses the labelled fixed
+continuous-undersizing golden scenario. Nothing is persisted or sent to a model.
+
+`GET /api/demo/golden-scenario` validates and serves
+`fixtures/v1/golden-scenario.json` with no database access. The frontend bundles that
+same file as its explicitly labelled offline fallback. `schema_version` and
+`fixture_version` are both `1.0`; update authoritative Pydantic models, generated
+contracts, and this fixture together. The fixture contains the evidence pool for all
+branches; each snapshot selects its applicable evidence IDs. Negative and positive
+observations must never be combined into the displayed case.
+
+The shared contracts cover image overlays/measurements, questions, evidence-linked
+score contributions, recommendations, outcomes, snapshots, timelines, verification,
+and summary. Score totals equal their contributions; they are illustrative points,
+not calibrated probabilities. The embedded log preview is actual parser output.
+Synthetic image measurements are precomputed; no image analysis is implemented here.
+
+Developer B owns presentation, `apps/web/src/prototype/model.ts`, and the 2D guide.
+Developer A owns the authoritative contracts and their future execution engines.
+Both own fixture changes. M1 should connect real intake, question/evidence processing,
+ranking and case APIs; M2 should add 3D and real workflow integration. The existing
+Report route's inactive later phases remain accurate for that workflow.
+
+The guide uses SVG plus text and requires no WebGL or external assets. Unknown node
+references keep the instructions visible and report an unavailable diagram highlight.
+Camera presets reserve illustrative coordinates for M2; no 3D renderer, animation,
+or camera controls are implied. All procedure wording is pending expert review.
+
 The starter Report screen loads a simulated operator report and previews the sample
 log. Later phases are visibly inactive. There is no case creation or evidence
 attachment API yet. The snapshot repository is infrastructure, not a complete
 case audit model; extend its schema when implementing timeline/history requirements.
 
-Image analysis, questions, agent execution, deterministic ranking, workflow gates,
-approved procedures, 3D, reset/replay, authentication, and deployment remain future
-implementation. Do not represent those capabilities as complete or approved.
+Live image analysis, backend question branching, agent execution, deterministic
+ranking, persisted workflow gates, approved procedures, 3D, production reset/replay,
+authentication, and deployment remain future implementation. The M0 prototype only
+previews these experiences. Do not represent them as complete or approved.
 
 Procedure wording still requires domain-expert review. Machine PASS is never product
 quality evidence, and the sample lacks pressure, temperature, diameter, and obstruction

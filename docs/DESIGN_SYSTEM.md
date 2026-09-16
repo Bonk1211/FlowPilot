@@ -533,6 +533,36 @@ Use direct verbs for actions: **Start inspection**, **Record result**, **Apply a
 
 ## 9. Implementation review checklist
 
+### M0 prototype handoff
+
+The `/prototype` storyboard uses the existing paper workspace and bounded dark
+procedure stage. Report, Log, Questions, Diagnose, Inspect, Correct, Verify, and
+Summary show the golden journey; Back and Restart operate only on local preview
+state. Later phase labels indicate progress rather than bypassing confirmation gates.
+The negative inspection branch stops at the next material-check recommendation.
+
+The semantic assembly registry uses these stable IDs and labels:
+
+| Node ID | Visible label |
+| --- | --- |
+| `fluid_reservoir` | Fluid reservoir |
+| `feed_tube` | Feed tube |
+| `jet_actuator` | Jet actuator |
+| `service_cartridge` | Service cartridge |
+| `nozzle` | Nozzle |
+| `vision_camera` | Vision camera |
+| `substrate_tray` | Substrate tray |
+
+Procedure presets are `assembly_overview`, `cartridge_closeup`, and `nozzle_closeup`.
+Future model coordinates use Y up, with explicit camera position and look-at target.
+The 2D diagram and text instructions share the current procedure step. A textual
+current-part label accompanies the outline highlight; all steps remain accessible
+without interacting with the graphic. Play/pause and orbit controls belong to M2.
+
+Wireframe evidence, scores, images and outcomes are precomputed. Keep the prototype,
+simulated-data, illustrative-model and pending-expert-review labels visible. The
+completed summary is a preview, not a persisted case.
+
 Before considering a surface complete, verify:
 
 - The current phase and one primary next action are obvious.

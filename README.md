@@ -4,6 +4,7 @@ FlowPilot is an evidence-led investigation assistant for industrial fluid-dispen
 
 ## Project documents
 
+- [Milestone development log](docs/MILESTONES.md) — M0–M3 progress, developer ownership, session history, validation, and handoffs.
 - [Development guide](docs/DEVELOPMENT.md) — setup, commands, API contracts, module boundaries, and verification.
 - [Product requirements](docs/PRODUCT_REQUIREMENTS.md) — development baseline, scope, contracts, delivery plan, tests, and video script.
 - [Industry event-log ingestion profile](docs/LOG_INGESTION.md) — observed legacy format, parser contract, safe evidence, warnings, and production follow-ups.
