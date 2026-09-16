@@ -14,7 +14,7 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
     {
-      command: "uv run uvicorn flowpilot.main:app --host 127.0.0.1 --port 8100",
+      command: "node scripts/e2e-api.mjs",
       url: "http://127.0.0.1:8100/api/health",
       reuseExistingServer: false,
     },

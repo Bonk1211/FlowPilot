@@ -38,7 +38,7 @@ async function checkTextContrast(page: Page, selectors: string[]) {
 test("loads the scenario and previews the real API response", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/log-preview");
   await expect(
     page.getByRole("heading", { name: "Undersized epoxy dots" }),
   ).toBeVisible();
@@ -67,7 +67,7 @@ test("loads the scenario and previews the real API response", async ({
 
 test("shows a recoverable connection failure", async ({ page }) => {
   await page.route("**/api/demo/scenario", (route) => route.abort());
-  await page.goto("/");
+  await page.goto("/log-preview");
   await expect(page.getByRole("alert")).toContainText("service is unavailable");
   await page.unroute("**/api/demo/scenario");
   await page.getByRole("button", { name: "Retry loading scenario" }).click();
@@ -78,7 +78,7 @@ test("shows a recoverable connection failure", async ({ page }) => {
 
 test("supports keyboard entry and narrow layouts", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto("/");
+  await page.goto("/log-preview");
   await page.keyboard.press("Tab");
   await expect(
     page.getByRole("link", { name: "Skip to main content" }),
@@ -102,7 +102,7 @@ for (const width of [1440, 1280, 834, 375]) {
   }, testInfo) => {
     await page.setViewportSize({ width, height: width === 1440 ? 900 : 720 });
     await page.emulateMedia({ reducedMotion: "reduce" });
-    await page.goto("/");
+    await page.goto("/log-preview");
     await expect(
       page.getByRole("heading", { name: "Undersized epoxy dots" }),
     ).toBeVisible();
@@ -145,7 +145,7 @@ for (const width of [1440, 1280, 834, 375]) {
 test("source navigation selects the matching event and restores keyboard focus", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/log-preview");
   await page.getByRole("button", { name: "Preview sample log" }).click();
   const source = page.locator("#source-1");
   await source.focus();
@@ -170,7 +170,7 @@ test("mobile source disclosures reopen when returning from the viewer", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto("/");
+  await page.goto("/log-preview");
   await page.getByRole("button", { name: "Preview sample log" }).click();
   await expect(page.locator("#source-0")).not.toBeVisible();
   await page.getByText("Source & time", { exact: true }).first().click();
@@ -183,7 +183,7 @@ test("mobile source disclosures reopen when returning from the viewer", async ({
 test("failed refresh retains the last preview and can recover", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/log-preview");
   await page.getByRole("button", { name: "Preview sample log" }).click();
   await expect(
     page.getByRole("heading", { name: "Log preview" }),
@@ -214,7 +214,7 @@ for (const content of [
       });
       await route.fulfill({ response });
     });
-    await page.goto("/");
+    await page.goto("/log-preview");
     await page.getByRole("button", { name: "Preview sample log" }).click();
     await expect(
       page.getByText(/No supported evidence candidates/),
@@ -239,7 +239,7 @@ test("reflows at the effective viewport of 200 percent desktop zoom", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 640, height: 360 });
-  await page.goto("/");
+  await page.goto("/log-preview");
   await page.getByRole("button", { name: "Preview sample log" }).click();
   await page.getByRole("button", { name: "View raw events" }).click();
   expect(
@@ -255,7 +255,7 @@ test("reflows at the effective viewport of 200 percent desktop zoom", async ({
 test("maintains readable text on paper and instrument surfaces", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/log-preview");
   await page.getByRole("button", { name: "Preview sample log" }).click();
   await checkTextContrast(page, [
     ".phase-rail li[aria-current]",

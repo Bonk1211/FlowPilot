@@ -7,9 +7,11 @@ const phases = ["Report", "Diagnose", "Inspect", "Correct", "Verify"];
 export function ApplicationFrame({
   investigation,
   children,
+  phase = "Report",
 }: {
   investigation?: Investigation;
   children: ReactNode;
+  phase?: string;
 }) {
   return (
     <div className="app">
@@ -26,19 +28,19 @@ export function ApplicationFrame({
           <span className="command-defect">
             {investigation?.title ?? "Loading report"}
           </span>
-          <span className="command-phase">Report</span>
+          <span className="command-phase">{phase}</span>
         </div>
         <span className="demo-badge">Demo / Simulated Data</span>
       </header>
       <div className="phase-rail" aria-label="Investigation phases">
         <ol>
-          {phases.map((phase, index) => (
-            <li key={phase} aria-current={index === 0 ? "step" : undefined}>
+          {phases.map((item, index) => (
+            <li key={item} aria-current={item === phase ? "step" : undefined}>
               <span className="phase-number mono">0{index + 1}</span>
               <span>
-                {phase}
+                {item}
                 <span className="sr-only">
-                  {index === 0 ? ": current phase" : ": not available yet"}
+                  {item === phase ? ": current phase" : ": workflow phase"}
                 </span>
               </span>
               {index < phases.length - 1 && (

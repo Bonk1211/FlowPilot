@@ -1,0 +1,87 @@
+.case-workspace {
+  padding-bottom: var(--space-7);
+}
+.case-controls {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.case-workspace label {
+  display: block;
+  font-weight: 600;
+  margin: var(--space-4) 0 var(--space-2);
+}
+.case-workspace textarea,
+.case-workspace select,
+.case-workspace input[type="file"] {
+  display: block;
+  width: 100%;
+  max-width: 38rem;
+  min-height: var(--control-height);
+  font: inherit;
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-document);
+  color: var(--text-primary);
+}
+.case-workspace textarea {
+  min-height: 8rem;
+  resize: vertical;
+}
+.case-workspace select {
+  margin-bottom: var(--space-4);
+}
+.case-section,
+.case-log {
+  margin-top: var(--space-7);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border-default);
+}
+.case-error {
+  padding: var(--space-5);
+  border: 1px solid var(--state-conflicting);
+  margin-bottom: var(--space-5);
+}
+.case-workspace .prototype-diagnosis {
+  margin-bottom: var(--space-6);
+}
+.case-workspace details {
+  overflow-wrap: anywhere;
+}
+.case-workspace .prototype-checkbox {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+.case-workspace input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+}
+.case-workspace button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.case-workspace .prototype-metrics {
+  gap: var(--space-4);
+}
+.case-workspace .prototype-image small {
+  color: var(--text-secondary);
+}
+.case-workspace figure,
+.case-workspace section,
+.case-workspace aside {
+  min-width: 0;
+}
+@media (max-width: 767px) {
+  .case-workspace .prototype-two,
+  .case-workspace .prototype-diagnosis {
+    grid-template-columns: 1fr;
+    gap: var(--space-5);
+  }
+  .case-workspace .prototype-image {
+    padding: var(--space-4);
+  }
+}

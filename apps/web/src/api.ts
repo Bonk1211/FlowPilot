@@ -3,6 +3,10 @@ import type {
   IngestionResult,
   LogPreviewRequest,
   GoldenScenario,
+  Case,
+  CaseAction,
+  CreateCase,
+  Measurement,
 } from "@flowpilot/contracts";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -12,10 +16,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       signal: AbortSignal.timeout(15000),
     });
     if (!response.ok) {
+      const problem = await response.json().catch(() => null);
       throw new Error(
-        response.status === 422
-          ? "The log could not be previewed. Check the log text and timezone, then try again."
-          : "The service could not complete this request. Please try again.",
+        typeof problem?.detail === "string"
+          ? problem.detail
+          : response.status === 422
+            ? "The log could not be previewed. Check the log text and timezone, then try again."
+            : "The service could not complete this request. Please try again.",
       );
     }
     return (await response.json()) as T;
@@ -37,6 +44,22 @@ export const loadGoldenScenario = () =>
   request<GoldenScenario>("/demo/golden-scenario");
 export const previewLog = (body: LogPreviewRequest) =>
   request<IngestionResult>("/logs/preview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+export const loadImages = () => request<Measurement[]>("/demo/images");
+export const loadCase = (id: string) =>
+  request<Case>(`/investigations/${encodeURIComponent(id)}`);
+export const createCase = (body: CreateCase) =>
+  request<Case>("/investigations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+export const actOnCase = (id: string, body: CaseAction) =>
+  request<Case>(`/investigations/${encodeURIComponent(id)}/actions`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
