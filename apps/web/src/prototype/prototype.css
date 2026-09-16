@@ -1,0 +1,292 @@
+.prototype-app main {
+  padding-bottom: var(--space-7);
+}
+.prototype-app .skip-link:not(:focus) {
+  clip-path: inset(50%);
+}
+.prototype-app a {
+  overflow-wrap: anywhere;
+}
+.prototype-exit {
+  color: var(--text-on-shell);
+  font-size: var(--font-compact);
+}
+.prototype-banner {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border-default);
+  color: var(--text-muted);
+  font-size: var(--font-compact);
+}
+.prototype-phases {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  margin: 0;
+  color: var(--text-muted);
+}
+.prototype-phases li {
+  margin: 0;
+  padding: var(--space-2) 0;
+  border-bottom: 2px solid transparent;
+}
+.prototype-phases [aria-current] {
+  color: var(--text-selection);
+  border-color: var(--selection-active);
+  font-weight: 600;
+}
+.prototype-two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-7);
+  align-items: start;
+}
+.prototype-app h2 {
+  font-size: var(--font-title);
+  line-height: 1.2;
+  margin: var(--space-3) 0 var(--space-5);
+}
+.prototype-app h3 {
+  font-size: var(--font-body);
+  margin: var(--space-5) 0 var(--space-3);
+}
+.prototype-app p {
+  line-height: 1.65;
+}
+.prototype-app figure {
+  margin: 0;
+}
+.prototype-image {
+  background: var(--surface-document);
+  border: 1px solid var(--border-default);
+  padding: var(--space-5);
+  border-radius: var(--radius-pane);
+}
+.prototype-image figcaption {
+  font-weight: 600;
+}
+.prototype-image svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  margin: var(--space-4) 0;
+  background: var(--surface-measurement);
+}
+.sample-dot {
+  fill: var(--text-primary);
+}
+.dot-overlay {
+  fill: none;
+  stroke: var(--state-conflicting);
+  stroke-width: 2;
+  stroke-dasharray: 4 3;
+}
+.prototype-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+}
+.prototype-app dt {
+  color: var(--text-muted);
+  font-size: var(--font-compact);
+}
+.prototype-app dd {
+  margin: var(--space-2) 0 var(--space-5);
+}
+.prototype-metrics dd {
+  font-size: var(--font-section);
+  font-family: "IBM Plex Mono", monospace;
+}
+.prototype-diagnosis {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr) minmax(0, 0.85fr);
+  gap: var(--space-6);
+}
+.prototype-diagnosis > section + section,
+.prototype-next {
+  border-left: 1px solid var(--border-default);
+  padding-left: var(--space-5);
+}
+.prototype-ledger-row,
+.prototype-cause {
+  border-bottom: 1px solid var(--border-default);
+  padding: var(--space-4) 0;
+}
+.prototype-ledger-row h3 {
+  margin-top: var(--space-3);
+}
+.prototype-cause-title {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: baseline;
+}
+.prototype-cause-title h3 {
+  margin-top: 0;
+}
+.prototype-cause-title strong {
+  white-space: nowrap;
+  font-family: "IBM Plex Mono", monospace;
+}
+.prototype-app details {
+  padding: var(--space-3) 0;
+}
+.prototype-app summary {
+  cursor: pointer;
+  min-height: 32px;
+}
+.prototype-app pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: var(--surface-measurement);
+  padding: var(--space-4);
+  font-size: var(--font-caption);
+}
+.prototype-caution {
+  padding: var(--space-4);
+  background: var(--surface-provisional);
+  color: var(--state-provisional);
+  border-left: 3px solid currentColor;
+}
+.prototype-question,
+.prototype-summary {
+  max-width: 800px;
+  padding: var(--space-6);
+  background: var(--surface-document);
+  border: 1px solid var(--border-default);
+}
+.prototype-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin: var(--space-5) 0;
+}
+.prototype-diagram {
+  padding: var(--space-5);
+  background: var(--surface-instrument);
+  color: var(--text-on-instrument);
+  border-radius: var(--radius-focus-frame);
+}
+.prototype-diagram svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.prototype-diagram figcaption {
+  font-size: var(--font-compact);
+}
+.prototype-diagram rect {
+  fill: var(--surface-instrument-panel);
+  stroke: var(--border-on-instrument);
+  stroke-width: 2;
+}
+.prototype-diagram text {
+  fill: var(--text-on-instrument);
+  font-size: 13px;
+}
+.prototype-diagram .assembly-path {
+  stroke: var(--border-on-instrument);
+}
+.prototype-diagram [data-highlighted="true"] rect {
+  stroke: var(--selection-active-on-instrument);
+  stroke-width: 5;
+}
+.prototype-text-step {
+  color: var(--text-selection);
+  border: 0;
+  background: transparent;
+  text-align: left;
+  text-decoration: underline;
+  padding: var(--space-2) 0;
+}
+.prototype-app li[aria-current="step"] > .prototype-text-step {
+  font-weight: 600;
+}
+.prototype-checkbox {
+  display: flex;
+  align-items: start;
+  gap: var(--space-3);
+  line-height: 1.6;
+  padding: var(--space-4) 0;
+}
+.prototype-checkbox input {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.prototype-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: var(--space-7);
+  padding: var(--space-5) 0;
+  border-top: 1px solid var(--border-default);
+}
+.prototype-actions span {
+  font-size: var(--font-compact);
+  color: var(--text-muted);
+}
+.prototype-timeline {
+  color: var(--text-muted);
+}
+.prototype-app button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.prototype-app [tabindex="-1"]:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 4px;
+}
+@media (max-width: 1279px) {
+  .prototype-diagnosis {
+    grid-template-columns: 1fr 1fr;
+  }
+  .prototype-next {
+    grid-column: 1 / -1;
+    border-left: 0;
+    border-top: 1px solid var(--border-default);
+    padding: var(--space-5) 0;
+  }
+}
+@media (max-width: 1023px) {
+  .prototype-two,
+  .prototype-diagnosis {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+  }
+  .prototype-diagnosis > section + section {
+    border-left: 0;
+    padding-left: 0;
+  }
+  .prototype-next {
+    grid-column: auto;
+  }
+}
+@media (max-width: 767px) {
+  .prototype-app .command-bar {
+    flex-wrap: wrap;
+    height: auto;
+    gap: var(--space-3);
+    padding-block: var(--space-4);
+  }
+  .prototype-phases {
+    font-size: var(--font-caption);
+    gap: var(--space-3);
+  }
+  .prototype-actions {
+    flex-wrap: wrap;
+  }
+  .prototype-question,
+  .prototype-summary {
+    padding: var(--space-4);
+  }
+  .prototype-app h2 {
+    font-size: var(--font-section);
+  }
+}

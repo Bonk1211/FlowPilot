@@ -188,6 +188,7 @@ export function App() {
               </div>
             )}
             <footer className="workspace-footer">
+              <a href="/prototype">Explore the M0 prototype</a>
               <span>FlowPilot / Evidence-led investigation</span>
               <span>
                 Report & log preview available. Later phases are not

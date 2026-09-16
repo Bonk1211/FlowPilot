@@ -5,6 +5,7 @@ import "@fontsource/ibm-plex-sans/500.css";
 import "@fontsource/ibm-plex-sans/600.css";
 import "@fontsource/ibm-plex-mono/400.css";
 import { App } from "./App";
+import { Prototype } from "./prototype/Prototype";
 import "./styles.css";
 
 class ErrorBoundary extends Component<
@@ -36,7 +37,11 @@ class ErrorBoundary extends Component<
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ErrorBoundary>
-      <App />
+      {window.location.pathname.replace(/\/$/, "") === "/prototype" ? (
+        <Prototype />
+      ) : (
+        <App />
+      )}
     </ErrorBoundary>
   </StrictMode>,
 );

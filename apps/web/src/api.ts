@@ -2,6 +2,7 @@ import type {
   DemoScenario,
   IngestionResult,
   LogPreviewRequest,
+  GoldenScenario,
 } from "@flowpilot/contracts";
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -32,6 +33,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const loadScenario = () => request<DemoScenario>("/demo/scenario");
+export const loadGoldenScenario = () =>
+  request<GoldenScenario>("/demo/golden-scenario");
 export const previewLog = (body: LogPreviewRequest) =>
   request<IngestionResult>("/logs/preview", {
     method: "POST",
