@@ -1,4 +1,24 @@
 export interface paths {
+    "/api/demo/golden-scenario": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Golden Scenario
+         * @description Read-only, validated M0 storyboard; no workflow or database side effects.
+         */
+        get: operations["golden_scenario_api_demo_golden_scenario_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/demo/scenario": {
         parameters: {
             query?: never;
@@ -85,6 +105,19 @@ export interface components {
             /** Supporting Evidence Ids */
             supporting_evidence_ids: string[];
         };
+        /** CaseSummary */
+        CaseSummary: {
+            /** Confirmed Cause */
+            confirmed_cause: string;
+            /** Corrective Action */
+            corrective_action: string;
+            /** Evidence Ids */
+            evidence_ids: string[];
+            /** Problem */
+            problem: string;
+            /** Verification */
+            verification: string;
+        };
         /** DemoLogMetadata */
         DemoLogMetadata: {
             /** Assumed Timezone Offset */
@@ -111,6 +144,33 @@ export interface components {
              * @constant
              */
             schema_version: "1.0";
+        };
+        /** DiscoveryQuestion */
+        DiscoveryQuestion: {
+            /** Id */
+            id: string;
+            /** Options */
+            options: components["schemas"]["QuestionOption"][];
+            /** Prompt */
+            prompt: string;
+            /** Rationale */
+            rationale: string;
+        };
+        /** Dot */
+        Dot: {
+            /**
+             * Classification
+             * @enum {string}
+             */
+            classification: "normal" | "undersized" | "oversized" | "missing";
+            /** Diameter Px */
+            diameter_px: number;
+            /** Id */
+            id: string;
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
         };
         /** Evidence */
         Evidence: {
@@ -169,6 +229,78 @@ export interface components {
              */
             verificationState: "provisional";
         };
+        /** GoldenScenario */
+        GoldenScenario: {
+            /** Findings */
+            findings: components["schemas"]["AgentFinding"][];
+            /** First Question Id */
+            first_question_id: string;
+            /**
+             * Fixture Version
+             * @constant
+             */
+            fixture_version: "1.0";
+            /** Images */
+            images: components["schemas"]["ImageMeasurement"][];
+            /** Initial Snapshot Id */
+            initial_snapshot_id: string;
+            investigation: components["schemas"]["Investigation"];
+            log_preview: components["schemas"]["IngestionResult"];
+            /** Outcomes */
+            outcomes: components["schemas"]["InspectionOutcome"][];
+            /**
+             * Procedure Review
+             * @constant
+             */
+            procedure_review: "pending_expert_review";
+            /** Procedure Steps */
+            procedure_steps: components["schemas"]["ProcedureStep"][];
+            /** Questions */
+            questions: components["schemas"]["DiscoveryQuestion"][];
+            /** Recommendations */
+            recommendations: components["schemas"]["TestRecommendation"][];
+            /**
+             * Schema Version
+             * @constant
+             */
+            schema_version: "1.0";
+            /**
+             * Simulated
+             * @constant
+             */
+            simulated: true;
+            /** Snapshots */
+            snapshots: components["schemas"]["GoldenSnapshot"][];
+            summary: components["schemas"]["CaseSummary"];
+            verification: components["schemas"]["VerificationComparison"];
+        };
+        /** GoldenSnapshot */
+        GoldenSnapshot: {
+            /** Evidence Ids */
+            evidence_ids: string[];
+            /** Id */
+            id: string;
+            /** Next Snapshot Id */
+            next_snapshot_id: string | null;
+            /** Ranking */
+            ranking: components["schemas"]["RankedCause"][];
+            /** Recommendation Id */
+            recommendation_id: string | null;
+            /**
+             * Screen
+             * @enum {string}
+             */
+            screen: "report" | "log" | "questions" | "diagnosis" | "inspection" | "confirmation" | "corrective" | "verification" | "summary";
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "reported" | "diagnosing" | "inspection_recommended" | "inspection_completed" | "cause_confirmed" | "corrective_action_completed" | "verification_passed" | "resolved";
+            /** Timeline */
+            timeline: components["schemas"]["TimelineEntry"][];
+            /** Title */
+            title: string;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -194,6 +326,36 @@ export interface components {
              * @constant
              */
             version: "0.1.0";
+        };
+        /** ImageMeasurement */
+        ImageMeasurement: {
+            /** Dots */
+            dots: components["schemas"]["Dot"][];
+            /** Evidence Ids */
+            evidence_ids: string[];
+            /** Golden Max Px */
+            golden_max_px: number;
+            /** Golden Min Px */
+            golden_min_px: number;
+            /** Height */
+            height: number;
+            /** Id */
+            id: string;
+            /** Label */
+            label: string;
+            /** Mean Diameter Px */
+            mean_diameter_px: number;
+            /** Quality Summary */
+            quality_summary: string;
+            /**
+             * Synthetic
+             * @constant
+             */
+            synthetic: true;
+            /** Variation Px */
+            variation_px: number;
+            /** Width */
+            width: number;
         };
         /** IngestionResult */
         IngestionResult: {
@@ -242,6 +404,18 @@ export interface components {
             message: string;
             /** Relatedline */
             relatedLine?: number | null;
+        };
+        /** InspectionOutcome */
+        InspectionOutcome: {
+            /** Evidence Id */
+            evidence_id: string;
+            /** Next Snapshot Id */
+            next_snapshot_id: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "obstruction_found" | "no_obstruction_found";
         };
         /** Investigation */
         Investigation: {
@@ -347,12 +521,76 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** QuestionOption */
+        QuestionOption: {
+            /** Label */
+            label: string;
+            /** Next Question Id */
+            next_question_id: string | null;
+            /** Value */
+            value: string;
+        };
+        /** RankedCause */
+        RankedCause: {
+            /** Confirmed */
+            confirmed: boolean;
+            /** Contributions */
+            contributions: components["schemas"]["ScoreContribution"][];
+            /** Hypothesis Id */
+            hypothesis_id: string;
+            /** Label */
+            label: string;
+            /** Missing Evidence */
+            missing_evidence: string[];
+            /** Score */
+            score: number;
+        };
+        /** ScoreContribution */
+        ScoreContribution: {
+            /** Evidence Id */
+            evidence_id: string;
+            /** Explanation */
+            explanation: string;
+            /** Weight */
+            weight: number;
+        };
+        /** TestRecommendation */
+        TestRecommendation: {
+            /** Duration Minutes */
+            duration_minutes: number;
+            /** Expected Outcomes */
+            expected_outcomes: string[];
+            /** Id */
+            id: string;
+            /** Instructions */
+            instructions: string;
+            /** Name */
+            name: string;
+            /** Rationale */
+            rationale: string;
+            /** Required Parts */
+            required_parts: string[];
+            /** Safety Note */
+            safety_note: string;
+        };
         /** TimeRange */
         TimeRange: {
             /** End */
             end: string | null;
             /** Start */
             start: string | null;
+        };
+        /** TimelineEntry */
+        TimelineEntry: {
+            /** Description */
+            description: string;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "reported" | "diagnosing" | "inspection_recommended" | "inspection_completed" | "cause_confirmed" | "corrective_action_completed" | "verification_passed" | "resolved";
+            /** Timestamp */
+            timestamp: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -367,6 +605,17 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** VerificationComparison */
+        VerificationComparison: {
+            /** After Image Id */
+            after_image_id: string;
+            /** Before Image Id */
+            before_image_id: string;
+            /** Explanation */
+            explanation: string;
+            /** Passed */
+            passed: boolean;
+        };
     };
     responses: never;
     parameters: never;
@@ -376,6 +625,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    golden_scenario_api_demo_golden_scenario_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GoldenScenario"];
+                };
+            };
+        };
+    };
     scenario_api_demo_scenario_get: {
         parameters: {
             query?: never;

@@ -1,0 +1,1907 @@
+{
+  "schema_version": "1.0",
+  "fixture_version": "1.0",
+  "simulated": true,
+  "investigation": {
+    "schema_version": "1.0",
+    "id": "CASE-DEMO-001",
+    "title": "Undersized epoxy dots",
+    "process": "Precision epoxy dispensing",
+    "state": "reported",
+    "simulated": true,
+    "reported_at": "2026-09-16T10:20:00+08:00",
+    "evidence": [
+      {
+        "id": "EV-DEMO-001",
+        "key": "operator_report",
+        "value": "The latest inspected tray has consistently undersized epoxy dots.",
+        "unit": null,
+        "source_type": "technician_input",
+        "source_ref": "demo-operator-report",
+        "quality": "medium",
+        "verification_state": "provisional",
+        "timestamp": "2026-09-16T10:20:00+08:00"
+      },
+      {
+        "id": "EV-IMAGE",
+        "key": "mean_dot_diameter_px",
+        "value": 18,
+        "unit": "px",
+        "source_type": "synthetic_image_measurement",
+        "source_ref": "golden-demo#EV-IMAGE",
+        "quality": "high",
+        "verification_state": "provisional",
+        "timestamp": "2026-09-16T10:25:00+08:00"
+      },
+      {
+        "id": "EV-PERSIST",
+        "key": "frequency",
+        "value": "Continuous undersizing",
+        "unit": null,
+        "source_type": "technician_input",
+        "source_ref": "golden-demo#EV-PERSIST",
+        "quality": "high",
+        "verification_state": "verified",
+        "timestamp": "2026-09-16T10:25:00+08:00"
+      },
+      {
+        "id": "EV-FOUND",
+        "key": "inspection",
+        "value": "Visible obstruction found",
+        "unit": null,
+        "source_type": "technician_input",
+        "source_ref": "golden-demo#EV-FOUND",
+        "quality": "high",
+        "verification_state": "verified",
+        "timestamp": "2026-09-16T10:25:00+08:00"
+      },
+      {
+        "id": "EV-CLEAR",
+        "key": "inspection",
+        "value": "No obstruction found",
+        "unit": null,
+        "source_type": "technician_input",
+        "source_ref": "golden-demo#EV-CLEAR",
+        "quality": "high",
+        "verification_state": "verified",
+        "timestamp": "2026-09-16T10:25:00+08:00"
+      },
+      {
+        "id": "EV-ACTION",
+        "key": "corrective_action",
+        "value": "Simulated site-approved cartridge replacement recorded",
+        "unit": null,
+        "source_type": "technician_input",
+        "source_ref": "golden-demo#EV-ACTION",
+        "quality": "high",
+        "verification_state": "verified",
+        "timestamp": "2026-09-16T10:25:00+08:00"
+      },
+      {
+        "id": "EV-VERIFY",
+        "key": "mean_dot_diameter_px",
+        "value": 30,
+        "unit": "px",
+        "source_type": "synthetic_image_measurement",
+        "source_ref": "golden-demo#EV-VERIFY",
+        "quality": "high",
+        "verification_state": "verified",
+        "timestamp": "2026-09-16T10:25:00+08:00"
+      }
+    ]
+  },
+  "images": [
+    {
+      "id": "before",
+      "label": "Before action",
+      "synthetic": true,
+      "width": 360,
+      "height": 160,
+      "dots": [
+        {
+          "id": "dot-0",
+          "x": 40,
+          "y": 48,
+          "diameter_px": 18,
+          "classification": "undersized"
+        },
+        {
+          "id": "dot-1",
+          "x": 96,
+          "y": 48,
+          "diameter_px": 18,
+          "classification": "undersized"
+        },
+        {
+          "id": "dot-2",
+          "x": 152,
+          "y": 48,
+          "diameter_px": 18,
+          "classification": "undersized"
+        },
+        {
+          "id": "dot-3",
+          "x": 208,
+          "y": 48,
+          "diameter_px": 18,
+          "classification": "undersized"
+        },
+        {
+          "id": "dot-4",
+          "x": 264,
+          "y": 48,
+          "diameter_px": 18,
+          "classification": "undersized"
+        },
+        {
+          "id": "dot-5",
+          "x": 320,
+          "y": 48,
+          "diameter_px": 18,
+          "classification": "undersized"
+        },
+        {
+          "id": "dot-6",
+          "x": 40,
+          "y": 112,
+          "diameter_px": 18,
+          "classification": "undersized"
+        },
+        {
+          "id": "dot-7",
+          "x": 96,
+          "y": 112,
+          "diameter_px": 18,
+          "classification": "undersized"
+        },
+        {
+          "id": "dot-8",
+          "x": 152,
+          "y": 112,
+          "diameter_px": 18,
+          "classification": "undersized"
+        },
+        {
+          "id": "dot-9",
+          "x": 208,
+          "y": 112,
+          "diameter_px": 18,
+          "classification": "undersized"
+        },
+        {
+          "id": "dot-10",
+          "x": 264,
+          "y": 112,
+          "diameter_px": 18,
+          "classification": "undersized"
+        },
+        {
+          "id": "dot-11",
+          "x": 320,
+          "y": 112,
+          "diameter_px": 18,
+          "classification": "undersized"
+        }
+      ],
+      "mean_diameter_px": 18,
+      "variation_px": 0,
+      "golden_min_px": 28,
+      "golden_max_px": 32,
+      "quality_summary": "12 of 12 undersized; uniform synthetic diameters.",
+      "evidence_ids": [
+        "EV-IMAGE"
+      ]
+    },
+    {
+      "id": "after",
+      "label": "After action",
+      "synthetic": true,
+      "width": 360,
+      "height": 160,
+      "dots": [
+        {
+          "id": "dot-0",
+          "x": 40,
+          "y": 48,
+          "diameter_px": 30,
+          "classification": "normal"
+        },
+        {
+          "id": "dot-1",
+          "x": 96,
+          "y": 48,
+          "diameter_px": 30,
+          "classification": "normal"
+        },
+        {
+          "id": "dot-2",
+          "x": 152,
+          "y": 48,
+          "diameter_px": 30,
+          "classification": "normal"
+        },
+        {
+          "id": "dot-3",
+          "x": 208,
+          "y": 48,
+          "diameter_px": 30,
+          "classification": "normal"
+        },
+        {
+          "id": "dot-4",
+          "x": 264,
+          "y": 48,
+          "diameter_px": 30,
+          "classification": "normal"
+        },
+        {
+          "id": "dot-5",
+          "x": 320,
+          "y": 48,
+          "diameter_px": 30,
+          "classification": "normal"
+        },
+        {
+          "id": "dot-6",
+          "x": 40,
+          "y": 112,
+          "diameter_px": 30,
+          "classification": "normal"
+        },
+        {
+          "id": "dot-7",
+          "x": 96,
+          "y": 112,
+          "diameter_px": 30,
+          "classification": "normal"
+        },
+        {
+          "id": "dot-8",
+          "x": 152,
+          "y": 112,
+          "diameter_px": 30,
+          "classification": "normal"
+        },
+        {
+          "id": "dot-9",
+          "x": 208,
+          "y": 112,
+          "diameter_px": 30,
+          "classification": "normal"
+        },
+        {
+          "id": "dot-10",
+          "x": 264,
+          "y": 112,
+          "diameter_px": 30,
+          "classification": "normal"
+        },
+        {
+          "id": "dot-11",
+          "x": 320,
+          "y": 112,
+          "diameter_px": 30,
+          "classification": "normal"
+        }
+      ],
+      "mean_diameter_px": 30,
+      "variation_px": 0,
+      "golden_min_px": 28,
+      "golden_max_px": 32,
+      "quality_summary": "12 of 12 within the illustrative golden range.",
+      "evidence_ids": [
+        "EV-VERIFY"
+      ]
+    }
+  ],
+  "log_preview": {
+    "format": "industry_event_log_v1",
+    "sourceName": "demo-industry-machine.log",
+    "sourceDigest": "51267898a41e1b4586ff5195c6262b8a75c54703088bbca46adb39750d4dfd52",
+    "timezone": "+08:00",
+    "events": [
+      {
+        "id": "LOG-cdd9f0d5cbec26211728",
+        "kind": "run_started",
+        "occurredAt": "2026-09-13T01:13:30.268+08:00",
+        "localTimestamp": "2026-09-13T01:13:30.268",
+        "lineStart": 1,
+        "lineEnd": 1,
+        "sourceRef": "demo-industry-machine.log#L1",
+        "raw": "2026-09-13,01:13:30.268,Run Started,Board #78:",
+        "payload": "Run Started,Board #78:",
+        "fields": {
+          "boardId": "78"
+        }
+      },
+      {
+        "id": "LOG-34cfebdb5fc4197ac607",
+        "kind": "timer_between_boards_started",
+        "occurredAt": "2026-09-13T01:13:30.268+08:00",
+        "localTimestamp": "2026-09-13T01:13:30.268",
+        "lineStart": 2,
+        "lineEnd": 2,
+        "sourceRef": "demo-industry-machine.log#L2",
+        "raw": "2026-09-13,01:13:30.268,Begin of Timer Between Boards,Conveyor 1 Timer Between Boards Started...",
+        "payload": "Begin of Timer Between Boards,Conveyor 1 Timer Between Boards Started...",
+        "fields": {
+          "conveyor": 1
+        }
+      },
+      {
+        "id": "LOG-ea7465ee06cca607abe4",
+        "kind": "run_finished",
+        "occurredAt": "2026-09-13T01:15:34.934+08:00",
+        "localTimestamp": "2026-09-13T01:15:34.934",
+        "lineStart": 3,
+        "lineEnd": 3,
+        "sourceRef": "demo-industry-machine.log#L3",
+        "raw": "2026-09-13,01:15:34.934,Run Finished,Board #78, Status: PASS",
+        "payload": "Run Finished,Board #78, Status: PASS",
+        "fields": {
+          "boardId": "78",
+          "status": "PASS"
+        }
+      },
+      {
+        "id": "LOG-445b332a50be60e286f7",
+        "kind": "timer_between_boards_stopped",
+        "occurredAt": "2026-09-13T01:15:34.095+08:00",
+        "localTimestamp": "2026-09-13T01:15:34.095",
+        "lineStart": 4,
+        "lineEnd": 4,
+        "sourceRef": "demo-industry-machine.log#L4",
+        "raw": "2026-09-13,01:15:34.095,End of Timer Between Boards,Conveyor 1 Timer Between Boards Stopped, Duration = 123.493 sec.",
+        "payload": "End of Timer Between Boards,Conveyor 1 Timer Between Boards Stopped, Duration = 123.493 sec.",
+        "fields": {
+          "conveyor": 1,
+          "durationSeconds": 123.493
+        }
+      },
+      {
+        "id": "LOG-4dfd24decea8b038a055",
+        "kind": "fiducial_find_started",
+        "occurredAt": "2026-09-13T01:15:35.398+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.398",
+        "lineStart": 5,
+        "lineEnd": 5,
+        "sourceRef": "demo-industry-machine.log#L5",
+        "raw": "2026-09-13,01:15:35.398,Fiducial Find Begin",
+        "payload": "Fiducial Find Begin",
+        "fields": {}
+      },
+      {
+        "id": "LOG-418ec2ad9294611d3236",
+        "kind": "fiducial_found",
+        "occurredAt": "2026-09-13T01:15:35.398+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.398",
+        "lineStart": 6,
+        "lineEnd": 6,
+        "sourceRef": "demo-industry-machine.log#L6",
+        "raw": "2026-09-13,01:15:35.398,Fid Found,jedec:Fid 1,13.516,9.390,inch,Fid Score = 74",
+        "payload": "Fid Found,jedec:Fid 1,13.516,9.390,inch,Fid Score = 74",
+        "fields": {
+          "fiducialId": "1",
+          "x": 13.516,
+          "y": 9.39,
+          "positionUnit": "inch",
+          "score": 74.0
+        }
+      },
+      {
+        "id": "LOG-62fad80c55317a898748",
+        "kind": "fiducial_found",
+        "occurredAt": "2026-09-13T01:15:35.450+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.450",
+        "lineStart": 7,
+        "lineEnd": 7,
+        "sourceRef": "demo-industry-machine.log#L7",
+        "raw": "2026-09-13,01:15:35.450,Fid Found,jedec:Fid 2,2.931,7.625,inch,Fid Score = 74",
+        "payload": "Fid Found,jedec:Fid 2,2.931,7.625,inch,Fid Score = 74",
+        "fields": {
+          "fiducialId": "2",
+          "x": 2.931,
+          "y": 7.625,
+          "positionUnit": "inch",
+          "score": 74.0
+        }
+      },
+      {
+        "id": "LOG-c104a05004d676e6d668",
+        "kind": "frame_location_correction",
+        "occurredAt": "2026-09-13T01:15:35.451+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.451",
+        "lineStart": 8,
+        "lineEnd": 8,
+        "sourceRef": "demo-industry-machine.log#L8",
+        "raw": "2026-09-13,01:15:35.451,Frame Location-Corr Local,( 0.012 inch,-0.014 inch,-0.01 deg)",
+        "payload": "Frame Location-Corr Local,( 0.012 inch,-0.014 inch,-0.01 deg)",
+        "fields": {
+          "x": 0.012,
+          "xUnit": "inch",
+          "y": -0.014,
+          "yUnit": "inch",
+          "rotation": -0.01,
+          "rotationUnit": "deg"
+        }
+      },
+      {
+        "id": "LOG-b69f05f9ce5747f53d47",
+        "kind": "frame_location_relative_to_base",
+        "occurredAt": "2026-09-13T01:15:35.451+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.451",
+        "lineStart": 9,
+        "lineEnd": 9,
+        "sourceRef": "demo-industry-machine.log#L9",
+        "raw": "2026-09-13,01:15:35.451,Frame Location-Rel to Base,(13.508 inch, 9.411 inch,0.20 deg)",
+        "payload": "Frame Location-Rel to Base,(13.508 inch, 9.411 inch,0.20 deg)",
+        "fields": {
+          "x": 13.508,
+          "xUnit": "inch",
+          "y": 9.411,
+          "yUnit": "inch",
+          "rotation": 0.2,
+          "rotationUnit": "deg"
+        }
+      },
+      {
+        "id": "LOG-2aebf16739c3374e914d",
+        "kind": "fiducial_find_finished",
+        "occurredAt": "2026-09-13T01:15:35.451+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.451",
+        "lineStart": 10,
+        "lineEnd": 10,
+        "sourceRef": "demo-industry-machine.log#L10",
+        "raw": "2026-09-13,01:15:35.451,Fiducial Find End",
+        "payload": "Fiducial Find End",
+        "fields": {}
+      },
+      {
+        "id": "LOG-e71b79cec3b0bf13ffd2",
+        "kind": "height_sense_started",
+        "occurredAt": "2026-09-13T01:15:35.519+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.519",
+        "lineStart": 11,
+        "lineEnd": 11,
+        "sourceRef": "demo-industry-machine.log#L11",
+        "raw": "2026-09-13,01:15:35.519,Height Sense Begin",
+        "payload": "Height Sense Begin",
+        "fields": {}
+      },
+      {
+        "id": "LOG-2f46ddcf6ccf324a368b",
+        "kind": "height_sense_finished",
+        "occurredAt": "2026-09-13T01:15:35.918+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.918",
+        "lineStart": 12,
+        "lineEnd": 12,
+        "sourceRef": "demo-industry-machine.log#L12",
+        "raw": "2026-09-13,01:15:35.918,Height Sense End",
+        "payload": "Height Sense End",
+        "fields": {}
+      },
+      {
+        "id": "LOG-83357b5b9b9fcd39b658",
+        "kind": "height_sense_result",
+        "occurredAt": "2026-09-13T01:15:35.920+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.920",
+        "lineStart": 13,
+        "lineEnd": 13,
+        "sourceRef": "demo-industry-machine.log#L13",
+        "raw": "2026-09-13,01:15:35.920,Height Sense Results,Z-1.2626 at -5.1900,-2.0165 (inch rel to Wkpc)",
+        "payload": "Height Sense Results,Z-1.2626 at -5.1900,-2.0165 (inch rel to Wkpc)",
+        "fields": {
+          "z": -1.2626,
+          "x": -5.19,
+          "y": -2.0165,
+          "coordinateContext": "inch rel to Wkpc"
+        }
+      },
+      {
+        "id": "LOG-7a1e43ff9f1ba0504d58",
+        "kind": "timer_instruction_result",
+        "occurredAt": "2026-09-13T01:15:35.921+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.921",
+        "lineStart": 14,
+        "lineEnd": 15,
+        "sourceRef": "demo-industry-machine.log#L14-L15",
+        "raw": "2026-09-13,01:15:35.921,TIME_BETWEEN_BOARDS Results,Instruction: TIME_BETWEEN_BOARDS_LANE1 <= 120.000; Run Time:\nTIME_BETWEEN_BOARDS_LANE1 = 123.493",
+        "payload": "TIME_BETWEEN_BOARDS Results,Instruction: TIME_BETWEEN_BOARDS_LANE1 <= 120.000; Run Time:\nTIME_BETWEEN_BOARDS_LANE1 = 123.493",
+        "fields": {
+          "instructionMetric": "TIME_BETWEEN_BOARDS_LANE1",
+          "operator": "<=",
+          "thresholdSeconds": 120.0,
+          "runtimeMetric": "TIME_BETWEEN_BOARDS_LANE1",
+          "runtimeSeconds": 123.493
+        }
+      },
+      {
+        "id": "LOG-9a2c77f9a49ce3fd741a",
+        "kind": "run_started",
+        "occurredAt": "2026-09-13T01:16:20.085+08:00",
+        "localTimestamp": "2026-09-13T01:16:20.085",
+        "lineStart": 16,
+        "lineEnd": 16,
+        "sourceRef": "demo-industry-machine.log#L16",
+        "raw": "2026-09-13,01:16:20.085,Run Started,Board #79:",
+        "payload": "Run Started,Board #79:",
+        "fields": {
+          "boardId": "79"
+        }
+      }
+    ],
+    "runs": [
+      {
+        "boardId": "78",
+        "startedAt": "2026-09-13T01:13:30.268+08:00",
+        "finishedAt": "2026-09-13T01:15:34.934+08:00",
+        "status": "PASS",
+        "startSourceRef": "demo-industry-machine.log#L1",
+        "finishSourceRef": "demo-industry-machine.log#L3",
+        "complete": true
+      },
+      {
+        "boardId": "79",
+        "startedAt": "2026-09-13T01:16:20.085+08:00",
+        "finishedAt": null,
+        "status": null,
+        "startSourceRef": "demo-industry-machine.log#L16",
+        "finishSourceRef": null,
+        "complete": false
+      }
+    ],
+    "evidenceCandidates": [
+      {
+        "sourceType": "machine_log",
+        "sourceRef": "demo-industry-machine.log#L3",
+        "timestamp": "2026-09-13T01:15:34.934+08:00",
+        "verificationState": "provisional",
+        "key": "machine_run_status",
+        "value": "PASS",
+        "unit": null,
+        "context": {
+          "boardId": "78"
+        }
+      },
+      {
+        "sourceType": "machine_log",
+        "sourceRef": "demo-industry-machine.log#L4",
+        "timestamp": "2026-09-13T01:15:34.095+08:00",
+        "verificationState": "provisional",
+        "key": "time_between_boards",
+        "value": 123.493,
+        "unit": "s",
+        "context": {
+          "conveyor": 1
+        }
+      },
+      {
+        "sourceType": "machine_log",
+        "sourceRef": "demo-industry-machine.log#L6",
+        "timestamp": "2026-09-13T01:15:35.398+08:00",
+        "verificationState": "provisional",
+        "key": "fiducial_score",
+        "value": 74.0,
+        "unit": null,
+        "context": {
+          "fiducialId": "1"
+        }
+      },
+      {
+        "sourceType": "machine_log",
+        "sourceRef": "demo-industry-machine.log#L6",
+        "timestamp": "2026-09-13T01:15:35.398+08:00",
+        "verificationState": "provisional",
+        "key": "fiducial_position",
+        "value": {
+          "x": 13.516,
+          "y": 9.39
+        },
+        "unit": "inch",
+        "context": {
+          "fiducialId": "1"
+        }
+      },
+      {
+        "sourceType": "machine_log",
+        "sourceRef": "demo-industry-machine.log#L7",
+        "timestamp": "2026-09-13T01:15:35.450+08:00",
+        "verificationState": "provisional",
+        "key": "fiducial_score",
+        "value": 74.0,
+        "unit": null,
+        "context": {
+          "fiducialId": "2"
+        }
+      },
+      {
+        "sourceType": "machine_log",
+        "sourceRef": "demo-industry-machine.log#L7",
+        "timestamp": "2026-09-13T01:15:35.450+08:00",
+        "verificationState": "provisional",
+        "key": "fiducial_position",
+        "value": {
+          "x": 2.931,
+          "y": 7.625
+        },
+        "unit": "inch",
+        "context": {
+          "fiducialId": "2"
+        }
+      },
+      {
+        "sourceType": "machine_log",
+        "sourceRef": "demo-industry-machine.log#L8",
+        "timestamp": "2026-09-13T01:15:35.451+08:00",
+        "verificationState": "provisional",
+        "key": "frame_location_correction",
+        "value": {
+          "x": 0.012,
+          "y": -0.014,
+          "rotation": -0.01
+        },
+        "unit": {
+          "x": "inch",
+          "y": "inch",
+          "rotation": "deg"
+        },
+        "context": null
+      },
+      {
+        "sourceType": "machine_log",
+        "sourceRef": "demo-industry-machine.log#L9",
+        "timestamp": "2026-09-13T01:15:35.451+08:00",
+        "verificationState": "provisional",
+        "key": "frame_location_relative_to_base",
+        "value": {
+          "x": 13.508,
+          "y": 9.411,
+          "rotation": 0.2
+        },
+        "unit": {
+          "x": "inch",
+          "y": "inch",
+          "rotation": "deg"
+        },
+        "context": null
+      },
+      {
+        "sourceType": "machine_log",
+        "sourceRef": "demo-industry-machine.log#L13",
+        "timestamp": "2026-09-13T01:15:35.920+08:00",
+        "verificationState": "provisional",
+        "key": "height_sense_result",
+        "value": {
+          "z": -1.2626,
+          "x": -5.19,
+          "y": -2.0165
+        },
+        "unit": "inch rel to Wkpc",
+        "context": null
+      }
+    ],
+    "warnings": [
+      {
+        "code": "continuation_line",
+        "line": 15,
+        "message": "A non-timestamped line was retained as part of the preceding event."
+      },
+      {
+        "code": "timestamp_out_of_order",
+        "line": 4,
+        "relatedLine": 3,
+        "message": "Event timestamps moved backwards; source order was preserved and no events were reordered."
+      },
+      {
+        "code": "run_finish_missing",
+        "message": "Board 79 started without a matching finish in this file.",
+        "line": 16
+      }
+    ],
+    "timeRange": {
+      "start": "2026-09-13T01:13:30.268+08:00",
+      "end": "2026-09-13T01:16:20.085+08:00"
+    },
+    "stats": {
+      "eventCount": 15,
+      "recognizedEventCount": 15,
+      "unknownEventCount": 0,
+      "runCount": 2
+    }
+  },
+  "questions": [
+    {
+      "id": "frequency",
+      "prompt": "Is the undersizing continuous or intermittent?",
+      "rationale": "Persistent undersizing and intermittent recovery separate competing causes.",
+      "options": [
+        {
+          "value": "continuous",
+          "label": "Continuous",
+          "next_question_id": "continuous"
+        },
+        {
+          "value": "intermittent",
+          "label": "Intermittent",
+          "next_question_id": "intermittent"
+        }
+      ]
+    },
+    {
+      "id": "continuous",
+      "prompt": "Has the undersizing persisted across trays?",
+      "rationale": "Persistent symptoms make a stable restriction worth inspecting.",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "next_question_id": "change"
+        },
+        {
+          "value": "unknown",
+          "label": "Not sure",
+          "next_question_id": "change"
+        }
+      ]
+    },
+    {
+      "id": "intermittent",
+      "prompt": "Do normal dots return between affected runs?",
+      "rationale": "Recovery can be compatible with trapped air.",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "next_question_id": "change"
+        },
+        {
+          "value": "unknown",
+          "label": "Not sure",
+          "next_question_id": "change"
+        }
+      ]
+    },
+    {
+      "id": "change",
+      "prompt": "Was material recently changed?",
+      "rationale": "A material change can affect viscosity or introduce air.",
+      "options": [
+        {
+          "value": "no",
+          "label": "No known change",
+          "next_question_id": "temperature"
+        },
+        {
+          "value": "yes",
+          "label": "Yes",
+          "next_question_id": "temperature"
+        }
+      ]
+    },
+    {
+      "id": "temperature",
+      "prompt": "Is material temperature recorded?",
+      "rationale": "This log has no material-temperature telemetry.",
+      "options": [
+        {
+          "value": "unknown",
+          "label": "Not recorded",
+          "next_question_id": "service"
+        },
+        {
+          "value": "available",
+          "label": "Available for later review",
+          "next_question_id": "service"
+        }
+      ]
+    },
+    {
+      "id": "service",
+      "prompt": "Is the last cartridge service documented?",
+      "rationale": "Service history is context, not proof of an obstruction.",
+      "options": [
+        {
+          "value": "unknown",
+          "label": "Not recorded",
+          "next_question_id": null
+        },
+        {
+          "value": "available",
+          "label": "Available for later review",
+          "next_question_id": null
+        }
+      ]
+    }
+  ],
+  "first_question_id": "frequency",
+  "findings": [
+    {
+      "agent": "fluid_path_specialist",
+      "hypothesis_id": "partial_cartridge_nozzle_restriction",
+      "supporting_evidence_ids": [
+        "EV-IMAGE",
+        "EV-PERSIST"
+      ],
+      "conflicting_evidence_ids": [],
+      "missing_evidence": [
+        "Inspection outcome"
+      ],
+      "source_refs": [],
+      "confidence_band": "medium",
+      "summary": "Persistent undersizing is compatible with restriction; inspection is required."
+    },
+    {
+      "agent": "material_process_specialist",
+      "hypothesis_id": "material_viscosity_change",
+      "supporting_evidence_ids": [
+        "EV-IMAGE"
+      ],
+      "conflicting_evidence_ids": [],
+      "missing_evidence": [
+        "Material temperature",
+        "Open time"
+      ],
+      "source_refs": [],
+      "confidence_band": "medium",
+      "summary": "Viscosity remains plausible because material conditions are missing."
+    },
+    {
+      "agent": "diagnostic_critic",
+      "hypothesis_id": "partial_cartridge_nozzle_restriction",
+      "supporting_evidence_ids": [
+        "EV-IMAGE"
+      ],
+      "conflicting_evidence_ids": [],
+      "missing_evidence": [
+        "Physical inspection"
+      ],
+      "source_refs": [],
+      "confidence_band": "medium",
+      "summary": "The image describes a symptom, not a confirmed cause. Machine PASS is not product-quality evidence."
+    }
+  ],
+  "recommendations": [
+    {
+      "id": "inspect",
+      "name": "Cartridge / nozzle inspection",
+      "duration_minutes": 5,
+      "required_parts": [
+        "Service cartridge",
+        "Nozzle"
+      ],
+      "instructions": "Use the illustrative component guide to locate the inspection area.",
+      "rationale": "A visible obstruction supports restriction; a clear path shifts attention to material conditions.",
+      "expected_outcomes": [
+        "Obstruction found",
+        "No obstruction found"
+      ],
+      "safety_note": "Illustrative guidance only; expert review pending. Follow the site-approved isolation, PPE and material-handling procedure."
+    },
+    {
+      "id": "material",
+      "name": "Review material temperature and viscosity",
+      "duration_minutes": 5,
+      "required_parts": [
+        "Material record"
+      ],
+      "instructions": "Request the material temperature and open-time records for expert review.",
+      "rationale": "A clear nozzle weakens restriction; missing material context is now the next discriminating check.",
+      "expected_outcomes": [
+        "Material conditions outside approved range",
+        "No material deviation documented"
+      ],
+      "safety_note": "Illustrative guidance only; expert review pending. Follow the site-approved isolation, PPE and material-handling procedure."
+    }
+  ],
+  "procedure_steps": [
+    {
+      "step_id": "inspect_jet_actuator",
+      "title": "Locate the dispensing assembly",
+      "model_node_id": "jet_actuator",
+      "camera_preset": "assembly_overview",
+      "highlight": "active",
+      "instruction": "Identify the assembly in the diagram. Site isolation must be handled by trained personnel under the approved procedure.",
+      "caution": "Illustrative guidance only; expert review pending. Follow the site-approved isolation, PPE and material-handling procedure."
+    },
+    {
+      "step_id": "inspect_service_cartridge",
+      "title": "Locate the service cartridge",
+      "model_node_id": "service_cartridge",
+      "camera_preset": "cartridge_closeup",
+      "highlight": "active",
+      "instruction": "Locate the cartridge. This prototype does not authorize removal or servicing.",
+      "caution": "Illustrative guidance only; expert review pending. Follow the site-approved isolation, PPE and material-handling procedure."
+    },
+    {
+      "step_id": "inspect_nozzle",
+      "title": "Review the nozzle observation",
+      "model_node_id": "nozzle",
+      "camera_preset": "nozzle_closeup",
+      "highlight": "warning",
+      "instruction": "Record the illustrative inspection outcome after the site-approved inspection. Do not infer obstruction from the diagram.",
+      "caution": "Illustrative guidance only; expert review pending. Follow the site-approved isolation, PPE and material-handling procedure."
+    }
+  ],
+  "procedure_review": "pending_expert_review",
+  "outcomes": [
+    {
+      "outcome": "obstruction_found",
+      "evidence_id": "EV-FOUND",
+      "next_snapshot_id": "found"
+    },
+    {
+      "outcome": "no_obstruction_found",
+      "evidence_id": "EV-CLEAR",
+      "next_snapshot_id": "negative"
+    }
+  ],
+  "snapshots": [
+    {
+      "id": "report",
+      "screen": "report",
+      "title": "Review the reported defect",
+      "state": "reported",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST"
+      ],
+      "ranking": [],
+      "recommendation_id": null,
+      "next_snapshot_id": "log",
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        }
+      ]
+    },
+    {
+      "id": "log",
+      "screen": "log",
+      "title": "Review the machine context",
+      "state": "reported",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST"
+      ],
+      "ranking": [],
+      "recommendation_id": null,
+      "next_snapshot_id": "questions",
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "reported",
+          "description": "Review the machine context"
+        }
+      ]
+    },
+    {
+      "id": "questions",
+      "screen": "questions",
+      "title": "Establish the symptom pattern",
+      "state": "diagnosing",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST"
+      ],
+      "ranking": [],
+      "recommendation_id": null,
+      "next_snapshot_id": "diagnosis",
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        }
+      ]
+    },
+    {
+      "id": "diagnosis",
+      "screen": "diagnosis",
+      "title": "Compare the possible causes",
+      "state": "inspection_recommended",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST"
+      ],
+      "ranking": [
+        {
+          "hypothesis_id": "partial_cartridge_nozzle_restriction",
+          "label": "Cartridge / nozzle restriction",
+          "score": 60,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 35,
+              "explanation": "Undersizing is compatible with this cause."
+            },
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 25,
+              "explanation": "Persistent symptoms distinguish restriction from intermittent air."
+            }
+          ],
+          "missing_evidence": [
+            "Physical inspection"
+          ]
+        },
+        {
+          "hypothesis_id": "material_viscosity_change",
+          "label": "Material viscosity change",
+          "score": 20,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 20,
+              "explanation": "Undersizing is compatible with this cause."
+            }
+          ],
+          "missing_evidence": [
+            "Material temperature",
+            "Material open time"
+          ]
+        },
+        {
+          "hypothesis_id": "trapped_air_bubble",
+          "label": "Trapped air bubble",
+          "score": 5,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 15,
+              "explanation": "Undersizing is compatible with this cause."
+            },
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": -10,
+              "explanation": "Persistent symptoms distinguish restriction from intermittent air."
+            }
+          ],
+          "missing_evidence": [
+            "Intermittent recovery"
+          ]
+        }
+      ],
+      "recommendation_id": "inspect",
+      "next_snapshot_id": "inspection",
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        },
+        {
+          "timestamp": "2026-09-16T10:22:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Compare the possible causes"
+        }
+      ]
+    },
+    {
+      "id": "inspection",
+      "screen": "inspection",
+      "title": "Inspect the cartridge and nozzle",
+      "state": "inspection_recommended",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST"
+      ],
+      "ranking": [
+        {
+          "hypothesis_id": "partial_cartridge_nozzle_restriction",
+          "label": "Cartridge / nozzle restriction",
+          "score": 60,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 35,
+              "explanation": "Undersizing is compatible with this cause."
+            },
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 25,
+              "explanation": "Persistent symptoms distinguish restriction from intermittent air."
+            }
+          ],
+          "missing_evidence": [
+            "Physical inspection"
+          ]
+        },
+        {
+          "hypothesis_id": "material_viscosity_change",
+          "label": "Material viscosity change",
+          "score": 20,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 20,
+              "explanation": "Undersizing is compatible with this cause."
+            }
+          ],
+          "missing_evidence": [
+            "Material temperature",
+            "Material open time"
+          ]
+        },
+        {
+          "hypothesis_id": "trapped_air_bubble",
+          "label": "Trapped air bubble",
+          "score": 5,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 15,
+              "explanation": "Undersizing is compatible with this cause."
+            },
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": -10,
+              "explanation": "Persistent symptoms distinguish restriction from intermittent air."
+            }
+          ],
+          "missing_evidence": [
+            "Intermittent recovery"
+          ]
+        }
+      ],
+      "recommendation_id": "inspect",
+      "next_snapshot_id": null,
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        },
+        {
+          "timestamp": "2026-09-16T10:22:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Compare the possible causes"
+        },
+        {
+          "timestamp": "2026-09-16T10:23:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Inspect the cartridge and nozzle"
+        }
+      ]
+    },
+    {
+      "id": "found",
+      "screen": "confirmation",
+      "title": "Confirm the inspection observation",
+      "state": "inspection_completed",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST",
+        "EV-FOUND"
+      ],
+      "ranking": [
+        {
+          "hypothesis_id": "partial_cartridge_nozzle_restriction",
+          "label": "Cartridge / nozzle restriction",
+          "score": 60,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 35,
+              "explanation": "Undersizing is compatible with this cause."
+            },
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 25,
+              "explanation": "Persistent symptoms distinguish restriction from intermittent air."
+            }
+          ],
+          "missing_evidence": [
+            "Physical inspection"
+          ]
+        },
+        {
+          "hypothesis_id": "material_viscosity_change",
+          "label": "Material viscosity change",
+          "score": 20,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 20,
+              "explanation": "Undersizing is compatible with this cause."
+            }
+          ],
+          "missing_evidence": [
+            "Material temperature",
+            "Material open time"
+          ]
+        },
+        {
+          "hypothesis_id": "trapped_air_bubble",
+          "label": "Trapped air bubble",
+          "score": 5,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 15,
+              "explanation": "Undersizing is compatible with this cause."
+            },
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": -10,
+              "explanation": "Persistent symptoms distinguish restriction from intermittent air."
+            }
+          ],
+          "missing_evidence": [
+            "Intermittent recovery"
+          ]
+        }
+      ],
+      "recommendation_id": null,
+      "next_snapshot_id": "corrective",
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        },
+        {
+          "timestamp": "2026-09-16T10:22:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Compare the possible causes"
+        },
+        {
+          "timestamp": "2026-09-16T10:23:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Inspect the cartridge and nozzle"
+        },
+        {
+          "timestamp": "2026-09-16T10:24:00+08:00",
+          "state": "inspection_completed",
+          "description": "Confirm the inspection observation"
+        }
+      ]
+    },
+    {
+      "id": "negative",
+      "screen": "diagnosis",
+      "title": "A clear path changes the next check",
+      "state": "diagnosing",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST",
+        "EV-CLEAR"
+      ],
+      "ranking": [
+        {
+          "hypothesis_id": "material_viscosity_change",
+          "label": "Material viscosity change",
+          "score": 40,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 20,
+              "explanation": "Undersizing is compatible with this cause."
+            },
+            {
+              "evidence_id": "EV-CLEAR",
+              "weight": 20,
+              "explanation": "Negative inspection reduces restriction and motivates material checks."
+            }
+          ],
+          "missing_evidence": [
+            "Material temperature",
+            "Material open time"
+          ]
+        },
+        {
+          "hypothesis_id": "partial_cartridge_nozzle_restriction",
+          "label": "Cartridge / nozzle restriction",
+          "score": 10,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 35,
+              "explanation": "Undersizing is compatible with this cause."
+            },
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 25,
+              "explanation": "Persistent symptoms distinguish restriction from intermittent air."
+            },
+            {
+              "evidence_id": "EV-CLEAR",
+              "weight": -50,
+              "explanation": "Negative inspection reduces restriction and motivates material checks."
+            }
+          ],
+          "missing_evidence": [
+            "Physical inspection"
+          ]
+        },
+        {
+          "hypothesis_id": "trapped_air_bubble",
+          "label": "Trapped air bubble",
+          "score": 5,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 15,
+              "explanation": "Undersizing is compatible with this cause."
+            },
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": -10,
+              "explanation": "Persistent symptoms distinguish restriction from intermittent air."
+            }
+          ],
+          "missing_evidence": [
+            "Intermittent recovery"
+          ]
+        }
+      ],
+      "recommendation_id": "material",
+      "next_snapshot_id": null,
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        },
+        {
+          "timestamp": "2026-09-16T10:22:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Compare the possible causes"
+        },
+        {
+          "timestamp": "2026-09-16T10:23:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Inspect the cartridge and nozzle"
+        },
+        {
+          "timestamp": "2026-09-16T10:24:00+08:00",
+          "state": "diagnosing",
+          "description": "A clear path changes the next check"
+        }
+      ]
+    },
+    {
+      "id": "corrective",
+      "screen": "corrective",
+      "title": "Record the simulated corrective action",
+      "state": "cause_confirmed",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST",
+        "EV-FOUND"
+      ],
+      "ranking": [
+        {
+          "hypothesis_id": "partial_cartridge_nozzle_restriction",
+          "label": "Cartridge / nozzle restriction",
+          "score": 100,
+          "confirmed": true,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 35,
+              "explanation": "Undersizing is compatible with this cause."
+            },
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 25,
+              "explanation": "Persistent symptoms distinguish restriction from intermittent air."
+            },
+            {
+              "evidence_id": "EV-FOUND",
+              "weight": 40,
+              "explanation": "Confirmed demo observation supports restriction."
+            }
+          ],
+          "missing_evidence": []
+        },
+        {
+          "hypothesis_id": "material_viscosity_change",
+          "label": "Material viscosity change",
+          "score": 20,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 20,
+              "explanation": "Undersizing is compatible with this cause."
+            }
+          ],
+          "missing_evidence": [
+            "Material temperature",
+            "Material open time"
+          ]
+        },
+        {
+          "hypothesis_id": "trapped_air_bubble",
+          "label": "Trapped air bubble",
+          "score": 5,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 15,
+              "explanation": "Undersizing is compatible with this cause."
+            },
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": -10,
+              "explanation": "Persistent symptoms distinguish restriction from intermittent air."
+            }
+          ],
+          "missing_evidence": [
+            "Intermittent recovery"
+          ]
+        }
+      ],
+      "recommendation_id": null,
+      "next_snapshot_id": "verification",
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        },
+        {
+          "timestamp": "2026-09-16T10:22:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Compare the possible causes"
+        },
+        {
+          "timestamp": "2026-09-16T10:23:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Inspect the cartridge and nozzle"
+        },
+        {
+          "timestamp": "2026-09-16T10:24:00+08:00",
+          "state": "inspection_completed",
+          "description": "Confirm the inspection observation"
+        },
+        {
+          "timestamp": "2026-09-16T10:25:00+08:00",
+          "state": "cause_confirmed",
+          "description": "Record the simulated corrective action"
+        }
+      ]
+    },
+    {
+      "id": "verification",
+      "screen": "verification",
+      "title": "Compare recovery with the golden range",
+      "state": "corrective_action_completed",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST",
+        "EV-FOUND",
+        "EV-ACTION"
+      ],
+      "ranking": [
+        {
+          "hypothesis_id": "partial_cartridge_nozzle_restriction",
+          "label": "Cartridge / nozzle restriction",
+          "score": 100,
+          "confirmed": true,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 35,
+              "explanation": "Undersizing is compatible with this cause."
+            },
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 25,
+              "explanation": "Persistent symptoms distinguish restriction from intermittent air."
+            },
+            {
+              "evidence_id": "EV-FOUND",
+              "weight": 40,
+              "explanation": "Confirmed demo observation supports restriction."
+            }
+          ],
+          "missing_evidence": []
+        },
+        {
+          "hypothesis_id": "material_viscosity_change",
+          "label": "Material viscosity change",
+          "score": 20,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 20,
+              "explanation": "Undersizing is compatible with this cause."
+            }
+          ],
+          "missing_evidence": [
+            "Material temperature",
+            "Material open time"
+          ]
+        },
+        {
+          "hypothesis_id": "trapped_air_bubble",
+          "label": "Trapped air bubble",
+          "score": 5,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 15,
+              "explanation": "Undersizing is compatible with this cause."
+            },
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": -10,
+              "explanation": "Persistent symptoms distinguish restriction from intermittent air."
+            }
+          ],
+          "missing_evidence": [
+            "Intermittent recovery"
+          ]
+        }
+      ],
+      "recommendation_id": null,
+      "next_snapshot_id": "verified",
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        },
+        {
+          "timestamp": "2026-09-16T10:22:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Compare the possible causes"
+        },
+        {
+          "timestamp": "2026-09-16T10:23:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Inspect the cartridge and nozzle"
+        },
+        {
+          "timestamp": "2026-09-16T10:24:00+08:00",
+          "state": "inspection_completed",
+          "description": "Confirm the inspection observation"
+        },
+        {
+          "timestamp": "2026-09-16T10:25:00+08:00",
+          "state": "cause_confirmed",
+          "description": "Record the simulated corrective action"
+        },
+        {
+          "timestamp": "2026-09-16T10:26:00+08:00",
+          "state": "corrective_action_completed",
+          "description": "Compare recovery with the golden range"
+        }
+      ]
+    },
+    {
+      "id": "verified",
+      "screen": "verification",
+      "title": "Recovery is within the golden range",
+      "state": "verification_passed",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST",
+        "EV-FOUND",
+        "EV-ACTION",
+        "EV-VERIFY"
+      ],
+      "ranking": [
+        {
+          "hypothesis_id": "partial_cartridge_nozzle_restriction",
+          "label": "Cartridge / nozzle restriction",
+          "score": 100,
+          "confirmed": true,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 35,
+              "explanation": "Undersizing is compatible with this cause."
+            },
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 25,
+              "explanation": "Persistent symptoms distinguish restriction from intermittent air."
+            },
+            {
+              "evidence_id": "EV-FOUND",
+              "weight": 40,
+              "explanation": "Confirmed demo observation supports restriction."
+            }
+          ],
+          "missing_evidence": []
+        },
+        {
+          "hypothesis_id": "material_viscosity_change",
+          "label": "Material viscosity change",
+          "score": 20,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 20,
+              "explanation": "Undersizing is compatible with this cause."
+            }
+          ],
+          "missing_evidence": [
+            "Material temperature",
+            "Material open time"
+          ]
+        },
+        {
+          "hypothesis_id": "trapped_air_bubble",
+          "label": "Trapped air bubble",
+          "score": 5,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 15,
+              "explanation": "Undersizing is compatible with this cause."
+            },
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": -10,
+              "explanation": "Persistent symptoms distinguish restriction from intermittent air."
+            }
+          ],
+          "missing_evidence": [
+            "Intermittent recovery"
+          ]
+        }
+      ],
+      "recommendation_id": null,
+      "next_snapshot_id": "summary",
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        },
+        {
+          "timestamp": "2026-09-16T10:22:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Compare the possible causes"
+        },
+        {
+          "timestamp": "2026-09-16T10:23:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Inspect the cartridge and nozzle"
+        },
+        {
+          "timestamp": "2026-09-16T10:24:00+08:00",
+          "state": "inspection_completed",
+          "description": "Confirm the inspection observation"
+        },
+        {
+          "timestamp": "2026-09-16T10:25:00+08:00",
+          "state": "cause_confirmed",
+          "description": "Record the simulated corrective action"
+        },
+        {
+          "timestamp": "2026-09-16T10:26:00+08:00",
+          "state": "corrective_action_completed",
+          "description": "Compare recovery with the golden range"
+        },
+        {
+          "timestamp": "2026-09-16T10:27:00+08:00",
+          "state": "verification_passed",
+          "description": "Recovery is within the golden range"
+        }
+      ]
+    },
+    {
+      "id": "summary",
+      "screen": "summary",
+      "title": "Review the completed case",
+      "state": "resolved",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST",
+        "EV-FOUND",
+        "EV-ACTION",
+        "EV-VERIFY"
+      ],
+      "ranking": [
+        {
+          "hypothesis_id": "partial_cartridge_nozzle_restriction",
+          "label": "Cartridge / nozzle restriction",
+          "score": 100,
+          "confirmed": true,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 35,
+              "explanation": "Undersizing is compatible with this cause."
+            },
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 25,
+              "explanation": "Persistent symptoms distinguish restriction from intermittent air."
+            },
+            {
+              "evidence_id": "EV-FOUND",
+              "weight": 40,
+              "explanation": "Confirmed demo observation supports restriction."
+            }
+          ],
+          "missing_evidence": []
+        },
+        {
+          "hypothesis_id": "material_viscosity_change",
+          "label": "Material viscosity change",
+          "score": 20,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 20,
+              "explanation": "Undersizing is compatible with this cause."
+            }
+          ],
+          "missing_evidence": [
+            "Material temperature",
+            "Material open time"
+          ]
+        },
+        {
+          "hypothesis_id": "trapped_air_bubble",
+          "label": "Trapped air bubble",
+          "score": 5,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-IMAGE",
+              "weight": 15,
+              "explanation": "Undersizing is compatible with this cause."
+            },
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": -10,
+              "explanation": "Persistent symptoms distinguish restriction from intermittent air."
+            }
+          ],
+          "missing_evidence": [
+            "Intermittent recovery"
+          ]
+        }
+      ],
+      "recommendation_id": null,
+      "next_snapshot_id": null,
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        },
+        {
+          "timestamp": "2026-09-16T10:22:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Compare the possible causes"
+        },
+        {
+          "timestamp": "2026-09-16T10:23:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Inspect the cartridge and nozzle"
+        },
+        {
+          "timestamp": "2026-09-16T10:24:00+08:00",
+          "state": "inspection_completed",
+          "description": "Confirm the inspection observation"
+        },
+        {
+          "timestamp": "2026-09-16T10:25:00+08:00",
+          "state": "cause_confirmed",
+          "description": "Record the simulated corrective action"
+        },
+        {
+          "timestamp": "2026-09-16T10:26:00+08:00",
+          "state": "corrective_action_completed",
+          "description": "Compare recovery with the golden range"
+        },
+        {
+          "timestamp": "2026-09-16T10:27:00+08:00",
+          "state": "verification_passed",
+          "description": "Recovery is within the golden range"
+        },
+        {
+          "timestamp": "2026-09-16T10:28:00+08:00",
+          "state": "resolved",
+          "description": "Review the completed case"
+        }
+      ]
+    }
+  ],
+  "initial_snapshot_id": "report",
+  "verification": {
+    "before_image_id": "before",
+    "after_image_id": "after",
+    "passed": true,
+    "explanation": "Synthetic mean diameter returns from 18 px to 30 px, inside the illustrative 28-32 px range."
+  },
+  "summary": {
+    "problem": "Consistently undersized epoxy dots",
+    "confirmed_cause": "Partial cartridge / nozzle restriction",
+    "corrective_action": "Simulated site-approved cartridge replacement",
+    "verification": "Synthetic verification within the illustrative golden range",
+    "evidence_ids": [
+      "EV-FOUND",
+      "EV-ACTION",
+      "EV-VERIFY"
+    ]
+  }
+}

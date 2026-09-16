@@ -3,6 +3,7 @@ from typing import Literal
 from fastapi import APIRouter, FastAPI
 
 from flowpilot.demo import DemoScenario, load_scenario
+from flowpilot.golden import GoldenScenario, load_golden_scenario
 from flowpilot.ingestion.industry_event_log import parse_industry_event_log
 from flowpilot.ingestion.models import IngestionResult, LogPreviewRequest
 from flowpilot.investigations.models import Contract
@@ -15,6 +16,17 @@ class Health(Contract):
 
 
 router = APIRouter(prefix="/api")
+
+
+@router.get(
+    "/demo/golden-scenario",
+    response_model=GoldenScenario,
+    response_model_exclude_unset=True,
+    tags=["demo"],
+)
+def golden_scenario() -> GoldenScenario:
+    """Read-only, validated M0 storyboard; no workflow or database side effects."""
+    return load_golden_scenario()
 
 
 @router.get("/health", response_model=Health, tags=["system"])

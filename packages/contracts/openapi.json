@@ -72,6 +72,43 @@
         "title": "AgentFinding",
         "type": "object"
       },
+      "CaseSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed_cause": {
+            "title": "Confirmed Cause",
+            "type": "string"
+          },
+          "corrective_action": {
+            "title": "Corrective Action",
+            "type": "string"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "problem": {
+            "title": "Problem",
+            "type": "string"
+          },
+          "verification": {
+            "title": "Verification",
+            "type": "string"
+          }
+        },
+        "required": [
+          "problem",
+          "confirmed_cause",
+          "corrective_action",
+          "verification",
+          "evidence_ids"
+        ],
+        "title": "CaseSummary",
+        "type": "object"
+      },
       "DemoLogMetadata": {
         "additionalProperties": false,
         "properties": {
@@ -135,6 +172,79 @@
           "log_metadata"
         ],
         "title": "DemoScenario",
+        "type": "object"
+      },
+      "DiscoveryQuestion": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "options": {
+            "items": {
+              "$ref": "#/components/schemas/QuestionOption"
+            },
+            "title": "Options",
+            "type": "array"
+          },
+          "prompt": {
+            "title": "Prompt",
+            "type": "string"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "prompt",
+          "rationale",
+          "options"
+        ],
+        "title": "DiscoveryQuestion",
+        "type": "object"
+      },
+      "Dot": {
+        "additionalProperties": false,
+        "properties": {
+          "classification": {
+            "enum": [
+              "normal",
+              "undersized",
+              "oversized",
+              "missing"
+            ],
+            "title": "Classification",
+            "type": "string"
+          },
+          "diameter_px": {
+            "minimum": 0,
+            "title": "Diameter Px",
+            "type": "number"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "x": {
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "x",
+          "y",
+          "diameter_px",
+          "classification"
+        ],
+        "title": "Dot",
         "type": "object"
       },
       "Evidence": {
@@ -292,6 +402,219 @@
         "title": "EvidenceCandidate",
         "type": "object"
       },
+      "GoldenScenario": {
+        "additionalProperties": false,
+        "properties": {
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/AgentFinding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "first_question_id": {
+            "title": "First Question Id",
+            "type": "string"
+          },
+          "fixture_version": {
+            "const": "1.0",
+            "title": "Fixture Version",
+            "type": "string"
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/ImageMeasurement"
+            },
+            "title": "Images",
+            "type": "array"
+          },
+          "initial_snapshot_id": {
+            "title": "Initial Snapshot Id",
+            "type": "string"
+          },
+          "investigation": {
+            "$ref": "#/components/schemas/Investigation"
+          },
+          "log_preview": {
+            "$ref": "#/components/schemas/IngestionResult"
+          },
+          "outcomes": {
+            "items": {
+              "$ref": "#/components/schemas/InspectionOutcome"
+            },
+            "title": "Outcomes",
+            "type": "array"
+          },
+          "procedure_review": {
+            "const": "pending_expert_review",
+            "title": "Procedure Review",
+            "type": "string"
+          },
+          "procedure_steps": {
+            "items": {
+              "$ref": "#/components/schemas/ProcedureStep"
+            },
+            "title": "Procedure Steps",
+            "type": "array"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/DiscoveryQuestion"
+            },
+            "title": "Questions",
+            "type": "array"
+          },
+          "recommendations": {
+            "items": {
+              "$ref": "#/components/schemas/TestRecommendation"
+            },
+            "title": "Recommendations",
+            "type": "array"
+          },
+          "schema_version": {
+            "const": "1.0",
+            "title": "Schema Version",
+            "type": "string"
+          },
+          "simulated": {
+            "const": true,
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "snapshots": {
+            "items": {
+              "$ref": "#/components/schemas/GoldenSnapshot"
+            },
+            "title": "Snapshots",
+            "type": "array"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/CaseSummary"
+          },
+          "verification": {
+            "$ref": "#/components/schemas/VerificationComparison"
+          }
+        },
+        "required": [
+          "schema_version",
+          "fixture_version",
+          "simulated",
+          "investigation",
+          "images",
+          "log_preview",
+          "questions",
+          "first_question_id",
+          "findings",
+          "recommendations",
+          "procedure_steps",
+          "procedure_review",
+          "outcomes",
+          "snapshots",
+          "initial_snapshot_id",
+          "verification",
+          "summary"
+        ],
+        "title": "GoldenScenario",
+        "type": "object"
+      },
+      "GoldenSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "next_snapshot_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Snapshot Id"
+          },
+          "ranking": {
+            "items": {
+              "$ref": "#/components/schemas/RankedCause"
+            },
+            "title": "Ranking",
+            "type": "array"
+          },
+          "recommendation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommendation Id"
+          },
+          "screen": {
+            "enum": [
+              "report",
+              "log",
+              "questions",
+              "diagnosis",
+              "inspection",
+              "confirmation",
+              "corrective",
+              "verification",
+              "summary"
+            ],
+            "title": "Screen",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "reported",
+              "diagnosing",
+              "inspection_recommended",
+              "inspection_completed",
+              "cause_confirmed",
+              "corrective_action_completed",
+              "verification_passed",
+              "resolved"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "timeline": {
+            "items": {
+              "$ref": "#/components/schemas/TimelineEntry"
+            },
+            "title": "Timeline",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "screen",
+          "title",
+          "state",
+          "evidence_ids",
+          "ranking",
+          "recommendation_id",
+          "next_snapshot_id",
+          "timeline"
+        ],
+        "title": "GoldenSnapshot",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -328,6 +651,84 @@
           }
         },
         "title": "Health",
+        "type": "object"
+      },
+      "ImageMeasurement": {
+        "additionalProperties": false,
+        "properties": {
+          "dots": {
+            "items": {
+              "$ref": "#/components/schemas/Dot"
+            },
+            "title": "Dots",
+            "type": "array"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "golden_max_px": {
+            "title": "Golden Max Px",
+            "type": "number"
+          },
+          "golden_min_px": {
+            "title": "Golden Min Px",
+            "type": "number"
+          },
+          "height": {
+            "exclusiveMinimum": 0,
+            "title": "Height",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "mean_diameter_px": {
+            "title": "Mean Diameter Px",
+            "type": "number"
+          },
+          "quality_summary": {
+            "title": "Quality Summary",
+            "type": "string"
+          },
+          "synthetic": {
+            "const": true,
+            "title": "Synthetic",
+            "type": "boolean"
+          },
+          "variation_px": {
+            "title": "Variation Px",
+            "type": "number"
+          },
+          "width": {
+            "exclusiveMinimum": 0,
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "synthetic",
+          "width",
+          "height",
+          "dots",
+          "mean_diameter_px",
+          "variation_px",
+          "golden_min_px",
+          "golden_max_px",
+          "quality_summary",
+          "evidence_ids"
+        ],
+        "title": "ImageMeasurement",
         "type": "object"
       },
       "IngestionResult": {
@@ -480,6 +881,34 @@
           "line"
         ],
         "title": "IngestionWarning",
+        "type": "object"
+      },
+      "InspectionOutcome": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence_id": {
+            "title": "Evidence Id",
+            "type": "string"
+          },
+          "next_snapshot_id": {
+            "title": "Next Snapshot Id",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "obstruction_found",
+              "no_obstruction_found"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outcome",
+          "evidence_id",
+          "next_snapshot_id"
+        ],
+        "title": "InspectionOutcome",
         "type": "object"
       },
       "Investigation": {
@@ -792,6 +1221,161 @@
         "title": "ProcedureStep",
         "type": "object"
       },
+      "QuestionOption": {
+        "additionalProperties": false,
+        "properties": {
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "next_question_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Question Id"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label",
+          "next_question_id"
+        ],
+        "title": "QuestionOption",
+        "type": "object"
+      },
+      "RankedCause": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed": {
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "contributions": {
+            "items": {
+              "$ref": "#/components/schemas/ScoreContribution"
+            },
+            "title": "Contributions",
+            "type": "array"
+          },
+          "hypothesis_id": {
+            "title": "Hypothesis Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "missing_evidence": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Evidence",
+            "type": "array"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          }
+        },
+        "required": [
+          "hypothesis_id",
+          "label",
+          "score",
+          "confirmed",
+          "contributions",
+          "missing_evidence"
+        ],
+        "title": "RankedCause",
+        "type": "object"
+      },
+      "ScoreContribution": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence_id": {
+            "title": "Evidence Id",
+            "type": "string"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "number"
+          }
+        },
+        "required": [
+          "evidence_id",
+          "weight",
+          "explanation"
+        ],
+        "title": "ScoreContribution",
+        "type": "object"
+      },
+      "TestRecommendation": {
+        "additionalProperties": false,
+        "properties": {
+          "duration_minutes": {
+            "title": "Duration Minutes",
+            "type": "integer"
+          },
+          "expected_outcomes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Expected Outcomes",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "instructions": {
+            "title": "Instructions",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "required_parts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Required Parts",
+            "type": "array"
+          },
+          "safety_note": {
+            "title": "Safety Note",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "duration_minutes",
+          "required_parts",
+          "instructions",
+          "rationale",
+          "expected_outcomes",
+          "safety_note"
+        ],
+        "title": "TestRecommendation",
+        "type": "object"
+      },
       "TimeRange": {
         "additionalProperties": false,
         "properties": {
@@ -823,6 +1407,40 @@
           "end"
         ],
         "title": "TimeRange",
+        "type": "object"
+      },
+      "TimelineEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "reported",
+              "diagnosing",
+              "inspection_recommended",
+              "inspection_completed",
+              "cause_confirmed",
+              "corrective_action_completed",
+              "verification_passed",
+              "resolved"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "timestamp",
+          "state",
+          "description"
+        ],
+        "title": "TimelineEntry",
         "type": "object"
       },
       "ValidationError": {
@@ -864,6 +1482,35 @@
         ],
         "title": "ValidationError",
         "type": "object"
+      },
+      "VerificationComparison": {
+        "additionalProperties": false,
+        "properties": {
+          "after_image_id": {
+            "title": "After Image Id",
+            "type": "string"
+          },
+          "before_image_id": {
+            "title": "Before Image Id",
+            "type": "string"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "before_image_id",
+          "after_image_id",
+          "passed",
+          "explanation"
+        ],
+        "title": "VerificationComparison",
+        "type": "object"
       }
     }
   },
@@ -873,6 +1520,28 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/demo/golden-scenario": {
+      "get": {
+        "description": "Read-only, validated M0 storyboard; no workflow or database side effects.",
+        "operationId": "golden_scenario_api_demo_golden_scenario_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoldenScenario"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Golden Scenario",
+        "tags": [
+          "demo"
+        ]
+      }
+    },
     "/api/demo/scenario": {
       "get": {
         "operationId": "scenario_api_demo_scenario_get",
