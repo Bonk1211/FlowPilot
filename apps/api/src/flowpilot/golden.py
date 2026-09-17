@@ -68,6 +68,7 @@ class TimelineEntry(Contract):
     timestamp: str
     state: InvestigationState
     description: str
+    diagnostic_revision: int | None = None
 
 
 class CaseSummary(Contract):

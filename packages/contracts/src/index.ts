@@ -19,6 +19,7 @@ export type CaseAction =
   | components["schemas"]["Diagnose"]
   | components["schemas"]["Inspect"]
   | components["schemas"]["Confirm"]
+  | components["schemas"]["Resolve"]
   | components["schemas"]["CompleteAction"]
   | components["schemas"]["Verify"];
 

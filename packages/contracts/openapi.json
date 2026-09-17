@@ -167,6 +167,13 @@
             "title": "Diagnosis Supported",
             "type": "boolean"
           },
+          "diagnostic_history": {
+            "items": {
+              "$ref": "#/components/schemas/DiagnosticSnapshot"
+            },
+            "title": "Diagnostic History",
+            "type": "array"
+          },
           "escalated": {
             "default": false,
             "title": "Escalated",
@@ -312,7 +319,7 @@
           "summary": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/CaseSummary"
+                "$ref": "#/components/schemas/CompletionSummary"
               },
               {
                 "type": "null"
@@ -361,6 +368,7 @@
           "findings",
           "findings_mode",
           "reasoning",
+          "diagnostic_history",
           "recommendation",
           "procedure",
           "timeline",
@@ -444,14 +452,54 @@
         "title": "CompleteAction",
         "type": "object"
       },
+      "CompletionSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmed_cause": {
+            "title": "Confirmed Cause",
+            "type": "string"
+          },
+          "corrective_action": {
+            "title": "Corrective Action",
+            "type": "string"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "notes": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Notes",
+            "type": "string"
+          },
+          "problem": {
+            "title": "Problem",
+            "type": "string"
+          },
+          "verification": {
+            "title": "Verification",
+            "type": "string"
+          }
+        },
+        "required": [
+          "problem",
+          "confirmed_cause",
+          "corrective_action",
+          "verification",
+          "evidence_ids"
+        ],
+        "title": "CompletionSummary",
+        "type": "object"
+      },
       "Confirm": {
         "additionalProperties": false,
         "properties": {
           "action": {
-            "enum": [
-              "confirm_observation",
-              "resolve"
-            ],
+            "const": "confirm_observation",
             "title": "Action",
             "type": "string"
           },
@@ -683,6 +731,85 @@
           "action"
         ],
         "title": "Diagnose",
+        "type": "object"
+      },
+      "DiagnosticSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/AgentFinding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
+          "findings_mode": {
+            "enum": [
+              "cached_templates",
+              "live"
+            ],
+            "title": "Findings Mode",
+            "type": "string"
+          },
+          "ranking": {
+            "items": {
+              "$ref": "#/components/schemas/RankedCause"
+            },
+            "title": "Ranking",
+            "type": "array"
+          },
+          "reasoning": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReasoningRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "trigger": {
+            "enum": [
+              "retained_baseline",
+              "diagnose",
+              "confirm_observation",
+              "correct_evidence"
+            ],
+            "title": "Trigger",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision",
+          "timestamp",
+          "trigger",
+          "state",
+          "ranking",
+          "findings",
+          "findings_mode",
+          "reasoning",
+          "evidence"
+        ],
+        "title": "DiagnosticSnapshot",
         "type": "object"
       },
       "DiscoveryQuestion": {
@@ -2268,6 +2395,39 @@
         "title": "RecoveryChecks",
         "type": "object"
       },
+      "Resolve": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "const": "resolve",
+            "title": "Action",
+            "type": "string"
+          },
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "notes": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Notes",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision",
+          "action",
+          "confirmed"
+        ],
+        "title": "Resolve",
+        "type": "object"
+      },
       "ScoreContribution": {
         "additionalProperties": false,
         "properties": {
@@ -2386,6 +2546,17 @@
           "description": {
             "title": "Description",
             "type": "string"
+          },
+          "diagnostic_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostic Revision"
           },
           "state": {
             "enum": [
@@ -2621,6 +2792,48 @@
         ]
       }
     },
+    "/api/demo/reset": {
+      "post": {
+        "description": "Start a fresh simulated investigation; retain all existing case history.",
+        "operationId": "reset_demo_api_demo_reset_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCase"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Case"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reset Demo",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
     "/api/demo/scenario": {
       "get": {
         "operationId": "scenario_api_demo_scenario_get",
@@ -2774,7 +2987,7 @@
                     "correct_evidence": "#/components/schemas/CorrectEvidence",
                     "diagnose": "#/components/schemas/Diagnose",
                     "inspect": "#/components/schemas/Inspect",
-                    "resolve": "#/components/schemas/Confirm",
+                    "resolve": "#/components/schemas/Resolve",
                     "verify": "#/components/schemas/Verify"
                   },
                   "propertyName": "action"
@@ -2794,6 +3007,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/Confirm"
+                  },
+                  {
+                    "$ref": "#/components/schemas/Resolve"
                   },
                   {
                     "$ref": "#/components/schemas/CompleteAction"

@@ -53,6 +53,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/demo/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Demo
+         * @description Start a fresh simulated investigation; retain all existing case history.
+         */
+        post: operations["reset_demo_api_demo_reset_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/demo/scenario": {
         parameters: {
             query?: never;
@@ -235,6 +255,8 @@ export interface components {
             corrective_action: ("nozzle_cleaning" | "nozzle_replacement") | null;
             /** Diagnosis Supported */
             diagnosis_supported: boolean;
+            /** Diagnostic History */
+            diagnostic_history: components["schemas"]["DiagnosticSnapshot"][];
             /**
              * Escalated
              * @default false
@@ -284,7 +306,7 @@ export interface components {
              * @enum {string}
              */
             scenario_version: "1.0" | "2.0";
-            summary: components["schemas"]["CaseSummary"] | null;
+            summary: components["schemas"]["CompletionSummary"] | null;
             /** Timeline */
             timeline: components["schemas"]["TimelineEntry"][];
             /** Verification */
@@ -324,13 +346,31 @@ export interface components {
             /** Revision */
             revision: number;
         };
+        /** CompletionSummary */
+        CompletionSummary: {
+            /** Confirmed Cause */
+            confirmed_cause: string;
+            /** Corrective Action */
+            corrective_action: string;
+            /** Evidence Ids */
+            evidence_ids: string[];
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Problem */
+            problem: string;
+            /** Verification */
+            verification: string;
+        };
         /** Confirm */
         Confirm: {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            action: "confirm_observation" | "resolve";
+            action: "confirm_observation";
             /**
              * Confirmed
              * @constant
@@ -431,6 +471,32 @@ export interface components {
             action: "diagnose";
             /** Revision */
             revision: number;
+        };
+        /** DiagnosticSnapshot */
+        DiagnosticSnapshot: {
+            /** Evidence */
+            evidence: components["schemas"]["Evidence"][];
+            /** Findings */
+            findings: components["schemas"]["AgentFinding"][];
+            /**
+             * Findings Mode
+             * @enum {string}
+             */
+            findings_mode: "cached_templates" | "live";
+            /** Ranking */
+            ranking: components["schemas"]["RankedCause"][];
+            reasoning: components["schemas"]["ReasoningRun"] | null;
+            /** Revision */
+            revision: number;
+            /** State */
+            state: string;
+            /** Timestamp */
+            timestamp: string;
+            /**
+             * Trigger
+             * @enum {string}
+             */
+            trigger: "retained_baseline" | "diagnose" | "confirm_observation" | "correct_evidence";
         };
         /** DiscoveryQuestion */
         DiscoveryQuestion: {
@@ -1059,6 +1125,26 @@ export interface components {
              */
             weight_within_limits: "pass" | "fail" | "unknown";
         };
+        /** Resolve */
+        Resolve: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "resolve";
+            /**
+             * Confirmed
+             * @constant
+             */
+            confirmed: true;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Revision */
+            revision: number;
+        };
         /** ScoreContribution */
         ScoreContribution: {
             /** Evidence Id */
@@ -1098,6 +1184,8 @@ export interface components {
         TimelineEntry: {
             /** Description */
             description: string;
+            /** Diagnostic Revision */
+            diagnostic_revision?: number | null;
             /**
              * State
              * @enum {string}
@@ -1226,6 +1314,39 @@ export interface operations {
             };
         };
     };
+    reset_demo_api_demo_reset_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCase"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Case"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     scenario_api_demo_scenario_get: {
         parameters: {
             query?: never;
@@ -1341,7 +1462,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AttachLog"] | components["schemas"]["Answer"] | components["schemas"]["Diagnose"] | components["schemas"]["Inspect"] | components["schemas"]["Confirm"] | components["schemas"]["CompleteAction"] | components["schemas"]["Verify"] | components["schemas"]["CorrectEvidence"];
+                "application/json": components["schemas"]["AttachLog"] | components["schemas"]["Answer"] | components["schemas"]["Diagnose"] | components["schemas"]["Inspect"] | components["schemas"]["Confirm"] | components["schemas"]["Resolve"] | components["schemas"]["CompleteAction"] | components["schemas"]["Verify"] | components["schemas"]["CorrectEvidence"];
             };
         };
         responses: {

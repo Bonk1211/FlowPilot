@@ -35,6 +35,26 @@ def create(client, sample="incomplete"):
     return response.json()
 
 
+def test_demo_reset_retains_previous_case_and_starts_clean(client):
+    original = diagnose(client)
+    original_id = original["investigation"]["id"]
+    response = client.post("/api/demo/reset", json={"report": "New simulated report"})
+    assert response.status_code == 201
+    fresh = response.json()
+    assert fresh["investigation"]["id"] != original_id
+    assert fresh["scenario_version"] == "2.0"
+    assert fresh["revision"] == 0
+    assert fresh["investigation"]["state"] == "reported"
+    assert fresh["answers"] == {}
+    assert fresh["ranking"] == []
+    assert fresh["pending_outcome"] is None
+    assert fresh["recovery"] is None
+    assert fresh["summary"] is None
+    assert client.get(f"/api/investigations/{original_id}").json() == original
+    assert client.post("/api/demo/reset", json={"report": ""}).status_code == 422
+    assert client.get(f"/api/investigations/{original_id}").json() == original
+
+
 def act(client, case, action, **values):
     if action == "verify" and "checks" not in values:
         values["checks"] = load_golden_scenario().recovery_checks.model_dump()

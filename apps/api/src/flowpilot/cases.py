@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import Response
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, model_serializer
 from sqlalchemy import JSON, Integer, String, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Mapped, Session, mapped_column
@@ -42,6 +42,22 @@ class CaseRecord(Base):
     payload: Mapped[dict] = mapped_column(JSON, nullable=False)
 
 
+class DiagnosticSnapshot(Contract):
+    revision: int
+    timestamp: str
+    trigger: Literal["retained_baseline", "diagnose", "confirm_observation", "correct_evidence"]
+    state: str
+    ranking: list[RankedCause]
+    findings: list[AgentFinding]
+    findings_mode: Literal["cached_templates", "live"]
+    reasoning: ReasoningRun | None
+    evidence: list[Evidence]
+
+
+class CompletionSummary(CaseSummary):
+    notes: str = Field(default="", max_length=2000)
+
+
 class Case(Contract):
     model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
     investigation: Investigation
@@ -63,12 +79,24 @@ class Case(Contract):
     findings: list[AgentFinding] = Field(default_factory=list)
     findings_mode: Literal["cached_templates", "live"] = "cached_templates"
     reasoning: ReasoningRun | None = None
+    diagnostic_history: list[DiagnosticSnapshot] = Field(default_factory=list)
     recommendation: TestRecommendation | None = None
     procedure: list[ProcedureStep] = Field(default_factory=list)
     timeline: list[TimelineEntry] = Field(default_factory=list)
     pending_outcome: Literal["obstruction_found", "no_obstruction_found"] | None = None
-    summary: CaseSummary | None = None
+    summary: CompletionSummary | None = None
     diagnosis_supported: bool
+
+    @model_serializer(mode="wrap")
+    def serialize_case(self, handler):
+        payload = handler(self)
+        if self.scenario_version == "1.0":
+            # Preserve the original nested v1 wire payload, not just stored bytes.
+            for entry in payload["timeline"]:
+                entry.pop("diagnostic_revision", None)
+            if payload["summary"] is not None:
+                payload["summary"].pop("notes", None)
+        return payload
 
 
 class CreateCase(Contract):
@@ -101,8 +129,14 @@ class Inspect(ActionBase):
 
 
 class Confirm(ActionBase):
-    action: Literal["confirm_observation", "resolve"]
+    action: Literal["confirm_observation"]
     confirmed: Literal[True]
+
+
+class Resolve(ActionBase):
+    action: Literal["resolve"]
+    confirmed: Literal[True]
+    notes: str = Field(default="", max_length=2000)
 
 
 class CompleteAction(ActionBase):
@@ -127,7 +161,15 @@ class CorrectEvidence(ActionBase):
 
 
 CaseAction = Annotated[
-    AttachLog | Answer | Diagnose | Inspect | Confirm | CompleteAction | Verify | CorrectEvidence,
+    AttachLog
+    | Answer
+    | Diagnose
+    | Inspect
+    | Confirm
+    | Resolve
+    | CompleteAction
+    | Verify
+    | CorrectEvidence,
     Field(discriminator="action"),
 ]
 
@@ -163,6 +205,33 @@ def evidence(
 def transition(case: Case, state, description: str):
     case.investigation.state = state
     case.timeline.append(TimelineEntry(timestamp=now(), state=state, description=description))
+
+
+def capture_diagnosis(case: Case, trigger):
+    """Copy results after reasoning, committed atomically with the case action."""
+    timestamp = now()
+    case.diagnostic_history.append(
+        DiagnosticSnapshot(
+            revision=case.revision,
+            timestamp=timestamp,
+            trigger=trigger,
+            state=case.investigation.state,
+            ranking=[item.model_copy(deep=True) for item in case.ranking],
+            findings=[item.model_copy(deep=True) for item in case.findings],
+            findings_mode=case.findings_mode,
+            reasoning=case.reasoning.model_copy(deep=True) if case.reasoning else None,
+            evidence=[item.model_copy(deep=True) for item in case.investigation.evidence],
+        )
+    )
+    if trigger == "retained_baseline":
+        transition(
+            case,
+            case.investigation.state,
+            "Previously saved diagnosis retained; earlier history unavailable.",
+        )
+    # Link the completed action to its exact result without changing workflow order.
+    case.timeline[-1].diagnostic_revision = case.revision
+    case.timeline[-1].timestamp = timestamp
 
 
 def question(question_id: str) -> DiscoveryQuestion:
@@ -560,7 +629,7 @@ def apply_action(case: Case, action: CaseAction) -> Case:
             and case.recovery.complete()
             and not case.escalated
         )
-        case.summary = CaseSummary(
+        case.summary = CompletionSummary(
             problem=case.investigation.title,
             confirmed_cause="Nozzle restriction",
             corrective_action="Simulated "
@@ -569,6 +638,7 @@ def apply_action(case: Case, action: CaseAction) -> Case:
                 "Visual and recovery checks passed; synthetic recovery only, not lot release."
             ),
             evidence_ids=[e.id for e in case.investigation.evidence],
+            notes=action.notes.strip(),
         )
         transition(case, "resolved", "Resolution explicitly confirmed; case summary saved.")
     case.revision += 1
@@ -616,6 +686,12 @@ def new_case(request: CreateCase):
     return database_operation(save)
 
 
+@router.post("/demo/reset", response_model=Case, status_code=201)
+def reset_demo(request: CreateCase):
+    """Start a fresh simulated investigation; retain all existing case history."""
+    return new_case(request)
+
+
 @router.get("/investigations/{case_id}", response_model=Case)
 def get_case(case_id: str):
     def get(session):
@@ -632,10 +708,14 @@ def act(case_id: str, action: CaseAction):
     case = get_case(case_id)
     if case.revision != action.revision:
         raise HTTPException(409, "Case changed. Reload the saved case before trying again.")
+    if case.scenario_version == "2.0" and case.ranking and not case.diagnostic_history:
+        capture_diagnosis(case, "retained_baseline")
     case = apply_action(case, action)
     if case.ranking and action.action in ("diagnose", "confirm_observation", "correct_evidence"):
         # The read transaction has closed. Never hold SQLite locks across network I/O.
         asyncio.run(enrich(case))
+    if action.action in ("diagnose", "confirm_observation", "correct_evidence"):
+        capture_diagnosis(case, action.action)
 
     def change(session):
         result = session.execute(

@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     )
     gemini_model: str = "gemini-3.5-flash-lite"
     reasoning_enabled: bool = True
-    reasoning_timeout_seconds: float = Field(default=30, gt=0, le=30)
+    reasoning_timeout_seconds: float = Field(default=12, gt=0, le=30)
 
 
 def fixture_path(name: str) -> Path:
