@@ -16,6 +16,8 @@ are committed. Record the final reviewed commit when the candidate is committed.
 | Findings | `diagnosis/models.py`, `diagnosis/reasoning.py` | Five named hypotheses, two specialist roles, critic, citation validation, explicit known uncertainty, whole-run fallback |
 | Workflow | `cases.py`, `golden.py`, scoring rules | Scores are points, not probabilities; both outcomes require confirmation; negative inspection completion precedes reassessment; verification gates resolution |
 | Corrections | `cases.py`, generated `CorrectEvidence` | Preserve history, retire dependent answers, reject immutable machine/image values, clear pending observation, lock after either confirmed outcome |
+| Demo reset | `cases.py`, generated `POST /api/demo/reset` | Reuse case creation, allocate a fresh v2 case, preserve all previous investigations; no deletion or migration |
+| Audit and completion | `cases.py`, generated `DiagnosticSnapshot`, `Resolve`, `CompletionSummary` | Append diagnostic/evidence snapshots after reasoning, link timeline revisions, retain an explicitly labelled baseline for older v2 cases, preserve v1 output, and persist optional completion notes |
 | Procedure | `procedures/models.py`, frontend `prototype/model.ts` | Flux-spray semantic nodes, shared camera presets, illustrative text/2D fallback; no approved removal procedure is claimed |
 | Golden fixture | `fixtures/v2/golden-scenario.json` | Version 2.0, shared API/frontend source, branch evidence isolation, parity with deterministic initial scores |
 | Ownership | PRD section 16 | A owns contracts/execution; B owns presentation; both own fixture changes and integration |

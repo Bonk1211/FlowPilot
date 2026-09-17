@@ -1,23 +1,26 @@
 {
-  "base_commit": "d6f716b30f30c7a6dc53e65c7d70c3701a72ce2a",
-  "candidate_sha256": "2450f1c9576ba243f59568cdcfe7fb3623e2f92f37fbbc447201619dcfac6a1f",
+  "base_commit": "1e291db365b85ac4b7d02a0b240ba7bed2913d7b",
+  "candidate_sha256": "71a9183178d4ba9794ec11a1519b5b93608a243d304b788c921bd43626e58664",
   "files": {
-    "apps/api/src/flowpilot/cases.py": "03fec71c1d3f2462c92511f4be7974c771194f36ecdf2e7d0981b613934591cd",
+    "apps/api/src/flowpilot/cases.py": "2d36ca4ad677f67301ff3200c7766faa3b6acf7dd356d09dea185a730b1cb3d0",
     "apps/api/src/flowpilot/diagnosis/models.py": "186f69cb8b610c869f5e1849dfbfaa82cc736514be0d0c0c20b294a3824f9bbb",
     "apps/api/src/flowpilot/diagnosis/reasoning.py": "4bea07d8ca3d4e4776dcb312fc334c2ce965c3d398bdbc138f3ab1bae7a5ab3a",
-    "apps/api/src/flowpilot/golden.py": "875e388f8ca6638a5a6ce517e6bb9b1c8f888bd5e52fbab9be3122865ddeeba3",
+    "apps/api/src/flowpilot/golden.py": "d3c7d3704837b1c678057711db8e71e279656edb4cd4d571620654d9ad78a793",
     "apps/api/src/flowpilot/imaging.py": "a71888aeaf1a252a1002c472cf933bd24b4c87a0174fd3dc9f01dfc77a72810f",
     "apps/api/src/flowpilot/investigations/models.py": "70f439caed47a6e0e8da235a54740dc9fd6826c00517cac3d345157e7ba7c49d",
     "apps/api/src/flowpilot/legacy_imaging.py": "b0e988c163d613ecfd2fb4476440a6353ffc64261e630630ef085ce7d20e73eb",
     "apps/api/src/flowpilot/procedures/models.py": "9e4cb968aae82f30b06d8596fffdff2ed7375934e0e8fa6ecff952ee7be49669",
     "apps/api/src/flowpilot/recovery.py": "c021f575c95156e123a610842b841c3617c053a528911f3b1896e0b10ec79a25",
+    "apps/api/src/flowpilot/settings.py": "4fecc8a301716825486427ed5807dcae9d186b9844ffcf6bc99ec17b96626f21",
+    "apps/web/src/CaseApp.tsx": "867f192989298bfb3c56f977fc8b943b11b381dc93d90090d3f52cf8a035e124",
+    "apps/web/src/components/CaseAudit.tsx": "e2abbec022d723b5bab3e50d7822cdb23c6fce996bf5124b61837f4b85983b33",
     "apps/web/src/prototype/model.ts": "9c008ea76524966ac200d760d7a1967284ff9e25e2a58c743946d52ab32e6bb6",
     "fixtures/v1/evidence-units.json": "f28bbca5595d12a24ba1cd22a0649e05f862f37841d284001dd781cd8648f14b",
     "fixtures/v2/golden-scenario.json": "bfd1957a45c06d0afd4f5c9591db2815f86899e8dda202e8853efb867681c060",
     "fixtures/v2/scoring-rules.json": "3ca4dcf24acc95e16d9a18811e2552bf03bc913c036412010142809b4df29ad6",
-    "packages/contracts/openapi.json": "b42a2b7187c6ec399c61ef8f0236a0571764bc21bf37582473b75071a7c11e3b",
-    "packages/contracts/src/generated.ts": "a813a727467c59a49d0079713d424158aace75116357bc17875634fb0733c879",
-    "packages/contracts/src/index.ts": "0aab0b8cb73805d458fb408014cad2f308c0b2ec361e5be35b412a2002cf3c80",
+    "packages/contracts/openapi.json": "76714b7778c5ffb1187ec32781223de87cee3ab906d1e6edee791a541fae8f42",
+    "packages/contracts/src/generated.ts": "750a867a4a4b9ef0850c80d25293551af705beabf70f044252dd3135a75f9c7e",
+    "packages/contracts/src/index.ts": "accf172fb94a2eec103abe34453f0892eb847d70cf4da26488f972f81df1a755",
     "scripts/build_flux_fixture.py": "9af9195d3fb28a449e36a10ebeafe242895136f662a8e6b28fe7f5336602a18d"
   }
 }

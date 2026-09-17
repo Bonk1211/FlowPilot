@@ -70,6 +70,7 @@ Update contracts and affected fixtures in the same change.
 | `GET /api/demo/images` | Four generated sample measurements and raster image URLs |
 | `GET /api/demo/images/{sample_id}.png` | Deterministic normal, incomplete, coarse, shifted, or overspray PNG |
 | `POST /api/investigations` | `{report, sample_id}` creates a measured, persisted demo case |
+| `POST /api/demo/reset` | Same request/response as case creation; starts a fresh v2 case and retains every previous investigation |
 | `GET /api/investigations/{id}` | Complete saved case, revision, evidence, answers, rankings, and timeline |
 | `POST /api/investigations/{id}/actions` | Revision-checked typed action; returns the complete updated case |
 
@@ -337,3 +338,85 @@ Either confirmed nozzle-inspection outcome completes the nozzle-inspection evide
 requirement; a clear nozzle still leaves upstream fluid-path inspection outstanding.
 
 Untagged/version 1 cases load without normalization or storage writes and reject all actions. Archived dots render directly from stored measurements, avoiding confusion with the new normal spray image. No database reset or migration is needed. Expert feedback received; revised procedure approval and fresh joint contract review remain pending.
+
+
+## M3 reset, reliability and rehearsal
+
+**Restart demo** calls `POST /api/demo/reset` with the standard synthetic report
+and incomplete-coverage image. The response is a new `Case` with a new ID and
+revision zero. The UI clears uploads/previews, inspection and recovery state,
+confirmations and component-local filters. Existing investigations remain
+unchanged and accessible through their URLs. No deletion endpoint or migration
+is introduced. A failed reset retains the current view; a failed case action
+requires a successful reload before another action can be submitted.
+
+The completed summary shows the recorded inspection, ranked causes and a
+keyboard-accessible disclosure containing the retained evidence. Errors receive
+focus and retain a reload/retry control. The nozzle inspection heading matches
+its nozzle-only observation boundary.
+
+```powershell
+$env:PATH = (Join-Path (Get-Location) '.tools\bin') + ';' + $env:PATH
+$env:UV_CACHE_DIR = Join-Path (Get-Location) '.cache\uv'
+$env:PLAYWRIGHT_CHANNEL = 'chrome' # only when using installed Chrome
+npm.cmd run test:e2e -- --config=playwright.rehearsal.config.ts
+npm.cmd run test:e2e -- --config=playwright.live.config.ts
+```
+
+The rehearsal configuration starts a fresh migrated database and runs serially
+with retries disabled. It records two consecutive positive cases using the
+visible reset control, verifies preservation of the first case, and separately
+covers negative handoff, recovery failure/retry, escalation, interrupted actions
+and the offline storyboard. Results, traces, screenshots and videos are under
+`artifacts/demo/rehearsals/`; `results.json` contains the structured report and
+the `rehearsal-results` attachment records case IDs, timings and reasoning mode.
+Browser contexts are fresh per test; the two-case test intentionally shares one
+context to test session reset. No developer database is deleted or reused.
+
+The live browser suite uses a 12-second provider budget, requires live critic
+acceptance, and records diagnosis/confirmation latency with a 15-second ceiling.
+For a manually launched demo, set `FLOWPILOT_REASONING_TIMEOUT_SECONDS=12` before
+starting the API if overriding an existing configuration. The API default and
+`.env.example` now both use 12 seconds (explicit overrides up to 30 remain supported). Regular browser
+and API suites continue to use deterministic/mocked reasoning without provider
+calls. A passing cached rehearsal is not evidence of live-provider availability.
+
+Windows may require execution outside a restricted sandbox for Playwright to
+terminate its server process tree. Use workspace-local pytest temp/cache paths
+when system temp permissions prevent tests. Do not treat a stalled teardown or
+missing browser executable as successful suite completion.
+
+See [the submission package](M3_SUBMISSION.md) for the eight-minute narration,
+shot list, chapter captions and actual reviewer/upload records still required.
+
+## Diagnostic audit history and completion notes
+
+`Case.diagnostic_history` retains a deep snapshot after each diagnosis, confirmed
+inspection and evidence correction. Each snapshot includes its revision, capture
+timestamp, trigger, case state, ranking, findings, live/cached metadata and the
+evidence as it stood at that revision. Corrections that invalidate discovery save
+an empty ranking with an explicit invalidation state; prior results remain intact.
+The completed action's timeline entry links to the snapshot with
+`diagnostic_revision`. Snapshot timestamps reflect capture after reasoning finishes.
+The compare-and-swap write commits the action and snapshot together; a stale or
+failed write cannot leave a partial audit record.
+
+Older v2 documents default to an empty history. GET never writes or invents past
+results. On their next successful action, the latest available ranking is retained
+as `retained_baseline`, with a current capture timestamp and an explicit warning
+that earlier results are unavailable. Archived v1 timeline/summary responses retain
+their original nested values and remain read-only. No database migration is needed.
+
+The `resolve` action now accepts optional `notes` (at most 2,000 characters), saved
+in the completion summary after trimming outer whitespace. The resolution form
+labels these as saved on confirmation; unsaved notes are not a persistent draft.
+Reset clears the notes field. Existing callers may omit notes.
+
+The summary separates current evidence, earlier recovery attempts and rejected or
+superseded evidence. Every displayed observation includes its status, timestamp
+and provenance. Earlier recovery results remain in order; only the most recent
+recovery-check/result pair appears with current evidence. The diagnostic history
+viewer and timeline links remain available after resolution.
+
+Automated workflow recordings prove repeatability, not presentation readiness.
+The two full timed presentation rehearsals remain a separate M3 checkpoint.

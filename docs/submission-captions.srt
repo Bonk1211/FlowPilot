@@ -1,0 +1,44 @@
+1
+00:00:00,000 --> 00:00:45,000
+FlowPilot: a traceable investigation of simulated flux-spray defects.
+Illustrative guidance; no equipment control or maintenance authorization.
+
+2
+00:00:45,000 --> 00:01:40,000
+Measure the symptom. Preserve original machine records and units.
+Image pixels do not establish weight, pressure or root cause.
+
+3
+00:01:40,000 --> 00:02:30,000
+Adaptive questions retain uncertainty.
+Unknown answers contribute no diagnostic weight.
+
+4
+00:02:30,000 --> 00:03:35,000
+Five cause families, evidence-linked heuristic points and known gaps.
+Reasoning mode is explicitly labelled: live or cached.
+
+5
+00:03:35,000 --> 00:04:35,000
+Illustrative nozzle-only inspection, synchronized 3D, 2D and text.
+An observation requires explicit confirmation.
+
+6
+00:04:35,000 --> 00:05:45,000
+Record action separately from recovery. Calibration alone is insufficient.
+Failed checks block resolution; retries require fresh confirmation.
+
+7
+00:05:45,000 --> 00:06:30,000
+Review the saved result, evidence and timeline.
+Restart creates a fresh case and preserves previous investigations.
+
+8
+00:06:30,000 --> 00:07:20,000
+A clear nozzle does not exclude upstream restriction.
+Reassess the evidence and keep the case open.
+
+9
+00:07:20,000 --> 00:08:00,000
+Labelled fallback keeps the simulated demo usable.
+Joint contract acceptance and revised expert approval remain pending.

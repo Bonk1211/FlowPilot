@@ -42,9 +42,9 @@ it does not assert progress on another developer's branch.
 | Milestone | Current status | Developer A — backend | Developer B — experience | Shared checkpoint |
 | --- | --- | --- | --- | --- |
 | M0 — Contract and demo lock | In progress | Version 2 flux contracts and recovery gates ready for review | Flux storyboard, semantic nodes, and 2D fallback implemented | Shared v2 fixture loads in API and UI; joint contract freeze pending |
-| M1 — Thin vertical slice | Complete | Flux workflow and confirmed-inspection gap correction verified | Recovery reload and fresh retry confirmation verified | 129 API tests and all 38 offline browser scenarios pass |
+| M1 — Thin vertical slice | Complete | Flux workflow and confirmed-inspection gap correction verified | Recovery reload and fresh retry confirmation verified | 138 API tests and all 40 offline browser scenarios pass |
 | M2 — Core differentiators | Complete | Five-cause live specialists and critic validated with persisted cases | Flux 3D, recovery, negative handoff, and reload verified | Both v2 live journeys pass; fresh positive/negative backup videos captured |
-| M3 — Validation and submission | Not started | End-to-end fallback/reset validation remains | Accessibility polish, rehearsals, and final video remain | Two clean rehearsals, recorded expert review, and checked submission |
+| M3 — Validation and submission | In progress | Reset, failure gates and regression checks pass | Accessible summary, reset controls and submission materials prepared | Automated repeatability passes; timed presentation rehearsals, expert approval and final submission pending |
 
 ## M0 — Contract and demo lock
 
@@ -557,22 +557,162 @@ clean-state rehearsals, and submission. No commit, push, or issue publication.
 
 **Goal:** Deliver a reliable, reviewed prototype and a checked submission video.
 
-- [ ] **Developer A:** Complete workflow tests, fallback validation, reset endpoint,
+- [x] **Developer A:** Complete workflow tests, fallback validation, reset endpoint,
   and failure handling.
-- [ ] **Developer B:** Polish accessibility, demo reset, recording layout, and the
-  in-app summary; prepare the final video.
-- [ ] **Shared checkpoint:** Run two consecutive rehearsals from clean demo state
+- [x] **Developer B:** Polish accessibility, demo reset, recording layout, and the
+  in-app summary; prepare narration, shot list, chapter captions and source footage.
+- [ ] **Developer B:** Complete final narration/editing and full audio/caption review.
+- [x] **Technical validation:** Run two consecutive automated journeys from clean demo state
   without database edits, manual prompt changes, or developer-only controls.
+- [ ] **Shared checkpoint:** Complete two timed presentation rehearsals, including
+  narration, readable pacing and the full judge-facing demonstration.
 - [ ] **Shared checkpoint:** Record domain-expert procedure review and any changes.
 - [ ] **Shared checkpoint:** Upload the 6–10 minute video and check access signed out.
 
-**Next handoff:** Use M2 findings to prioritize reliability fixes. Keep P1 frozen
-until the P0 journey succeeds twice. Record rehearsal results and submission links.
+**Next handoff:** Obtain genuine M0 joint acceptance and revised expert procedure
+approval; narrate/edit/upload the prepared submission and verify signed-out playback.
+P1/P2 remain outside this implementation.
 
 ### Development history
 
-No M3 implementation session recorded yet. Earlier milestone tests do not replace
-the final clean-state rehearsals or expert review.
+#### 2026-09-17 — P0 reset, reliability and submission preparation
+
+**Status change:** M3 Not started → In progress. The requested technical work and
+submission preparation do not grant reviewer acceptance or upload approval.
+
+**Delivered:** Added `POST /api/demo/reset` using the existing creation contract
+and persistence path. The visible reset creates a new v2 case, clears local
+workflow state and confirmations, and preserves previous case payloads and URLs.
+Failed actions lock further mutations until a successful reload. Errors receive
+focus and non-log validation failures have appropriate messages. The completed
+summary exposes recorded inspection, rankings and retained evidence; its evidence
+disclosure keeps the recording layout readable. Updated the heading to match
+nozzle-only inspection. Regenerated public contracts; no migration.
+
+Added focused API/browser reset and preservation coverage, shared browser journey
+helpers, and a serial recording configuration with no retries. Prepared the
+[eight-minute submission package](M3_SUBMISSION.md), chapter captions, shot list
+and blank reviewer/upload records. Final narration and editing are not claimed.
+
+**Verification:** `npm run check` passed lint, types, nine reference-parser tests,
+130 API tests, generated-contract consistency and production build. Final full
+browser suite passed all 40 tests using installed Chrome. The final recorded
+rehearsal suite passed all eight scenarios, including two consecutive resolved
+cases using visible controls and reset, fresh confirmations and preservation of
+the first saved case. Other recordings cover negative handoff, verification
+failure/retry, escalation, interrupted mutations and responsive offline views.
+Results, videos, screenshots and traces are in `artifacts/demo/rehearsals/`.
+The two final cached runs resolved cases `CASE-8c3c70c2a6c8` and
+`CASE-a230cd91230b`; automated journey times were 5.800 and 5.189 seconds
+(excluding initial case creation). These are automation timings, not narrated
+video durations. The structured run summary is
+`artifacts/demo/rehearsal-summary.json`.
+
+Existing provider tests exercise malformed output, invalid citations, critic
+rejection, timeout, quota, authentication, missing-key and disabled-reasoning
+fallback. The explicit synthetic live reasoning script passed initial, positive
+and negative branches with a 12-second provider budget, plus forced cached mode.
+The first live-browser run passed the negative branch but rejected a provider
+response after positive confirmation, correctly retaining cached findings. Its
+trace and failure context remain in `artifacts/demo/live-browser/`. One explicit
+repeat passed both live browser journeys, including reload/persistence and all
+latency assertions. The repeat's diagnosis requests took 6.904 and 4.754 seconds;
+confirmed-observation reasoning took 4.983 and 4.487 seconds. Safe results are in
+`artifacts/demo/live-browser-results.json`, `live-timing-summary.json` and
+`live-browser-recheck/`. This transient validation failure remains evidence of why
+the labelled fallback is necessary; passing the repeat does not erase it.
+
+All eight rehearsal WebM files were checked with ffprobe: readable 1440 × 900
+streams with nonzero durations. These are short automated source clips, not a
+final narrated submission video.
+
+**Environment and corrections:** Used the documented `.tools/bin` uv directory,
+workspace-local uv/pytest caches and fresh pytest temporary storage. Selected
+installed Chrome because bundled Chromium was absent. Sandboxed browser assertions
+passed but server shutdown stalled; the final suite ran outside the sandbox and
+exited successfully. Corrected the rehearsal configuration's inherited server/use
+settings before acceptance. Reviewed desktop summary and mobile inspection
+screenshots; final summary review confirmed readable disclosure and separated
+reset controls. Existing dependency deprecation and lazy Three.js chunk warnings
+remain.
+
+**Contract review:** New candidate SHA-256:
+`4e9a3ec7c85b96fc34a45f2d97c0cd932dd1a79da316b8f9800059fa112ca6f1`.
+Consistency check passes. Both reviewers, reviewed commit and acceptance date
+remain Pending; no historical acceptance transfers.
+
+**Remaining:** M0 joint acceptance, revised expert procedure approval, final
+narration/edit/caption review and video upload with signed-out access verification.
+GitHub issue access remains unavailable (`gh` authentication returns HTTP 401).
+No commit, push, issue comment or external publication performed.
+
+#### 2026-09-17 — Close diagnostic audit, summary and completion gaps
+
+**Status:** M1's vertical slice and M2's branch/recording checkpoints remain met.
+The review found cross-cutting traceability and completion gaps despite those
+narrow checkpoints. This change implements those missing requirements. M0 and M3
+remain In progress pending genuine acceptance and presentation/submission work.
+
+**Delivered:** Each diagnosis, confirmed inspection and evidence correction now
+retains a deep diagnostic snapshot containing revision, capture time, rankings,
+findings, reasoning metadata and evidence at that revision. Invalidation retains
+the previous result and records why the current ranking is empty. Timeline entries
+link directly to the saved snapshot. Snapshots are captured after live/cached
+reasoning and committed with the action's revision-checked write; failed writes
+cannot persist orphaned history. A concurrent-write regression verifies this.
+
+Older v2 cases start with empty history and are not rewritten by GET. Their next
+successful action preserves the latest available result as a clearly labelled
+baseline; unavailable earlier history is not reconstructed. The v1 compatibility
+test caught extra nested fields during development; serialization was corrected
+so archived timeline/summary values remain unchanged and all mutations remain blocked.
+
+The completion summary now distinguishes current evidence, earlier recovery
+attempts and rejected/superseded observations, with explicit verification status,
+timestamps and provenance. Optional completion notes (2,000-character maximum)
+are saved only on explicit resolution and survive reload. Reset clears the draft.
+The default API reasoning budget and `.env.example` now use 12 seconds; this
+workspace's effective setting was checked as 12 seconds. Explicit overrides remain
+supported, and a provider failure still selects the labelled deterministic fallback.
+
+**Checkpoint correction:** The previous checked “two rehearsals” item proved
+automated workflow repeatability. It did not demonstrate two timed, narrated
+judge-facing presentations. These are now separate checklist entries, with blank
+timed rehearsal records in the submission package. No presentation acceptance,
+expert approval, narration, video upload or signed-out playback is inferred.
+
+**Validation:** `npm run check` passed lint, types, nine parser tests, 138 API tests,
+generated-contract checks and the production build. The full browser suite passed
+40 tests after scoping two existing selectors to current findings rather than
+matching both current and historical findings. The expanded persisted journey
+verifies corrected/rejected evidence, failed/pass recovery separation, saved notes,
+40-to-80 point diagnostic history and keyboard focus from timeline links. The
+refreshed recording suite passed all eight scenarios. Its two automated cached
+journeys took 8.335 and 8.829 seconds (diagnosis/discovery: 1.128 and 1.147 seconds);
+these timings do not count as presentation rehearsals. The final targeted persisted
+journey passed, and desktop/375px mobile screenshots were visually reviewed.
+
+Live validation passed the obstruction-found branch. The other branch initially
+selected cached fallback because the critic rejected the provider's findings;
+its single targeted recheck passed with live findings. Both branches therefore
+verified retained initial/confirmed snapshots and reload, but the first run was
+not uniformly live. The fallback guard was not weakened. Original and recheck
+results are retained in `artifacts/demo/audit-live-results.json` and
+`artifacts/demo/audit-live-recheck-results.json`; refreshed recordings and summary
+are under `artifacts/demo/`, and reviewed screenshots under
+`artifacts/demo/audit-visuals/`.
+
+**Review candidate:**
+`71a9183178d4ba9794ec11a1519b5b93608a243d304b788c921bd43626e58664`.
+Contracts regenerated and candidate consistency checked. The manifest now also
+covers the audit UI and timeout settings. Review must cover these
+new audit/completion fields; acceptance remains Pending. No database migration.
+
+**Remaining:** Both developer acceptances and a reviewed commit, authorized expert
+procedure approval, two timed presentation rehearsals, final narration/editing/full
+captions, and submission with signed-out playback verification. GitHub authentication
+was refreshed successfully outside the sandbox; the repository currently has no
+GitHub issues or milestones. No issue publication, commit or push performed.
 
 ## Session entry template
 
