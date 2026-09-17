@@ -1,6 +1,8 @@
 # FlowPilot
 
-FlowPilot is an evidence-led investigation assistant for industrial fluid-dispensing defects. The hackathon MVP follows an operator-reported undersized-dot defect through diagnosis, guided inspection, corrective action, and verified recovery.
+FlowPilot is an evidence-led investigation assistant for industrial fluid-dispensing defects. The hackathon MVP follows an operator-reported flux-spray coverage defect through diagnosis, guided inspection, corrective action, and verified recovery.
+
+Existing epoxy cases are read-only. New investigations use the S-932 / DJ-2200 flux-spray scenario with separate visual and recovery gates. Expert feedback received; revised procedure approval pending.
 
 ## Project documents
 
@@ -8,6 +10,7 @@ FlowPilot is an evidence-led investigation assistant for industrial fluid-dispen
 - [Development guide](docs/DEVELOPMENT.md) — setup, commands, API contracts, module boundaries, and verification.
 - [Product requirements](docs/PRODUCT_REQUIREMENTS.md) — development baseline, scope, contracts, delivery plan, tests, and video script.
 - [Industry event-log ingestion profile](docs/LOG_INGESTION.md) — observed legacy format, parser contract, safe evidence, warnings, and production follow-ups.
+- [Critical expert review](docs/EXPERT_REVIEW.md) - decisions, attribution and pending validation.
 - [Domain-expert questionnaire](docs/DOMAIN_EXPERT_QUESTIONNAIRE.md) — short review form for validating the process model and troubleshooting procedure.
 - [Agent issue-tracker rules](docs/agents/issue-tracker.md)
 - [Agent domain-documentation rules](docs/agents/domain.md)
@@ -27,10 +30,10 @@ npm run dev
 
 Open http://127.0.0.1:5173. On Windows, use `npm.cmd` if the PowerShell npm launcher
 is broken. The main workspace provides the M2 API-backed investigation journey:
-generated raster measurements, log attachment, adaptive questions, deterministic
+synthetic spray-mask measurements, log attachment, adaptive questions, deterministic
 ranking, confirmed inspection outcomes, simulated corrective action, verification,
 and a persisted summary. Case URLs survive refresh. Run migrations when updating
-an existing checkout. `/prototype` retains the offline M0 storyboard, and
+an existing checkout. `/prototype` provides the version 2 offline storyboard, and
 `/log-preview` retains the standalone log viewer. M2 adds reviewed Gemini findings,
 audited evidence corrections, and an interactive 3D guide with 2D/text fallback.
 Copy `.env.example` to the ignored `.env` and set `GEMINI_API_KEY` for live reasoning;

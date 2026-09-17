@@ -1,3 +1,5 @@
+> Current baseline: version 2 flux spraying. Historical M0-M2 descriptions below document earlier implementation. The current [requirements](PRODUCT_REQUIREMENTS.md) and [expert review](EXPERT_REVIEW.md) take precedence.
+
 # Development
 
 ## Record milestone progress
@@ -63,10 +65,10 @@ Update contracts and affected fixtures in the same change.
 | Method and route | Behavior |
 | --- | --- |
 | `GET /api/health` | Process liveness; not a database readiness check |
-| `GET /api/demo/scenario` | Validated version 1.0 sample report, raw sample log, and provenance metadata |
+| `GET /api/demo/scenario` | Validated version 2.0 sample report, raw sample log, and provenance metadata |
 | `POST /api/logs/preview` | `{text, sourceName?, timezoneOffset?}` to parsed events, runs, warnings, statistics, and provisional evidence; no persistence |
 | `GET /api/demo/images` | Four generated sample measurements and raster image URLs |
-| `GET /api/demo/images/{sample_id}.png` | Deterministic normal, undersized, oversized, or missing-dot PNG |
+| `GET /api/demo/images/{sample_id}.png` | Deterministic normal, incomplete, coarse, shifted, or overspray PNG |
 | `POST /api/investigations` | `{report, sample_id}` creates a measured, persisted demo case |
 | `GET /api/investigations/{id}` | Complete saved case, revision, evidence, answers, rankings, and timeline |
 | `POST /api/investigations/{id}/actions` | Revision-checked typed action; returns the complete updated case |
@@ -124,16 +126,9 @@ temporary SQLite database, round-trip and update a snapshot, and test rollback o
 
 Open `/` to create a case. Choose a generated sample, write an operator report,
 optionally preview and attach a sample/uploaded log, and answer discovery questions.
-The undersized sample supports the full diagnosis journey. Other samples demonstrate
-measurement only, explicitly without unsupported cause rankings.
+The incomplete sample supports the golden journey. Coarse, shifted and overspray samples also support diagnosis; a normal sample does not establish a defect.
 
-Raster generation uses a fixed 12-location layout. Measurement thresholds actual
-pixel intensities, finds connected components, matches expected locations, and
-reports bounding-box diameter, standard deviation, positional deviation, and filled
-area relative to a fitted circle. Missing locations are excluded from geometric
-averages and counted independently. Results are pixels, not calibrated physical
-units. A verification sample passes only when all 12 dots are present and within
-28–32 px. No external image dependency or image upload is needed for this boundary.
+Raster generation uses idealized rectangular spray masks. Measurement thresholds pixel intensity independently of sample ID, measuring coverage, uncovered area, displacement, coarse deposits and overspray. The UI shows the target and permitted boundary. These pixel measurements cannot establish mass or thickness. Visual acceptance must be combined with confirmed recovery checks.
 
 Case actions are `attach_log`, `answer`, `diagnose`, `inspect`,
 `confirm_observation`, `complete_action`, `verify`, and `resolve`. All require the
@@ -150,22 +145,15 @@ time. The complete parser record retains compound units and context. `Evidence.u
 accepts a scalar unit string, a per-field unit map, or null. Log projection retains
 the original units, and the ledger uses the same formatter as the import preview.
 
-Existing M1 cases are normalized on reads and before actions: missing compound units
-are recovered only from a unique retained log candidate matching key, source reference,
-and value. Existing units and ambiguous matches are left unchanged. Missing-evidence
-labels are refreshed from current observations; verified intermittent recovery is
-not listed as missing. Unknown, absent, provisional, or rejected observations do not
-satisfy that evidence requirement. GET requests do not write these repairs to storage
-or change revisions, scores, confirmations, or history. The next successful action
-persists the normalized case atomically; no database migration is required.
+Version 1 cases are read-only and are not normalized. Version 2 reads can recover missing compound units from uniquely matching retained log candidates and refresh missing-evidence labels; they never write storage or change scores/history. Only confirmed observations satisfy known-evidence checks.
 
-`fixtures/v1/scoring-rules.json` holds explainable rule weights. The initial golden
-ranking matches the M0 fixture, while intermittent recovery and confirmed outcomes
+`fixtures/v2/scoring-rules.json` holds explainable rule weights. The initial golden
+ranking matches the M0 fixture, while weight/pattern observations and confirmed outcomes
 change actual case scores. M1 findings use cached deterministic templates populated
 with current evidence IDs; M2 optionally enriches them with reviewed Gemini output.
 Observation selection
 alone does not confirm a cause. Both outcomes require explicit confirmation and
-record inspection completion; the negative path remains open at material review.
+record inspection completion; the negative path remains open at air-cap and pressure-supply review.
 
 Migration `0002` adds the `cases` table with a JSON case document and integer
 revision, preserving the original `investigation_snapshots` table. The case ID in
@@ -184,12 +172,12 @@ fixture-backed screen wireframes. The standalone Report/log-preview is at `/log-
 The prototype demonstrates five discovery answers, two inspection outcomes, explicit
 observation confirmation, simulated corrective action, verification, and a summary.
 Answers demonstrate question branching; diagnosis always uses the labelled fixed
-continuous-undersizing golden scenario. Nothing is persisted or sent to a model.
+declining-flux-coverage golden scenario. Nothing is persisted or sent to a model.
 
 `GET /api/demo/golden-scenario` validates and serves
-`fixtures/v1/golden-scenario.json` with no database access. The frontend bundles that
+`fixtures/v2/golden-scenario.json` with no database access. The frontend bundles that
 same file as its explicitly labelled offline fallback. `schema_version` and
-`fixture_version` are both `1.0`; update authoritative Pydantic models, generated
+`fixture_version` are both `2.0`; update authoritative Pydantic models, generated
 contracts, and this fixture together. The fixture contains the evidence pool for all
 branches; each snapshot selects its applicable evidence IDs. Negative and positive
 observations must never be combined into the displayed case.
@@ -279,14 +267,14 @@ invalidated dependent evidence in the timeline. Editing/rejecting an upstream an
 retires the previous downstream answers and resumes discovery at the correct branch;
 old rankings are cleared until that branch is completed and diagnosed again.
 Other eligible corrections immediately recompute scores, missing evidence, findings,
-and recommendation. Rejecting image evidence also retires its derived undersizing
+and recommendation. Rejecting image evidence also retires its derived spray-defect
 contribution and disables inspection based on that image. A pending outcome is cleared.
 Either confirmed inspection outcome locks corrections; later corrections need a new case.
 
 The diagnosis ledger filters by source and status, retains rejected evidence, and
 allows review of raw machine records after diagnosis. The inspection screen also
 offers evidence review before confirmation. The lazy-loaded Three.js viewer builds
-seven named meshes matching the M0 semantic IDs, with shared camera presets. Play
+named spray-assembly meshes matching shared semantic IDs, with shared camera presets. Play
 advances every five seconds and stops at the final step. Manual navigation, camera
 interaction, mode changes, and reduced-motion changes pause playback. Reduced motion
 uses immediate camera updates and disables autoplay/pulsing. Keyboard-accessible
@@ -335,3 +323,11 @@ written to `artifacts/demo/live-browser/`. No key enters the browser.
 The pending M0 freeze can be reviewed using [the review package](M0_CONTRACT_REVIEW.md).
 `node scripts/contract-review.mjs` prepares its exact candidate hashes; `--check`
 verifies that the reviewed material has not changed. Neither command grants acceptance.
+
+## Version 2 flux scenario
+
+Run `uv run python scripts/build_flux_fixture.py` to rebuild the shared synthetic storyboard from independent raster measurements and hypothesis-keyed scoring rules. Version 1 fixtures are compatibility history, not active demo content.
+
+The `verify` action accepts `checks`: synthetic profile, setup/calibration results, weight/pressure compliance, limits reference, lanes A/B with all-unit acceptance, subsequent-tray requirements and explicit confirmation. Missing checks cannot pass. Two confirmed calibration failures block retries. `complete_action` records nozzle cleaning or replacement. Scenario/rules versions are 2.0; the observed ingestion format remains v1.
+
+Untagged/version 1 cases load without normalization or storage writes and reject all actions. Archived dots render directly from stored measurements, avoiding confusion with the new normal spray image. No database reset or migration is needed. Expert feedback received; revised procedure approval and fresh joint contract review remain pending.

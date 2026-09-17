@@ -1,3 +1,14 @@
+> **17 September 2026: active baseline changed.** Expert feedback replaces epoxy-dot dispensing with S-932 / DJ-2200 flux spraying. See [critical review](EXPERT_REVIEW.md). Historical entries below describe earlier work; version 2 joint review and revised procedure approval remain pending.
+
+## 17 September 2026 - Flux scenario implementation and validation
+
+- Replaced the active epoxy-dot scenario with version 2 flux-spray measurements, five cause families, BFS/DJ-2200/air-cap geometry, nozzle-only inspection, and structured recovery gates. Both offline outcomes require confirmation.
+- Preserved version 1 cases as read-only without changing stored payloads. The observed log parser remains unchanged.
+- Validation: `npm run check` passed (lint, types, nine parser tests, 127 API tests, generated contracts, production build). On this Windows environment, pytest used fresh workspace-local temporary/cache directories because the existing system temp folder denied access.
+- Browser validation: 37 tests passed in the full run; the remaining test passed after correcting its calibration combobox selector. All 38 scenarios passed across those runs, including escalation persistence, archived-case controls, responsive layouts, WebGL fallback, playback and both inspection branches. Procedure and recovery screenshots were visually reviewed.
+- Shared golden-fixture tests and contract-review hash consistency passed after the final provenance update. Live provider calls were not rerun; reasoning coverage/citation/fallback behavior was validated with mocked provider tests.
+- Build retains the existing large lazy Three.js chunk warning. Expert procedure approval and joint acceptance of the new candidate remain pending; no acceptance or release was inferred from automated checks.
+
 # Milestone development log
 
 Track implementation progress, decisions, verification, and developer handoffs here.

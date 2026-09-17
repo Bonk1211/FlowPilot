@@ -13,16 +13,16 @@ are committed. Record the final reviewed commit when the candidate is committed.
 | Area | Candidate to review | Required agreement |
 | --- | --- | --- |
 | Evidence | `investigations/models.py`, generated contracts | Source, timestamp, units (including per-field maps), provisional/verified/rejected meanings |
-| Findings | `diagnosis/models.py`, `diagnosis/reasoning.py` | Three named hypotheses, two specialist roles, critic, citation validation, explicit known uncertainty, whole-run fallback |
+| Findings | `diagnosis/models.py`, `diagnosis/reasoning.py` | Five named hypotheses, two specialist roles, critic, citation validation, explicit known uncertainty, whole-run fallback |
 | Workflow | `cases.py`, `golden.py`, scoring rules | Scores are points, not probabilities; both outcomes require confirmation; negative inspection completion precedes reassessment; verification gates resolution |
 | Corrections | `cases.py`, generated `CorrectEvidence` | Preserve history, retire dependent answers, reject immutable machine/image values, clear pending observation, lock after either confirmed outcome |
-| Procedure | `procedures/models.py`, frontend `prototype/model.ts` | Seven semantic nodes, shared camera presets, illustrative text/2D fallback; no approved removal procedure is claimed |
-| Golden fixture | `fixtures/v1/golden-scenario.json` | Version 1.0, shared API/frontend source, branch evidence isolation, parity with deterministic initial scores |
+| Procedure | `procedures/models.py`, frontend `prototype/model.ts` | Flux-spray semantic nodes, shared camera presets, illustrative text/2D fallback; no approved removal procedure is claimed |
+| Golden fixture | `fixtures/v2/golden-scenario.json` | Version 2.0, shared API/frontend source, branch evidence isolation, parity with deterministic initial scores |
 | Ownership | PRD section 16 | A owns contracts/execution; B owns presentation; both own fixture changes and integration |
 
 The M2 case/reasoning additions are included because implementation proceeded before
 M0 sign-off. Review the current boundary rather than retroactively accepting only
-the earlier M0 snapshot. Golden schema/fixture versions remain 1.0; case API additions
+the earlier M0 snapshot. Golden schema/fixture versions are now 2.0; case API additions
 are represented in the regenerated OpenAPI and TypeScript contracts.
 
 ## Verification and acceptance
@@ -40,3 +40,5 @@ are represented in the regenerated OpenAPI and TypeScript contracts.
 
 If covered files change, run `node scripts/contract-review.mjs`, review the diff,
 and obtain acceptance for the new hash. Prior acceptance does not transfer silently.
+
+Version 2 requires fresh review of spray measurements, nozzle-only inspection, structured recovery and legacy read-only behavior. Expert feedback received; revised procedure approval remains pending. Historical acceptance does not transfer.

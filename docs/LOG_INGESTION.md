@@ -106,3 +106,7 @@ Before using this adapter beyond the demo:
 - support incremental tail ingestion with a persisted byte offset and partial-line buffer;
 - deduplicate retries using the source digest plus source position;
 - monitor unknown-event rate so a vendor software update cannot silently reduce extraction coverage.
+
+## Expert feedback boundary (17 September 2026)
+
+Potential fields include flux weight (mg), fluid/coaxial/valve pressures (psi), setup/calibration events, material identity/pot life and level switches. No original exports for them were supplied. Keep the observed parser unchanged; do not infer these facts from timing, alignment or height events. Discovery answers are attributed technician reports and recovery checks are simulated observations, not imported telemetry. See [EXPERT_REVIEW.md](EXPERT_REVIEW.md).
