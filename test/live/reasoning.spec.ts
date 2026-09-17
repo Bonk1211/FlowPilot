@@ -65,8 +65,8 @@ for (const outcome of ["Obstruction found", "No obstruction found"]) {
     await page
       .getByRole("button", { name: "Start illustrative inspection" })
       .click();
-    await page.getByRole("button", { name: "Next step", exact: true }).click();
-    await page.getByRole("button", { name: "Next step", exact: true }).click();
+    const next = page.getByRole("button", { name: "Next step", exact: true });
+    while (await next.isEnabled()) await next.click();
     await act(page, () =>
       page.getByRole("button", { name: outcome, exact: true }).click(),
     );
@@ -89,7 +89,7 @@ for (const outcome of ["Obstruction found", "No obstruction found"]) {
       outcome === "Obstruction found" ? "cause_confirmed" : "diagnosing",
     );
     expect(confirmed.recommendation?.id ?? null).toBe(
-      outcome === "Obstruction found" ? null : "material",
+      outcome === "Obstruction found" ? null : "air_supply",
     );
     await page.reload();
     expect(
@@ -103,6 +103,12 @@ for (const outcome of ["Obstruction found", "No obstruction found"]) {
       await act(page, () =>
         page.getByRole("button", { name: "Record action complete" }).click(),
       );
+      await page
+        .getByRole("button", { name: "Use simulated passing check results" })
+        .click();
+      await page
+        .getByLabel("I confirm these simulated recovery observations.")
+        .check();
       await act(page, () =>
         page
           .getByRole("button", { name: "Measure verification sample" })
