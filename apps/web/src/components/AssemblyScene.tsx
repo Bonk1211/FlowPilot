@@ -17,7 +17,7 @@ function assembly() {
   const group = new THREE.Group();
   const parts: [keyof typeof modelNodes, THREE.BufferGeometry, number[]][] = [
     [
-      "fluid_reservoir",
+      "bfs_bottle",
       new THREE.CylinderGeometry(0.55, 0.55, 1.3, 32),
       [-1.8, 1.6, 0],
     ],
@@ -37,13 +37,19 @@ function assembly() {
       ),
       [0, 0, 0],
     ],
-    ["jet_actuator", new THREE.BoxGeometry(0.9, 1.3, 0.8), [0, 0.65, 0]],
+    ["dj2200_valve", new THREE.BoxGeometry(0.9, 2, 0.8), [0, 0.3, 0]],
     [
-      "service_cartridge",
-      new THREE.CylinderGeometry(0.36, 0.36, 0.65, 32),
-      [0, -0.35, 0],
+      "fluid_qd",
+      new THREE.CylinderGeometry(0.18, 0.18, 0.4, 24),
+      [-0.8, 0.8, 0],
     ],
     ["nozzle", new THREE.CylinderGeometry(0.24, 0.07, 0.6, 24), [0, -0.975, 0]],
+    [
+      "pickup_tube",
+      new THREE.CylinderGeometry(0.04, 0.04, 1, 12),
+      [-1.8, 1.4, 0.4],
+    ],
+    ["air_cap", new THREE.TorusGeometry(0.28, 0.08, 12, 24), [0, -1.05, 0]],
     ["vision_camera", new THREE.BoxGeometry(0.65, 0.65, 0.9), [1.35, -0.3, 0]],
     ["substrate_tray", new THREE.BoxGeometry(3.7, 0.12, 2), [0, -1.75, 0]],
   ];
@@ -60,6 +66,57 @@ function assembly() {
     mesh.position.set(position[0], position[1], position[2]);
     group.add(mesh);
   }
+  const airPaths: [keyof typeof modelNodes, THREE.Vector3[], number][] = [
+    [
+      "coaxial_air",
+      [
+        new THREE.Vector3(2, 1.6, 0),
+        new THREE.Vector3(0.7, 0, 0),
+        new THREE.Vector3(0, -1.05, 0),
+      ],
+      0x175b70,
+    ],
+    [
+      "valve_air",
+      [new THREE.Vector3(1.8, 2, 0), new THREE.Vector3(0, 1.2, 0)],
+      0x8b5a19,
+    ],
+    [
+      "bfs_air",
+      [new THREE.Vector3(-3, 2.4, 0), new THREE.Vector3(-1.8, 2.25, 0)],
+      0x78549c,
+    ],
+  ];
+  for (const [id, points, color] of airPaths) {
+    const tube = new THREE.Mesh(
+      new THREE.TubeGeometry(
+        new THREE.CatmullRomCurve3(points),
+        24,
+        0.05,
+        8,
+        false,
+      ),
+      new THREE.MeshStandardMaterial({ color }),
+    );
+    tube.name = id;
+    tube.userData.baseColor = color;
+    group.add(tube);
+  }
+  const cap = group.getObjectByName("air_cap");
+  if (cap) cap.rotation.x = Math.PI / 2;
+  const qd = group.getObjectByName("fluid_qd");
+  if (qd) qd.rotation.z = Math.PI / 2;
+  const plume = new THREE.Mesh(
+    new THREE.ConeGeometry(0.35, 0.4, 24),
+    new THREE.MeshStandardMaterial({
+      color: 0x94b8c4,
+      transparent: true,
+      opacity: 0.25,
+    }),
+  );
+  plume.position.set(0, -1.475, 0);
+  plume.userData.baseColor = 0x94b8c4;
+  group.add(plume);
   return group;
 }
 
@@ -161,7 +218,11 @@ export default function AssemblyScene({
         >;
         const active = part.name === state.highlight && state.kind !== "none";
         mesh.material.color.setHex(
-          active ? (state.kind === "warning" ? 0xf5ab5f : 0x5bdbc3) : 0x78999f,
+          active
+            ? state.kind === "warning"
+              ? 0xf5ab5f
+              : 0x5bdbc3
+            : (mesh.userData.baseColor ?? 0x78999f),
         );
         mesh.material.emissive.setHex(active ? 0x245c50 : 0x000000);
         mesh.material.emissiveIntensity =

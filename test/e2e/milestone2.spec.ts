@@ -7,7 +7,7 @@ import {
 
 async function diagnosed(request: APIRequestContext, page: Page) {
   const created = await request.post("/api/investigations", {
-    data: { report: "Synthetic viewer regression", sample_id: "undersized" },
+    data: { report: "Synthetic viewer regression", sample_id: "incomplete" },
   });
   let value = await created.json();
   const url = `/api/investigations/${value.investigation.id}`;
@@ -39,11 +39,12 @@ test("rejected image evidence has its own recovery state after reload", async ({
   request,
 }) => {
   const url = await diagnosed(request, page);
-  const row = page
-    .locator(".prototype-ledger-row")
-    .filter({
-      has: page.getByRole("heading", { name: "undersized", exact: true }),
-    });
+  const row = page.locator(".prototype-ledger-row").filter({
+    has: page.getByRole("heading", {
+      name: "incomplete coverage",
+      exact: true,
+    }),
+  });
   await row.getByText("Correct this evidence", { exact: true }).click();
   await row.getByLabel("Correction reason").fill("Invalid image evidence");
   await row.getByRole("checkbox").check();
@@ -86,7 +87,7 @@ test("ranking and specialist citations reveal and focus evidence through both fi
   const saved = await (await request.get(url)).json();
   const evidenceId = (key: string) =>
     saved.investigation.evidence.find((e: { key: string }) => e.key === key).id;
-  const imageId = evidenceId("undersized");
+  const imageId = evidenceId("incomplete_coverage");
   const answerId = evidenceId("continuous");
   await page.getByLabel("Evidence source").selectOption("technician_input");
   await page.getByLabel("Evidence status").selectOption("verified");
@@ -94,13 +95,11 @@ test("ranking and specialist citations reveal and focus evidence through both fi
   await expect(page.locator(`[id="${imageId}"]`)).toBeFocused();
   await expect(page.getByLabel("Evidence source")).toHaveValue("all");
   await expect(page.getByLabel("Evidence status")).toHaveValue("all");
-  const finding = page
-    .locator("details")
-    .filter({
-      has: page.locator("summary", {
-        hasText: "fluid path specialist · trapped air bubble",
-      }),
-    });
+  const finding = page.locator("details").filter({
+    has: page.locator("summary", {
+      hasText: "fluid path specialist · fluid supply fault",
+    }),
+  });
   await finding.locator(":scope > summary").click();
   for (const [id, source, status] of [
     [imageId, "technician_input", "verified"],
@@ -137,12 +136,12 @@ test("editing evidence invalidates the old branch and filters retained history",
   await row.getByRole("button", { name: "Save correction" }).click();
   await expect(
     page.getByRole("heading", {
-      name: "Do normal dots return between affected runs?",
+      name: "Does flux weight pass despite blobs or droplets?",
     }),
   ).toBeVisible();
   for (const answer of [
     "Yes",
-    "No known change",
+    "Stable / no known change",
     "Not recorded",
     "Not recorded",
   ]) {
@@ -150,7 +149,7 @@ test("editing evidence invalidates the old branch and filters retained history",
   }
   await page.getByRole("button", { name: "Diagnose case" }).click();
   await expect(
-    page.getByRole("heading", { name: "1. Trapped air bubble" }),
+    page.getByRole("heading", { name: "1. Coaxial-air / atomization fault" }),
   ).toBeVisible();
   await page.getByLabel("Evidence status").selectOption("rejected");
   await expect(page.locator(".prototype-ledger-row")).toHaveCount(5);
@@ -159,7 +158,7 @@ test("editing evidence invalidates the old branch and filters retained history",
   ).toHaveCount(0);
   await page.reload();
   await expect(
-    page.getByRole("heading", { name: "1. Trapped air bubble" }),
+    page.getByRole("heading", { name: "1. Coaxial-air / atomization fault" }),
   ).toBeVisible();
   await page.getByText("Case timeline · saved history").click();
   await expect(page.locator(".prototype-timeline")).toContainText(
@@ -171,13 +170,14 @@ test("3D highlights, camera controls, playback and final confirmation stay synch
   page,
   request,
 }, testInfo) => {
+  test.setTimeout(60000);
   await diagnosed(request, page);
   await page
     .getByRole("button", { name: "Start illustrative inspection" })
     .click();
   const canvas = page.locator(".assembly-canvas");
   await expect(canvas.locator("canvas")).toBeVisible();
-  await expect(canvas).toHaveAttribute("data-node-id", "jet_actuator");
+  await expect(canvas).toHaveAttribute("data-node-id", "substrate_tray");
   await expect(
     page.getByRole("button", { name: "Obstruction found", exact: true }),
   ).toBeDisabled();
@@ -196,18 +196,18 @@ test("3D highlights, camera controls, playback and final confirmation stay synch
     await page.getByRole("button", { name: control, exact: true }).click();
   }
   await page.getByRole("button", { name: "Next step", exact: true }).click();
-  await expect(canvas).toHaveAttribute("data-node-id", "service_cartridge");
+  await expect(canvas).toHaveAttribute("data-node-id", "bfs_bottle");
   await expect(canvas).toHaveAttribute(
     "data-camera-preset",
-    "cartridge_closeup",
+    "assembly_overview",
   );
   await page.screenshot({
     path: testInfo.outputPath("m2-desktop-3d.png"),
     fullPage: true,
   });
   await page.getByRole("button", { name: "Play guide" }).click();
-  await expect(canvas).toHaveAttribute("data-node-id", "nozzle", {
-    timeout: 7000,
+  await expect(canvas).toHaveAttribute("data-node-id", "dj2200_valve", {
+    timeout: 18000,
   });
   await expect(page.getByRole("button", { name: "Play guide" })).toBeDisabled();
   await expect(
@@ -216,11 +216,11 @@ test("3D highlights, camera controls, playback and final confirmation stay synch
   await page
     .getByRole("button", { name: "Previous step", exact: true })
     .click();
-  await expect(canvas).toHaveAttribute("data-node-id", "service_cartridge");
+  await expect(canvas).toHaveAttribute("data-node-id", "nozzle");
   await page.getByRole("button", { name: "Use 2D view" }).click();
   await expect(
     page.getByRole("img", {
-      name: "Dispensing assembly. Highlighted part: Service cartridge",
+      name: "Dispensing assembly. Highlighted part: Nozzle",
     }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Use 3D view" }).click();
@@ -246,7 +246,7 @@ test("reduced motion and mobile keep keyboard and 2D alternatives", async ({
   await page.keyboard.press("Enter");
   await expect(page.locator(".assembly-canvas")).toHaveAttribute(
     "data-node-id",
-    "service_cartridge",
+    "bfs_bottle",
   );
   expect(
     await page.evaluate(
@@ -276,16 +276,17 @@ test("WebGL context loss preserves step and observation gates", async ({
   ).toBeVisible();
   await expect(
     page.getByRole("img", {
-      name: "Dispensing assembly. Highlighted part: Jet actuator",
+      name: "Dispensing assembly. Highlighted part: Substrate tray",
     }),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Obstruction found", exact: true }),
   ).toBeDisabled();
   await page.getByRole("button", { name: "Next step", exact: true }).click();
-  await expect(
-    page.locator('svg [data-node-id="service_cartridge"]'),
-  ).toHaveAttribute("data-highlighted", "true");
+  await expect(page.locator('svg [data-node-id="bfs_bottle"]')).toHaveAttribute(
+    "data-highlighted",
+    "true",
+  );
 });
 
 test("unavailable WebGL and unknown semantic mappings use the fallback", async ({
@@ -360,7 +361,7 @@ test("negative confirmation locks correction controls after reload", async ({
   ).toHaveCount(0);
   await expect(
     page.getByRole("heading", {
-      name: "Review material temperature and viscosity",
+      name: "Air-cap and pressure-supply checks",
     }),
   ).toBeVisible();
 });
@@ -373,8 +374,13 @@ test("correction before confirmation cancels the pending observation", async ({
   await page
     .getByRole("button", { name: "Start illustrative inspection" })
     .click();
-  await page.getByRole("button", { name: "Next step", exact: true }).click();
-  await page.getByRole("button", { name: "Next step", exact: true }).click();
+  while (
+    await page
+      .getByRole("button", { name: "Next step", exact: true })
+      .isEnabled()
+  ) {
+    await page.getByRole("button", { name: "Next step", exact: true }).click();
+  }
   await page
     .getByRole("button", { name: "Obstruction found", exact: true })
     .click();

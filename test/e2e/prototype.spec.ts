@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import golden from "../../fixtures/v1/golden-scenario.json" with { type: "json" };
+import golden from "../../fixtures/v2/golden-scenario.json" with { type: "json" };
 import { cameraPresets, modelNodes } from "../../apps/web/src/prototype/model";
 
 async function reachDiagnosis(page: Page, intermittent = false) {
@@ -8,19 +8,19 @@ async function reachDiagnosis(page: Page, intermittent = false) {
   await page.getByRole("button", { name: "Continue", exact: true }).click();
   await page
     .getByRole("button", {
-      name: intermittent ? "Intermittent" : "Continuous",
+      name: intermittent ? "Blobs or line-end droplets" : "Incomplete coverage",
       exact: true,
     })
     .click();
   await expect(
     page.getByRole("heading", {
       name: intermittent
-        ? "Do normal dots return between affected runs?"
-        : "Has the undersizing persisted across trays?",
+        ? "Does flux weight pass despite blobs or droplets?"
+        : "Has measured flux weight been falling?",
     }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Yes", exact: true }).click();
-  await page.getByRole("button", { name: "No known change" }).click();
+  await page.getByRole("button", { name: "Stable / no known change" }).click();
   await page.getByRole("button", { name: "Not recorded", exact: true }).click();
   await page.getByRole("button", { name: "Not recorded", exact: true }).click();
   await page.getByRole("button", { name: "Continue", exact: true }).click();
@@ -49,7 +49,7 @@ async function inspect(page: Page) {
 }
 
 test("semantic assembly and camera contracts cover every procedure step", () => {
-  expect(Object.keys(modelNodes)).toHaveLength(7);
+  expect(Object.keys(modelNodes)).toHaveLength(15);
   for (const step of golden.procedure_steps) {
     expect(modelNodes).toHaveProperty(step.model_node_id);
     expect(cameraPresets).toHaveProperty(step.camera_preset);
@@ -76,6 +76,7 @@ test("positive journey preserves confirmation, action, verification and reset ga
   await page
     .getByRole("button", { name: "Record simulated action complete" })
     .click();
+  await page.getByRole("checkbox").check();
   await page
     .getByRole("button", { name: "Run simulated verification" })
     .click();
@@ -104,15 +105,22 @@ test("negative branch stays open and changes the recommendation", async ({
     .getByRole("button", { name: "No obstruction found", exact: true })
     .click();
   await expect(
-    page.getByRole("heading", { name: "1. Material viscosity change" }),
+    page.getByRole("button", { name: "Confirm demo observation" }),
+  ).toBeDisabled();
+  await page.getByRole("checkbox").check();
+  await page.getByRole("button", { name: "Confirm demo observation" }).click();
+  await expect(
+    page.getByRole("heading", { name: "1. Fluid-pressure / BFS supply fault" }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", {
-      name: "Review material temperature and viscosity",
+      name: "Air-cap and pressure-supply checks",
     }),
   ).toBeVisible();
   await expect(page.getByText(/Case remains open/)).toBeVisible();
-  await page.getByText("Snapshot timeline · precomputed", { exact: true }).click();
+  await page
+    .getByText("Snapshot timeline · precomputed", { exact: true })
+    .click();
   const timelineEntries = page.locator(".prototype-timeline li");
   const count = await timelineEntries.count();
   await expect(timelineEntries.nth(count - 2)).toContainText(
@@ -144,13 +152,13 @@ test("an unavailable model node retains accessible procedure instructions", asyn
     page.getByText(/Diagram unavailable for this part/),
   ).toBeVisible();
   await expect(
-    page.getByRole("heading", { name: "Locate the dispensing assembly" }),
+    page.getByRole("heading", { name: "Stop and contain affected material" }),
   ).toBeVisible();
   await expect(page.locator('g[data-highlighted="true"]')).toHaveCount(0);
   await page.getByRole("button", { name: "Next step", exact: true }).click();
   await expect(page.locator('g[data-highlighted="true"]')).toHaveAttribute(
     "data-node-id",
-    "service_cartridge",
+    "bfs_bottle",
   );
 });
 
@@ -183,7 +191,7 @@ for (const width of [1440, 1280, 375]) {
     await page.keyboard.press("Enter");
     await expect(page.locator('g[data-highlighted="true"]')).toHaveAttribute(
       "data-node-id",
-      "service_cartridge",
+      "nozzle",
     );
   });
 }

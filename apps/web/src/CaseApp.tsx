@@ -23,115 +23,14 @@ import { EvidenceCorrection } from "./components/EvidenceCorrection";
 import { candidateValue, humanize } from "./presentation";
 import "./prototype/prototype.css";
 import "./case.css";
+import { sampleNames, emptyRecovery } from "./fluxModel";
+import { SprayMeasurement as ImageMeasurement } from "./components/SprayMeasurement";
+import { RecoveryForm } from "./components/RecoveryForm";
 
 type WithoutRevision<T> = T extends unknown ? Omit<T, "revision"> : never;
 type Command = WithoutRevision<CaseAction>;
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "The request failed. Try again.";
-const sampleNames = {
-  normal: "Normal dots",
-  undersized: "Undersized dots",
-  oversized: "Oversized dots",
-  missing: "Missing dot",
-};
-
-function ImageMeasurement({
-  value,
-  title,
-}: {
-  value: Measurement;
-  title: string;
-}) {
-  return (
-    <figure className="prototype-image">
-      <figcaption>{title} · Measured synthetic raster</figcaption>
-      <svg
-        viewBox={`0 0 ${value.width} ${value.height}`}
-        role="img"
-        aria-label={`${sampleNames[value.sample_id]}: ${value.abnormal_count} abnormal locations`}
-      >
-        <image
-          href={value.image_url}
-          width={value.width}
-          height={value.height}
-        />
-        {value.dots
-          .filter((dot) => dot.classification !== "normal")
-          .map((dot) => (
-            <g key={dot.id}>
-              <circle
-                cx={dot.x}
-                cy={dot.y}
-                r={Math.max(12, dot.diameter_px / 2 + 4)}
-                className="dot-overlay"
-              />
-              <title>
-                {dot.id}: {dot.classification}
-              </title>
-            </g>
-          ))}
-      </svg>
-      <p>
-        Dashed outlines identify abnormal or missing dots. Expected diameter:
-        28–32 px.
-      </p>
-      <dl className="prototype-metrics">
-        <div>
-          <dt>Mean diameter</dt>
-          <dd>{value.mean_diameter_px} px</dd>
-        </div>
-        <div>
-          <dt>Deviation from 30 px</dt>
-          <dd>{value.deviation_px} px</dd>
-        </div>
-        <div>
-          <dt>Size variation (SD)</dt>
-          <dd>{value.variation_px} px</dd>
-        </div>
-        <div>
-          <dt>Mean position error</dt>
-          <dd>{value.mean_position_error_px} px</dd>
-        </div>
-        <div>
-          <dt>Shape consistency</dt>
-          <dd>{value.mean_shape_consistency}</dd>
-        </div>
-        <div>
-          <dt>Abnormal / expected</dt>
-          <dd>
-            {value.abnormal_count} / {value.dots.length}
-          </dd>
-        </div>
-        <div>
-          <dt>Missing dots</dt>
-          <dd>{value.missing_count}</dd>
-        </div>
-      </dl>
-      <p>
-        {value.passed
-          ? "Within the controlled golden range."
-          : "Defect risk: measured abnormalities need review."}
-      </p>
-      <small>
-        Shape consistency = filled area / fitted-circle area, capped at 1.
-        Diameter, variation, position and shape exclude missing dots; missing
-        locations are counted separately. Measurements are in image pixels, not
-        calibrated physical units.
-      </small>
-      <details>
-        <summary>Dot measurements</summary>
-        <ul>
-          {value.dots.map((dot) => (
-            <li key={dot.id}>
-              {dot.id}: {dot.classification}, {dot.diameter_px} px
-            </li>
-          ))}
-        </ul>
-      </details>
-    </figure>
-  );
-}
-
 function Diagnosis({
   value,
   onCorrect,
@@ -374,10 +273,11 @@ function Diagnosis({
           </>
         )}
         {inspection?.value === "no_obstruction_found" &&
-          value.recommendation?.id === "material" && (
+          value.recommendation?.id === "air_supply" && (
             <p role="status">
-              Case remains open. Material review is the next handoff; further
-              repair workflows require additional reviewed procedures.
+              Case remains open. Air-cap and pressure-supply review is the next
+              handoff; further repair workflows require additional reviewed
+              procedures.
             </p>
           )}
       </aside>
@@ -389,9 +289,9 @@ export function CaseApp() {
   const [value, setValue] = useState<Case | null>(null);
   const [images, setImages] = useState<Measurement[]>([]);
   const [scenario, setScenario] = useState<DemoScenario | null>(null);
-  const [sample, setSample] = useState<Measurement["sample_id"]>("undersized");
+  const [sample, setSample] = useState<Measurement["sample_id"]>("incomplete");
   const [report, setReport] = useState(
-    "The latest inspected tray has consistently undersized epoxy dots.",
+    "The latest inspected tray has declining flux spray coverage.",
   );
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -406,6 +306,10 @@ export function CaseApp() {
   const [ack, setAck] = useState(false);
   const [verificationSample, setVerificationSample] =
     useState<Measurement["sample_id"]>("normal");
+  const [checks, setChecks] = useState(emptyRecovery);
+  const [correctiveAction, setCorrectiveAction] = useState<
+    "nozzle_cleaning" | "nozzle_replacement"
+  >("nozzle_replacement");
   const heading = useRef<HTMLHeadingElement>(null);
   const retainedLog = useRef<HTMLDetailsElement>(null);
   const lock = useRef(false);
@@ -502,13 +406,68 @@ export function CaseApp() {
           : phase === "Verify"
             ? "Verify the recovery"
             : inspecting && state === "inspection_recommended"
-              ? "Inspect the cartridge and nozzle"
+              ? "Inspect the nozzle and air cap"
               : value.ranking.length
                 ? "Review the diagnosis"
                 : "Review intake and discovery";
   const selected = images.find((i) => i.sample_id === sample);
   const mayAttach = value && !value.log && !value.ranking.length;
 
+  if (value?.scenario_version === "1.0")
+    return (
+      <ApplicationFrame investigation={value.investigation} phase="Archive">
+        <main id="main" className="case-workspace prototype-app">
+          <h1>Archived epoxy investigation</h1>
+          <p role="status">
+            Read-only legacy case. Original evidence and results are preserved.
+          </p>
+          <a href="/">Start a new flux investigation</a>
+          <h2>{value.investigation.title}</h2>
+          <ImageMeasurement
+            value={value.measurement}
+            title="Original measurement"
+          />
+          {value.verification && (
+            <ImageMeasurement
+              value={value.verification}
+              title="Original verification"
+            />
+          )}
+          {value.summary && (
+            <section>
+              <h2>Original summary</h2>
+              <pre style={{ whiteSpace: "pre-wrap" }}>
+                {JSON.stringify(value.summary, null, 2)}
+              </pre>
+            </section>
+          )}
+          <section>
+            <h2>Original evidence and rankings</h2>
+            <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+              {JSON.stringify(
+                {
+                  evidence: value.investigation.evidence,
+                  ranking: value.ranking,
+                  findings: value.findings,
+                },
+                null,
+                2,
+              )}
+            </pre>
+          </section>
+          <section>
+            <h2>Original timeline</h2>
+            <ol>
+              {value.timeline.map((entry, i) => (
+                <li key={i}>
+                  {entry.timestamp} ? {entry.description}
+                </li>
+              ))}
+            </ol>
+          </section>
+        </main>
+      </ApplicationFrame>
+    );
   return (
     <ApplicationFrame investigation={value?.investigation} phase={phase}>
       <main id="main" tabIndex={-1} className="case-workspace prototype-app">
@@ -604,8 +563,8 @@ export function CaseApp() {
                 </select>
                 <p>
                   All samples are generated demo images. This demo diagnoses the
-                  undersizing scenario; other samples demonstrate measured
-                  defect detection.
+                  flux-spray scenario; measurements do not establish a root
+                  cause.
                 </p>
                 <button
                   className="primary"
@@ -631,8 +590,9 @@ export function CaseApp() {
                   {!value.diagnosis_supported && (
                     <p role="status">
                       This sample is measured, but its diagnosis is outside the
-                      controlled undersizing rules. Start another case with the
-                      undersized sample to explore the complete journey.
+                      controlled defect rules. Start another case with the
+                      incomplete-coverage sample to explore the complete
+                      journey.
                     </p>
                   )}
                   {mayAttach && (
@@ -920,8 +880,27 @@ export function CaseApp() {
               {state === "cause_confirmed" && (
                 <section className="prototype-question">
                   <h2>Obstruction confirmed</h2>
+                  <label>
+                    Simulated corrective action
+                    <select
+                      value={correctiveAction}
+                      onChange={(e) =>
+                        setCorrectiveAction(
+                          e.target.value as typeof correctiveAction,
+                        )
+                      }
+                    >
+                      <option value="nozzle_replacement">
+                        Nozzle replacement
+                      </option>
+                      <option value="nozzle_cleaning">
+                        Approved nozzle cleaning
+                      </option>
+                    </select>
+                  </label>
                   <p>
-                    Record the simulated site-approved cartridge replacement.
+                    Record simulated nozzle cleaning or replacement under the
+                    applicable site procedure.
                   </p>
                   <p className="prototype-caution">
                     Expert review pending. Follow the approved site procedure;
@@ -939,7 +918,11 @@ export function CaseApp() {
                     className="primary"
                     disabled={!ack}
                     onClick={() =>
-                      command({ action: "complete_action", confirmed: true })
+                      command({
+                        action: "complete_action",
+                        confirmed: true,
+                        corrective_action: correctiveAction,
+                      })
                     }
                   >
                     Record action complete
@@ -962,18 +945,30 @@ export function CaseApp() {
                       <section>
                         <h2>Measure the post-action sample</h2>
                         <p>
-                          Passing requires all expected dots within the golden
-                          range, with none missing.
+                          Passing requires accepted spray coverage and all
+                          required recovery checks.
                         </p>
                       </section>
                     )}
                   </div>
                   {state === "corrective_action_completed" && (
                     <section className="case-section">
-                      {value.verification && !value.verification.passed && (
+                      {value.verification && (
                         <p role="status">
                           Verification failed. The case remains open.
                         </p>
+                      )}
+                      <p>
+                        Calibration attempts: {value.calibration_attempts};
+                        failures: {value.calibration_failures}.
+                      </p>
+                      {value.escalated ? (
+                        <p role="alert">
+                          Two calibration failures require maintenance
+                          escalation. Ordinary retries are blocked.
+                        </p>
+                      ) : (
+                        <RecoveryForm value={checks} onChange={setChecks} />
                       )}
                       <label htmlFor="verification-sample">
                         Verification sample
@@ -995,10 +990,12 @@ export function CaseApp() {
                       </select>
                       <button
                         className="primary"
+                        disabled={value.escalated || !checks.confirmed}
                         onClick={() =>
                           command({
                             action: "verify",
                             sample_id: verificationSample,
+                            checks,
                           })
                         }
                       >

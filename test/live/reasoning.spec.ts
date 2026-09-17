@@ -21,16 +21,16 @@ for (const outcome of ["Obstruction found", "No obstruction found"]) {
     await page.goto("/");
     await page
       .getByLabel("Operator report")
-      .fill("Synthetic live acceptance: consistently undersized epoxy dots.");
+      .fill("Synthetic live acceptance: declining flux spray coverage.");
     await page
       .getByRole("button", { name: "Start investigation", exact: true })
       .click();
     await expect(page).toHaveURL(/\?case=CASE-/);
     const id = new URL(page.url()).searchParams.get("case")!;
     for (const name of [
-      "Continuous",
+      "Incomplete coverage",
       "Yes",
-      "No known change",
+      "Stable / no known change",
       "Not recorded",
       "Not recorded",
     ]) {

@@ -6,11 +6,12 @@ import {
   Flask,
 } from "@phosphor-icons/react";
 import type { GoldenScenario, GoldenSnapshot } from "@flowpilot/contracts";
-import goldenJson from "../../../../fixtures/v1/golden-scenario.json";
+import goldenJson from "../../../../fixtures/v2/golden-scenario.json";
 import { loadGoldenScenario } from "../api";
 import { candidateValue, humanize } from "../presentation";
 import { ProcedureDiagram } from "./ProcedureDiagram";
 import "./prototype.css";
+import { SprayMeasurement } from "../components/SprayMeasurement";
 
 // JSON imports widen string literals. Backend validation and parity tests enforce this boundary.
 const bundled = goldenJson as GoldenScenario;
@@ -38,51 +39,7 @@ const phaseIndex = (screen: GoldenSnapshot["screen"]) =>
   })[screen];
 
 function ImageReview({ image }: { image: GoldenScenario["images"][number] }) {
-  return (
-    <figure className="prototype-image">
-      <figcaption>{image.label} · Synthetic image</figcaption>
-      <svg
-        viewBox={`0 0 ${image.width} ${image.height}`}
-        role="img"
-        aria-label={`${image.label}: ${image.quality_summary}`}
-      >
-        {image.dots.map((dot) => (
-          <g key={dot.id}>
-            <circle
-              cx={dot.x}
-              cy={dot.y}
-              r={dot.diameter_px / 2}
-              className="sample-dot"
-            />
-            {dot.classification !== "normal" && (
-              <circle cx={dot.x} cy={dot.y} r={18} className="dot-overlay" />
-            )}
-          </g>
-        ))}
-      </svg>
-      <p>{image.quality_summary}</p>
-      <dl className="prototype-metrics">
-        <div>
-          <dt>Mean diameter</dt>
-          <dd>{image.mean_diameter_px} px</dd>
-        </div>
-        <div>
-          <dt>Variation</dt>
-          <dd>{image.variation_px} px</dd>
-        </div>
-        <div>
-          <dt>Golden range</dt>
-          <dd>
-            {image.golden_min_px}–{image.golden_max_px} px
-          </dd>
-        </div>
-      </dl>
-      <small>
-        Outline = abnormal dot. Ground truth and measurements are precomputed
-        fixtures.
-      </small>
-    </figure>
-  );
+  return <SprayMeasurement value={image} title={image.label} />;
 }
 
 function Diagnosis({
@@ -163,7 +120,7 @@ function Diagnosis({
         <h3>Specialists & critic</h3>
         <p>Precomputed AI-generated finding examples · initial diagnosis</p>
         {data.findings.map((f) => (
-          <details key={f.agent}>
+          <details key={`${f.agent}-${f.hypothesis_id}`}>
             <summary>{humanize(f.agent)}</summary>
             <p>{f.summary}</p>
             <p>
@@ -198,8 +155,8 @@ function Diagnosis({
         <p className="prototype-caution">{recommendation?.safety_note}</p>
         {snapshot.id === "negative" && (
           <p role="status">
-            Case remains open. Material inspection is the next handoff; its
-            workflow is outside this M0 prototype.
+            Case remains open. Air-cap and pressure-supply review is the next
+            handoff; its workflow is outside this M0 prototype.
           </p>
         )}
       </aside>
@@ -232,7 +189,7 @@ export function Prototype() {
         }
       })
       .catch(() => {
-        if (active) setSource("Offline mode · bundled shared fixture v1.0");
+        if (active) setSource("Offline mode · bundled shared fixture v2.0");
       });
     return () => {
       active = false;
@@ -263,7 +220,7 @@ export function Prototype() {
     requestAnimationFrame(() => heading.current?.focus());
   }
   const continueLabel =
-    snapshot.id === "found"
+    snapshot.id === "found" || snapshot.id === "clear"
       ? "Confirm demo observation"
       : snapshot.id === "corrective"
         ? "Record simulated action complete"
@@ -275,7 +232,9 @@ export function Prototype() {
               ? "Start illustrative inspection"
               : "Continue";
   const needsAcknowledgment =
-    snapshot.screen === "confirmation" || snapshot.screen === "corrective";
+    snapshot.screen === "confirmation" ||
+    snapshot.screen === "corrective" ||
+    snapshot.id === "verification";
   const canContinue =
     (snapshot.screen !== "questions" || questionsDone) &&
     (!needsAcknowledgment || acknowledged);
@@ -323,7 +282,7 @@ export function Prototype() {
               {snapshot.title}
             </h1>
             <p className="phase-summary">
-              {data.investigation.title} · Precision epoxy dispensing
+              {data.investigation.title} · S-932 / DJ-2200 flux spraying
             </p>
           </div>
           <button className="secondary" onClick={restart}>
@@ -336,14 +295,13 @@ export function Prototype() {
           <div className="prototype-two">
             <section>
               <p className="eyebrow">Operator report</p>
-              <h2>Small dots. An unresolved cause.</h2>
+              <h2>Incomplete coverage. An unresolved cause.</h2>
               <p>
-                The latest inspected tray has consistently undersized epoxy
-                dots.
+                The latest inspected tray has declining flux spray coverage.
               </p>
               <p>
                 Review the synthetic image and machine context, then compare
-                three possible causes.
+                five possible causes.
               </p>
               <p className="status">Provisional image evidence</p>
               <p>
@@ -416,8 +374,8 @@ export function Prototype() {
                 <h2>Discovery preview complete</h2>
                 <p>
                   The answers demonstrate navigation. The next screen uses the
-                  fixed continuous-undersizing golden scenario; these choices do
-                  not run a diagnosis.
+                  fixed declining-coverage golden scenario; these choices do not
+                  run a diagnosis.
                 </p>
                 <dl>
                   {Object.entries(answers).map(([id, value]) => (
@@ -545,13 +503,17 @@ export function Prototype() {
           <section className="prototype-question">
             <h2>
               {snapshot.screen === "confirmation"
-                ? "Obstruction found — observation awaiting confirmation"
-                : "Site-approved action — simulated completion"}
+                ? `${snapshot.id === "clear" ? "No obstruction found" : "Obstruction found"} — observation awaiting confirmation`
+                : snapshot.id === "verification"
+                  ? "Confirm simulated recovery checks"
+                  : "Site-approved action — simulated completion"}
             </h2>
             <p>
               {snapshot.screen === "confirmation"
-                ? "Confirm this simulated technician observation before the prototype marks restriction as confirmed."
-                : data.summary.corrective_action}
+                ? "Confirm this simulated technician observation before the prototype updates the diagnosis."
+                : snapshot.id === "verification"
+                  ? data.verification.explanation
+                  : data.summary.corrective_action}
             </p>
             <p className="prototype-caution">
               Expert review pending. This is an illustrative workflow, not
@@ -566,7 +528,9 @@ export function Prototype() {
               />
               {snapshot.screen === "confirmation"
                 ? "I confirm the demo inspection observation."
-                : "I am recording a simulated action, not controlling a machine."}
+                : snapshot.id === "verification"
+                  ? "I confirm all precomputed simulated recovery checks."
+                  : "I am recording a simulated action, not controlling a machine."}
             </label>
           </section>
         )}
@@ -577,6 +541,13 @@ export function Prototype() {
               {snapshot.id === "verified"
                 ? data.verification.explanation
                 : "Compare the precomputed before and after samples, then run the simulated verification to record the separate verification state."}
+            </p>
+            <p>
+              Precomputed passing recovery checks: Prompted Setup, calibration,
+              weight and pressure within the synthetic profile; all units on
+              first carriers in lanes A and B accepted. Subsequent trays
+              explicitly not required. This storyboard does not release
+              production material.
             </p>
             <div className="prototype-two">
               {data.images.map((image) => (

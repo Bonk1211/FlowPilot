@@ -124,7 +124,7 @@ export function EvidencePreview({
         </h3>
         <p>
           Machine PASS is a run status, not proof of dispensing quality.
-          Pressure, temperature, dot diameter, and obstruction evidence remain
+          Flux weight, pressure, material condition, and obstruction evidence remain
           missing.
         </p>
         <details open className="parser-warnings">

@@ -40,7 +40,7 @@ test("loads the scenario and previews the real API response", async ({
 }) => {
   await page.goto("/log-preview");
   await expect(
-    page.getByRole("heading", { name: "Undersized epoxy dots" }),
+    page.getByRole("heading", { name: "Declining flux spray coverage" }),
   ).toBeVisible();
   await expect(
     page.getByText("Demo / Simulated Data", { exact: true }),
@@ -72,7 +72,7 @@ test("shows a recoverable connection failure", async ({ page }) => {
   await page.unroute("**/api/demo/scenario");
   await page.getByRole("button", { name: "Retry loading scenario" }).click();
   await expect(
-    page.getByRole("heading", { name: "Undersized epoxy dots" }),
+    page.getByRole("heading", { name: "Declining flux spray coverage" }),
   ).toBeVisible();
 });
 
@@ -104,7 +104,7 @@ for (const width of [1440, 1280, 834, 375]) {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.goto("/log-preview");
     await expect(
-      page.getByRole("heading", { name: "Undersized epoxy dots" }),
+      page.getByRole("heading", { name: "Declining flux spray coverage" }),
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Preview sample log" }),

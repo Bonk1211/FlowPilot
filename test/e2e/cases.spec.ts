@@ -1,11 +1,107 @@
 import { expect, test, type Page } from "@playwright/test";
 import unitExamples from "../../fixtures/v1/evidence-units.json" with { type: "json" };
 import { candidateValue } from "../../apps/web/src/presentation";
+import legacy from "../../fixtures/v1/golden-scenario.json" with { type: "json" };
 
 test("evidence values preserve scalar, compound and missing units", () => {
   for (const example of unitExamples) {
     expect(candidateValue(example)).toBe(example.display);
   }
+});
+
+test("recovery requires complete checks and two calibration failures block retries", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(60000);
+  await start(page);
+  await discovery(page);
+  await inspect(page, true);
+  await page
+    .getByLabel("I confirm the simulated corrective action is complete.")
+    .check();
+  await page.getByRole("button", { name: "Record action complete" }).click();
+  const verify = page.getByRole("button", {
+    name: "Measure verification sample",
+  });
+  await expect(verify).toBeDisabled();
+  await page
+    .getByLabel("I confirm these simulated recovery observations.")
+    .check();
+  await verify.click();
+  await expect(
+    page.getByText("Verification failed. The case remains open.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Resolve case", exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Use simulated passing check results" })
+    .click();
+  await page
+    .getByRole("combobox", {
+      name: "Auto Flux Weight Calibration",
+      exact: true,
+    })
+    .selectOption("fail");
+  await page
+    .getByLabel("I confirm these simulated recovery observations.")
+    .check();
+  await verify.click();
+  await expect(
+    page.getByText("Calibration attempts: 1; failures: 1.", { exact: true }),
+  ).toBeVisible();
+  await verify.click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Two calibration failures",
+  );
+  await expect(verify).toBeDisabled();
+  await page.reload();
+  await expect(page.getByRole("alert")).toContainText(
+    "Two calibration failures",
+  );
+  await page.screenshot({
+    path: testInfo.outputPath("flux-recovery-escalation.png"),
+    fullPage: true,
+  });
+});
+
+test("legacy case view retains original evidence and has no mutation controls", async ({
+  page,
+  request,
+}) => {
+  const response = await request.post("/api/investigations", {
+    data: { report: "Archive view fixture" },
+  });
+  const saved = await response.json();
+  const original = legacy.images[0];
+  await page.route(`**/api/investigations/${saved.investigation.id}`, (route) =>
+    route.fulfill({
+      json: {
+        ...saved,
+        scenario_version: "1.0",
+        rules_version: "1.0",
+        investigation: { ...legacy.investigation, id: saved.investigation.id },
+        measurement: { ...original, sample_id: "undersized", passed: false },
+        summary: legacy.summary,
+      },
+    }),
+  );
+  await page.goto(`/?case=${saved.investigation.id}`);
+  await expect(
+    page.getByRole("heading", { name: "Archived epoxy investigation" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Read-only legacy case.", { exact: false }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("img", { name: "Archived epoxy dot measurements" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Start a new flux investigation" }),
+  ).toHaveAttribute("href", "/");
+  await expect(page.getByRole("button")).toHaveCount(0);
 });
 
 async function start(page: Page) {
@@ -19,19 +115,19 @@ async function start(page: Page) {
 async function discovery(page: Page, intermittent = false) {
   await page
     .getByRole("button", {
-      name: intermittent ? "Intermittent" : "Continuous",
+      name: intermittent ? "Blobs or line-end droplets" : "Incomplete coverage",
       exact: true,
     })
     .click();
   await expect(
     page.getByRole("heading", {
       name: intermittent
-        ? "Do normal dots return between affected runs?"
-        : "Has the undersizing persisted across trays?",
+        ? "Does flux weight pass despite blobs or droplets?"
+        : "Has measured flux weight been falling?",
     }),
   ).toBeVisible();
   await page.getByRole("button", { name: "Yes", exact: true }).click();
-  await page.getByRole("button", { name: "No known change" }).click();
+  await page.getByRole("button", { name: "Stable / no known change" }).click();
   await page.getByRole("button", { name: "Not recorded", exact: true }).click();
   await page.getByRole("button", { name: "Not recorded", exact: true }).click();
   await page.getByRole("button", { name: "Diagnose case" }).click();
@@ -75,13 +171,11 @@ test("complete persisted journey with sample log, failed verification and refres
       .filter({ hasText: /Attached demo-industry-machine.log/ }),
   ).toBeVisible();
   await discovery(page);
-  const rawLog = page
-    .locator("details")
-    .filter({
-      has: page.locator("summary", {
-        hasText: "Retained machine events and raw log",
-      }),
-    });
+  const rawLog = page.locator("details").filter({
+    has: page.locator("summary", {
+      hasText: "Retained machine events and raw log",
+    }),
+  });
   await rawLog.locator(":scope > summary").click();
   await expect(
     rawLog.getByRole("heading", { name: "Raw machine events" }),
@@ -89,7 +183,7 @@ test("complete persisted journey with sample log, failed verification and refres
   await rawLog.getByRole("button", { name: "Back to preview" }).first().click();
   await expect(rawLog).not.toHaveAttribute("open", "");
   await expect(
-    page.getByRole("heading", { name: "1. Cartridge / nozzle restriction" }),
+    page.getByRole("heading", { name: "1. Fluid-path restriction" }),
   ).toBeVisible();
   await page.reload();
   await expect(
@@ -110,8 +204,14 @@ test("complete persisted journey with sample log, failed verification and refres
     .check();
   await page.getByRole("button", { name: "Record action complete" }).click();
   await page
+    .getByRole("button", { name: "Use simulated passing check results" })
+    .click();
+  await page
+    .getByLabel("I confirm these simulated recovery observations.")
+    .check();
+  await page
     .getByLabel("Verification sample", { exact: true })
-    .selectOption("missing");
+    .selectOption("coarse");
   await page
     .getByRole("button", { name: "Measure verification sample" })
     .click();
@@ -149,7 +249,7 @@ test("negative observation requires confirmation and retains ordered case histor
   await discovery(page);
   await inspect(page, false);
   await expect(
-    page.getByRole("heading", { name: "1. Material viscosity change" }),
+    page.getByRole("heading", { name: "1. Fluid-pressure / BFS supply fault" }),
   ).toBeVisible();
   await expect(page.getByText(/Case remains open/)).toBeVisible();
   await page
@@ -161,7 +261,7 @@ test("negative observation requires confirmation and retains ordered case histor
     "inspection completed — Inspection completed: no obstruction found",
   );
   await expect(entries.nth(count - 1)).toContainText(
-    "diagnosing — No obstruction; review material conditions next.",
+    "diagnosing — No nozzle obstruction; review air cap and pressure supply next.",
   );
   await expect(
     page.getByRole("button", { name: "Record action complete" }),
@@ -186,21 +286,27 @@ test("uploaded log preserves unknowns and missing timezone; intermittent branch 
   ).toBeVisible();
   await discovery(page, true);
   await expect(
-    page.getByRole("heading", { name: "1. Trapped air bubble" }),
+    page.getByRole("heading", { name: "1. Coaxial-air / atomization fault" }),
   ).toBeVisible();
   await page.reload();
   const air = page.locator(".prototype-cause").filter({
-    has: page.getByRole("heading", { name: "1. Trapped air bubble" }),
+    has: page.getByRole("heading", {
+      name: "1. Coaxial-air / atomization fault",
+    }),
   });
-  await expect(air).toContainText("Missing: None listed");
-  await expect(air).not.toContainText("Intermittent recovery");
+  await expect(air).toContainText(
+    "Missing: Air-cap and coaxial-air inspection",
+  );
+  await expect(air).not.toContainText("Weight versus pattern");
   const finding = page.locator("details").filter({
     has: page.locator("summary", {
-      hasText: "fluid path specialist · trapped air bubble",
+      hasText: "fluid path specialist · atomization fault",
     }),
   });
   await finding.locator("summary").click();
-  await expect(finding).toContainText("Missing: None listed");
+  await expect(finding).toContainText(
+    "Missing: Air-cap and coaxial-air inspection",
+  );
 });
 
 test("failed mutation preserves case and stale revisions can recover", async ({
@@ -210,11 +316,13 @@ test("failed mutation preserves case and stale revisions can recover", async ({
   await start(page);
   const id = new URL(page.url()).searchParams.get("case")!;
   await page.route("**/api/investigations/*/actions", (route) => route.abort());
-  await page.getByRole("button", { name: "Continuous", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Incomplete coverage", exact: true })
+    .click();
   await expect(page.getByRole("alert")).toContainText("service is unavailable");
   await expect(
     page.getByRole("heading", {
-      name: "Is the undersizing continuous or intermittent?",
+      name: "Which spray symptom was observed?",
     }),
   ).toBeVisible();
   await page.unroute("**/api/investigations/*/actions");
@@ -227,14 +335,16 @@ test("failed mutation preserves case and stale revisions can recover", async ({
     },
   });
   expect(updated.ok()).toBeTruthy();
-  await page.getByRole("button", { name: "Continuous", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Incomplete coverage", exact: true })
+    .click();
   await expect(page.getByRole("alert")).toContainText("Case changed");
   await page
     .getByRole("button", { name: "Reload saved case / retry connection" })
     .click();
   await expect(
     page.getByRole("heading", {
-      name: "Has the undersizing persisted across trays?",
+      name: "Has measured flux weight been falling?",
     }),
   ).toBeVisible();
 });
@@ -244,11 +354,11 @@ test("sample measurements and keyboard journey reflow at 375px", async ({
 }, testInfo) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/");
-  await page.getByLabel("Controlled image sample").selectOption("oversized");
+  await page.getByLabel("Controlled image sample").selectOption("overspray");
   await expect(
-    page.getByRole("img", { name: "Oversized dots: 12 abnormal locations" }),
+    page.getByRole("img", { name: "Overspray: 100% coverage" }),
   ).toBeVisible();
-  await page.getByLabel("Controlled image sample").selectOption("undersized");
+  await page.getByLabel("Controlled image sample").selectOption("incomplete");
   await page
     .getByRole("button", { name: "Start investigation", exact: true })
     .focus();
