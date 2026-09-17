@@ -176,6 +176,10 @@ def test_critic_must_surface_a_known_gap_even_after_confirmation(outcome, gaps):
 
     async def generate(role, payload, schema):
         assert "Material temperature" in payload["known_gaps"]
+        assert ("Authorized nozzle inspection" in payload["known_gaps"]) == (outcome is None)
+        assert ("Upstream fluid-path inspection" in payload["known_gaps"]) == (
+            outcome != "obstruction_found"
+        )
         response = result(role, payload)
         if role == "diagnostic_critic":
             response["assessment"]["missing_evidence"] = gaps

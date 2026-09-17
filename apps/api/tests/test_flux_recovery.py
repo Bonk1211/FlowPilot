@@ -20,6 +20,30 @@ def checks():
     return load_golden_scenario().recovery_checks.model_dump()
 
 
+@pytest.mark.parametrize("outcome", ["obstruction_found", "no_obstruction_found"])
+def test_inspection_gaps_follow_confirmation_and_reload(client, outcome):  # noqa: F811
+    case = diagnose(client)
+    case = act(client, case, "inspect", outcome=outcome)
+
+    def restriction(document):
+        return next(
+            c for c in document["ranking"] if c["hypothesis_id"] == "fluid_path_restriction"
+        )
+
+    assert "Authorized nozzle inspection" in restriction(case)["missing_evidence"]
+    case = act(client, case, "confirm_observation", confirmed=True)
+    expected = ["Upstream fluid-path inspection"] if outcome == "no_obstruction_found" else []
+    assert restriction(case)["missing_evidence"] == expected
+    loaded = client.get(f"/api/investigations/{case['investigation']['id']}").json()
+    assert loaded == case
+    finding = next(
+        f
+        for f in loaded["findings"]
+        if f["hypothesis_id"] == "fluid_path_restriction" and f["agent"] == "fluid_path_specialist"
+    )
+    assert finding["missing_evidence"] == expected
+
+
 @pytest.mark.parametrize(
     "fault",
     [

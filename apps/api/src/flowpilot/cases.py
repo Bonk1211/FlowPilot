@@ -228,11 +228,11 @@ def missing_evidence(case: Case, hypothesis_id: str) -> list[str]:
         return ["Actual pressure stability", "BFS and connection checks"]
     if hypothesis_id == "alignment_fault":
         return ["Nozzle straightness and offsets", "Recipe teaching"]
-    return (
-        []
-        if any(e.key == "inspection" and e.value == "obstruction_found" for e in verified)
-        else ["Authorized nozzle inspection", "Upstream fluid-path inspection"]
-    )
+    if any(e.key == "inspection" and e.value == "obstruction_found" for e in verified):
+        return []
+    if any(e.key == "inspection" and e.value == "no_obstruction_found" for e in verified):
+        return ["Upstream fluid-path inspection"]
+    return ["Authorized nozzle inspection", "Upstream fluid-path inspection"]
 
 
 def normalize_case(case: Case) -> Case:
