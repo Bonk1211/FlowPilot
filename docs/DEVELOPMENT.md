@@ -286,8 +286,8 @@ unapproved removal procedure or record outcomes. Renderer resources are disposed
 Ranking and specialist evidence links clear both filters, reveal the cited row,
 and move keyboard focus to it after rendering. A rejected image now shows an
 explicit rejection state with a link to create a new case. It does not claim that
-inspection happened or recommend material review. Material-review messaging requires
-an actual confirmed negative inspection and the material recommendation.
+inspection happened. Air-cap/pressure-supply handoff messaging requires
+an actual confirmed negative inspection and the air-cap/pressure-supply recommendation.
 
 Verification commands (from the repository root):
 
@@ -329,5 +329,11 @@ verifies that the reviewed material has not changed. Neither command grants acce
 Run `uv run python scripts/build_flux_fixture.py` to rebuild the shared synthetic storyboard from independent raster measurements and hypothesis-keyed scoring rules. Version 1 fixtures are compatibility history, not active demo content.
 
 The `verify` action accepts `checks`: synthetic profile, setup/calibration results, weight/pressure compliance, limits reference, lanes A/B with all-unit acceptance, subsequent-tray requirements and explicit confirmation. Missing checks cannot pass. Two confirmed calibration failures block retries. `complete_action` records nozzle cleaning or replacement. Scenario/rules versions are 2.0; the observed ingestion format remains v1.
+
+Recovery reload restores the last submitted values and image selection, but clears
+confirmation. Each retry requires fresh confirmation. The previous submitted checks
+remain visible separately, including when escalation blocks further attempts.
+Either confirmed nozzle-inspection outcome completes the nozzle-inspection evidence
+requirement; a clear nozzle still leaves upstream fluid-path inspection outstanding.
 
 Untagged/version 1 cases load without normalization or storage writes and reject all actions. Archived dots render directly from stored measurements, avoiding confusion with the new normal spray image. No database reset or migration is needed. Expert feedback received; revised procedure approval and fresh joint contract review remain pending.

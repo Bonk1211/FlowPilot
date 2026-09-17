@@ -1,8 +1,8 @@
 {
-  "base_commit": "1d4cc192faf1a3ed850e3c8f140f6f65821d493d",
-  "candidate_sha256": "ffe75808d07800a1007ea832d45d6241a1eee516adb012bdc03c589a80f49cdd",
+  "base_commit": "d6f716b30f30c7a6dc53e65c7d70c3701a72ce2a",
+  "candidate_sha256": "2450f1c9576ba243f59568cdcfe7fb3623e2f92f37fbbc447201619dcfac6a1f",
   "files": {
-    "apps/api/src/flowpilot/cases.py": "eae579bdb1346dbc6c6716734b7d336ab317cf5e72316073ff296393b4de1dff",
+    "apps/api/src/flowpilot/cases.py": "03fec71c1d3f2462c92511f4be7974c771194f36ecdf2e7d0981b613934591cd",
     "apps/api/src/flowpilot/diagnosis/models.py": "186f69cb8b610c869f5e1849dfbfaa82cc736514be0d0c0c20b294a3824f9bbb",
     "apps/api/src/flowpilot/diagnosis/reasoning.py": "4bea07d8ca3d4e4776dcb312fc334c2ce965c3d398bdbc138f3ab1bae7a5ab3a",
     "apps/api/src/flowpilot/golden.py": "875e388f8ca6638a5a6ce517e6bb9b1c8f888bd5e52fbab9be3122865ddeeba3",

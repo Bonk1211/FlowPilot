@@ -36,14 +36,14 @@ Use dates in `YYYY-MM-DD` format; include `+08:00` for local timestamps when nee
 
 ## Overview
 
-Last updated: **2026-09-16**. Status reflects this checkout and recorded sessions;
+Last updated: **2026-09-17**. Status reflects this checkout and recorded sessions;
 it does not assert progress on another developer's branch.
 
 | Milestone | Current status | Developer A — backend | Developer B — experience | Shared checkpoint |
 | --- | --- | --- | --- | --- |
-| M0 — Contract and demo lock | In progress | Contracts and corrected negative timeline ready for review | Golden-screen prototype, node mapping, and 2D fallback complete | Shared fixture loads in API and UI; joint contract freeze pending |
-| M1 — Thin vertical slice | Complete | Raster measurements, deterministic scoring, case APIs, cached findings, and persistence implemented | API-backed intake, discovery, diagnosis, 2D inspection, verification, and summary implemented | Positive journey passes from a fresh database/browser; both outcomes and reload verified |
-| M2 — Core differentiators | Complete | Critic known-gap validation, recomputation, and persistence verified | Rejected-image messaging and filtered citation navigation corrected; 3D/fallback verified | Audit regressions pass; live browser-to-database acceptance passes both outcomes; backup recordings retained |
+| M0 — Contract and demo lock | In progress | Version 2 flux contracts and recovery gates ready for review | Flux storyboard, semantic nodes, and 2D fallback implemented | Shared v2 fixture loads in API and UI; joint contract freeze pending |
+| M1 — Thin vertical slice | Complete | Flux workflow and confirmed-inspection gap correction verified | Recovery reload and fresh retry confirmation verified | 129 API tests and all 38 offline browser scenarios pass |
+| M2 — Core differentiators | Complete | Five-cause live specialists and critic validated with persisted cases | Flux 3D, recovery, negative handoff, and reload verified | Both v2 live journeys pass; fresh positive/negative backup videos captured |
 | M3 — Validation and submission | Not started | End-to-end fallback/reset validation remains | Accessibility polish, rehearsals, and final video remain | Two clean rehearsals, recorded expert review, and checked submission |
 
 ## M0 — Contract and demo lock
@@ -53,14 +53,15 @@ the illustrative procedure boundary.
 
 ### Deliverables and checkpoint
 
-- [x] **Shared:** Lock the prototype scenario to undersized epoxy dots with
-  cartridge/nozzle restriction, viscosity change, and trapped air as candidates.
+- [x] **Shared:** Implement the version 2 S-932 / DJ-2200 flux-spray scenario with
+  restriction, atomization, supply, alignment, and material-condition candidates.
+  Joint scenario/contract acceptance remains pending below.
 - [x] **Shared:** Add authoritative Pydantic contracts and generated OpenAPI/TypeScript
   declarations for the golden prototype, including both inspection outcomes.
 - [x] **Shared:** Use one versioned golden fixture in the backend and frontend,
   including a bundled offline copy imported from the same source file.
 - [x] **Developer B:** Add navigable golden-screen wireframes at `/prototype`.
-- [x] **Developer B:** Define seven semantic model nodes and camera presets.
+- [x] **Developer B:** Define flux-assembly semantic model nodes and camera presets.
 - [x] **Developer B:** Implement synchronized SVG and text procedure views with
   graceful handling of unavailable node mappings.
 - [x] **Shared:** Verify API/fixture equality, contract drift, outcome branches,
@@ -158,11 +159,13 @@ unchecked until both developers have accepted the corresponding boundary.
 
 - [ ] Review canonical evidence, findings, scores, outcomes, case states, and
   procedure schemas against generated OpenAPI/TypeScript declarations.
-- [ ] Confirm fixture `v1.0` parity across API, frontend bundle, and tests.
+- [ ] Confirm fixture `v2.0` parity across API, frontend bundle, and tests.
 - [ ] Confirm each snapshot selects only its applicable evidence; positive and
   negative observations never appear together in a displayed case.
 - [ ] Review both inspection paths, including negative completion before
   reassessment and positive confirmation, action, verification, and resolution.
+- [ ] Review nozzle-only scope, structured recovery checks, two-failure escalation,
+  and unchanged read-only legacy cases.
 - [ ] Accept the illustrative procedure boundary, pending expert review, and
   semantic model-node/camera mappings with the 2D/text fallback.
 - [ ] Agree ownership: Developer A owns authoritative contracts and execution;
@@ -177,7 +180,7 @@ unchecked until both developers have accepted the corresponding boundary.
 | Developer B reviewer and acceptance | Pending |
 | Reviewed revision (commit SHA including this correction) | Pending |
 | Acceptance date (`YYYY-MM-DD`, `+08:00` if timestamped) | Pending |
-| Schema / fixture versions | `1.0` / `1.0` |
+| Schema / fixture versions | `2.0` / `2.0` |
 | Decision and unresolved concerns | Pending joint review; freeze not yet effective |
 
 #### 2026-09-16 — Review package prepared; freeze intentionally pending
@@ -295,6 +298,27 @@ M0 acceptance remains pending and no reviewer sign-off is implied by these fixes
 
 **Issue/PR/commit:** Uncommitted local changes; no issue update, commit, or push.
 
+#### 2026-09-17 — Post-expert-review M1 gaps closed
+
+**Status change:** M1 briefly reopened for the v2 audit; now Complete.
+
+**Corrected:** A confirmed negative nozzle inspection no longer appears as missing
+evidence. Upstream inspection remains unknown. Both outcomes are covered through
+cached findings, reload, and the live reasoning payload. Recovery reload restores
+submitted checks and the last image selection; prior checks remain separately
+readable, and each retry requires fresh confirmation. Two-failure escalation still
+survives reload and blocks retry.
+
+**Verification:** `npm run check` passed lint, types, nine parser tests, 129 API
+tests, generated-contract checks, and production build. All 38 offline browser
+scenarios passed together. The first check found mixed Python line endings; these
+were normalized before the passing run. Pytest used isolated workspace temporary
+and cache directories; Chromium required execution outside the sandbox. Existing
+dependency deprecations and the lazy Three.js chunk warning remain nonblocking.
+
+**Next handoff:** M0 v2 joint acceptance remains pending. See the M2 entry below
+for fresh live and recording acceptance. No commit or push performed.
+
 ## M2 — Core differentiators
 
 **Goal:** Integrate real reasoning and guided inspection with both outcome branches.
@@ -307,8 +331,8 @@ M0 acceptance remains pending and no reviewer sign-off is implied by these fixes
 - [x] **Shared checkpoint:** Verify that both outcomes update the real case and its
   next recommendation correctly; capture a backup screen recording.
 
-**Next handoff:** Proceed to M3 reliability/rehearsals and expert review. M0's
-separately recorded joint contract freeze remains pending by explicit user direction.
+**Next handoff:** Proceed to M3 reliability/rehearsals and revised expert procedure
+review. M0's v2 joint contract freeze remains pending by explicit user direction.
 
 ### Development history
 
@@ -497,6 +521,37 @@ The user explicitly chose to keep the freeze pending after receiving the package
 
 **Remaining:** M0 joint acceptance and M3 expert review/rehearsals/submission remain.
 No commit, push, or issue publication was requested or performed in this session.
+
+#### 2026-09-17 — Version 2 live acceptance and backup evidence refreshed
+
+**Status change:** M2 reopened for stale v1 acceptance coverage, then returned to
+Complete after fresh v2 validation. M0 remains In progress; M1 is Complete.
+
+**Corrected:** Live browser tests now traverse all five procedure steps, expect the
+air-cap/pressure-supply handoff after a clear nozzle, and submit explicitly confirmed
+recovery checks before resolution. The current M0 checklist now describes v2 flux
+contracts, recovery/escalation, and read-only legacy cases; earlier session entries
+remain history. No acceptance or expert approval was inferred.
+
+**Fresh evidence:** Both tests in `playwright.live.config.ts` passed (59.6 seconds).
+Initial and post-inspection reasoning used the real provider with critic validation;
+API payloads matched after browser reload. The positive case resolved with structured
+recovery checks, while the negative case stayed open with `air_supply` guidance.
+Safe persisted-case attachments and screenshots are under
+`artifacts/demo/live-browser/`. Both recording journeys passed (41.1 seconds),
+including failed verification, reload, retry, and resolution. Fresh labelled cached
+backups are `artifacts/demo/positive-v2.webm` and `negative-v2.webm`, with originals
+under `artifacts/demo/recordings/`. Decoded frames were inspected for procedure,
+verification, resolved summary, and retained negative observation. These ignored
+local artifacts are backup footage, not the final narrated M3 submission.
+
+**Review candidate:** Regenerated manifest SHA-256
+`2450f1c9576ba243f59568cdcfe7fb3623e2f92f37fbbc447201619dcfac6a1f`.
+The hash identifies this working-tree candidate; both reviewers, acceptance date,
+and final reviewed commit remain Pending. Contract consistency and diff checks pass.
+
+**Remaining:** Genuine M0 joint acceptance and M3 revised procedure approval,
+clean-state rehearsals, and submission. No commit, push, or issue publication.
 
 ## M3 — Validation and submission
 
