@@ -10,11 +10,16 @@ export default defineConfig({
   retries: 0,
   timeout: 180_000,
   outputDir: "artifacts/demo/live-browser",
+  reporter: [
+    ["list"],
+    ["json", { outputFile: "artifacts/demo/live-browser-results.json" }],
+  ],
   webServer: [
     {
       command: "node scripts/e2e-api.mjs --live",
       url: "http://127.0.0.1:8100/api/health",
       reuseExistingServer: false,
+      env: { FLOWPILOT_REASONING_TIMEOUT_SECONDS: "12" },
     },
     {
       command: "npm run dev --workspace @flowpilot/web -- --port 5174",

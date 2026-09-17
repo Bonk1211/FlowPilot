@@ -3,6 +3,7 @@ import { writeFile } from "node:fs/promises";
 import type { Case } from "@flowpilot/contracts";
 
 async function act(page: Page, click: () => Promise<void>): Promise<Case> {
+  const started = Date.now();
   const response = page.waitForResponse(
     (r) => r.url().endsWith("/actions") && r.request().method() === "POST",
     { timeout: 45000 },
@@ -10,6 +11,15 @@ async function act(page: Page, click: () => Promise<void>): Promise<Case> {
   await click();
   const received = await response;
   expect(received.ok()).toBeTruthy();
+  const action = received.request().postDataJSON()?.action;
+  if (action === "diagnose" || action === "confirm_observation") {
+    const elapsedMs = Date.now() - started;
+    await test.info().attach(`${action}-timing`, {
+      body: JSON.stringify({ action, elapsedMs }),
+      contentType: "application/json",
+    });
+    expect(elapsedMs).toBeLessThan(15_000);
+  }
   return received.json();
 }
 
@@ -45,6 +55,9 @@ for (const outcome of ["Obstruction found", "No obstruction found"]) {
       initial.reasoning?.mode,
       initial.reasoning?.fallback_reason ?? "missing reasoning",
     ).toBe("live");
+    expect(initial.diagnostic_history).toHaveLength(1);
+    expect(initial.diagnostic_history[0].findings).toEqual(initial.findings);
+    expect(initial.diagnostic_history[0].reasoning).toEqual(initial.reasoning);
     expect(
       initial.reasoning?.critic?.assessment.missing_evidence.length,
     ).toBeGreaterThan(0);
@@ -87,6 +100,14 @@ for (const outcome of ["Obstruction found", "No obstruction found"]) {
     ).toBeGreaterThan(0);
     expect(confirmed.investigation.state).toBe(
       outcome === "Obstruction found" ? "cause_confirmed" : "diagnosing",
+    );
+    expect(confirmed.diagnostic_history).toHaveLength(2);
+    expect(confirmed.diagnostic_history[0]).toEqual(
+      initial.diagnostic_history[0],
+    );
+    expect(confirmed.diagnostic_history[1].findings_mode).toBe("live");
+    expect(confirmed.diagnostic_history[1].findings).toEqual(
+      confirmed.findings,
     );
     expect(confirmed.recommendation?.id ?? null).toBe(
       outcome === "Obstruction found" ? null : "air_supply",
