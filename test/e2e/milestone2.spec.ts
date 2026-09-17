@@ -95,7 +95,7 @@ test("ranking and specialist citations reveal and focus evidence through both fi
   await expect(page.locator(`[id="${imageId}"]`)).toBeFocused();
   await expect(page.getByLabel("Evidence source")).toHaveValue("all");
   await expect(page.getByLabel("Evidence status")).toHaveValue("all");
-  const finding = page.locator("details").filter({
+  const finding = page.locator(".prototype-diagnosis details").filter({
     has: page.locator("summary", {
       hasText: "fluid path specialist · fluid supply fault",
     }),

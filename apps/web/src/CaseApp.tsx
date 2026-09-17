@@ -14,6 +14,7 @@ import {
   loadImages,
   loadScenario,
   previewLog,
+  resetDemo,
 } from "./api";
 import { ApplicationFrame } from "./components/ApplicationFrame";
 import { EvidencePreview } from "./components/EvidencePreview";
@@ -26,9 +27,12 @@ import "./case.css";
 import { sampleNames, emptyRecovery } from "./fluxModel";
 import { SprayMeasurement as ImageMeasurement } from "./components/SprayMeasurement";
 import { RecoveryForm } from "./components/RecoveryForm";
+import { DiagnosticHistory, SummaryEvidence } from "./components/CaseAudit";
 
 type WithoutRevision<T> = T extends unknown ? Omit<T, "revision"> : never;
 type Command = WithoutRevision<CaseAction>;
+const defaultReport =
+  "The latest inspected tray has declining flux spray coverage.";
 const message = (error: unknown) =>
   error instanceof Error ? error.message : "The request failed. Try again.";
 function Diagnosis({
@@ -290,9 +294,9 @@ export function CaseApp() {
   const [images, setImages] = useState<Measurement[]>([]);
   const [scenario, setScenario] = useState<DemoScenario | null>(null);
   const [sample, setSample] = useState<Measurement["sample_id"]>("incomplete");
-  const [report, setReport] = useState(
-    "The latest inspected tray has declining flux spray coverage.",
-  );
+  const [report, setReport] = useState(defaultReport);
+  const [reloadRequired, setReloadRequired] = useState(false);
+  const [completionNotes, setCompletionNotes] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -311,9 +315,14 @@ export function CaseApp() {
     "nozzle_cleaning" | "nozzle_replacement"
   >("nozzle_replacement");
   const heading = useRef<HTMLHeadingElement>(null);
+  const errorPanel = useRef<HTMLElement>(null);
   const retainedLog = useRef<HTMLDetailsElement>(null);
   const lock = useRef(false);
   const returnTarget = useRef("open-events");
+
+  useEffect(() => {
+    if (error) errorPanel.current?.focus();
+  }, [error]);
 
   useEffect(() => {
     let active = true;
@@ -365,6 +374,7 @@ export function CaseApp() {
     }
   }
   function accept(next: Case) {
+    setReloadRequired(false);
     setValue(next);
     setChecks({ ...(next.recovery ?? emptyRecovery), confirmed: false });
     setAck(false);
@@ -376,19 +386,44 @@ export function CaseApp() {
     requestAnimationFrame(() => heading.current?.focus());
   }
   async function command(action: Command) {
-    if (value)
+    if (value && !reloadRequired)
       await run(async () => {
         if (action.action === "correct_evidence") {
           setInspecting(false);
           setStep(0);
         }
-        accept(
-          await actOnCase(value.investigation.id, {
-            ...action,
-            revision: value.revision,
-          }),
-        );
+        try {
+          accept(
+            await actOnCase(value.investigation.id, {
+              ...action,
+              revision: value.revision,
+            }),
+          );
+        } catch (failure) {
+          setReloadRequired(true);
+          throw failure;
+        }
       });
+  }
+  async function restartDemo() {
+    await run(async () => {
+      const next = await resetDemo({
+        report: defaultReport,
+        sample_id: "incomplete",
+      });
+      setReport(defaultReport);
+      setSample("incomplete");
+      setLogInput(null);
+      setPreview(null);
+      setViewer(false);
+      setEventId(null);
+      setStep(0);
+      setInspecting(false);
+      setVerificationSample("normal");
+      setCorrectiveAction("nozzle_replacement");
+      setCompletionNotes("");
+      accept(next);
+    });
   }
   const state = value?.investigation.state;
   const phase =
@@ -416,7 +451,7 @@ export function CaseApp() {
           : phase === "Verify"
             ? "Verify the recovery"
             : inspecting && state === "inspection_recommended"
-              ? "Inspect the nozzle and air cap"
+              ? "Record the nozzle inspection"
               : value.ranking.length
                 ? "Review the diagnosis"
                 : "Review intake and discovery";
@@ -503,13 +538,31 @@ export function CaseApp() {
             </p>
           </div>
           {value && (
-            <a className="secondary" href="/">
-              Start another case
-            </a>
+            <div className="case-restart">
+              <a className="secondary" href="/">
+                Start another case
+              </a>
+              <button
+                className="secondary"
+                disabled={busy || loading}
+                onClick={() => void restartDemo()}
+              >
+                Restart demo
+              </button>
+              <p>
+                Restart creates a fresh simulated case. Saved cases are
+                retained.
+              </p>
+            </div>
           )}
         </section>
         {error && (
-          <section role="alert" className="case-error">
+          <section
+            ref={errorPanel}
+            tabIndex={-1}
+            role="alert"
+            className="case-error"
+          >
             <h2>Request not completed</h2>
             <p>{error}</p>
             <p>
@@ -537,7 +590,11 @@ export function CaseApp() {
           </section>
         )}
         {loading && <p role="status">Loading workspace…</p>}
-        <fieldset className="case-controls" disabled={busy || loading}>
+        <fieldset
+          key={value?.investigation.id ?? "new-report"}
+          className="case-controls"
+          disabled={busy || loading || reloadRequired}
+        >
           <legend className="sr-only">Investigation controls</legend>
           {!value && selected && (
             <div className="prototype-two">
@@ -1032,6 +1089,21 @@ export function CaseApp() {
                         Verification passed. Confirm resolution to save the
                         completed summary.
                       </p>
+                      <label htmlFor="completion-notes">
+                        Completion notes (optional)
+                      </label>
+                      <textarea
+                        id="completion-notes"
+                        maxLength={2000}
+                        value={completionNotes}
+                        onChange={(event) =>
+                          setCompletionNotes(event.target.value)
+                        }
+                      />
+                      <p>
+                        Saved with the confirmed resolution. Up to 2,000
+                        characters.
+                      </p>
                       <label className="prototype-checkbox">
                         <input
                           type="checkbox"
@@ -1044,7 +1116,11 @@ export function CaseApp() {
                         className="primary"
                         disabled={!ack}
                         onClick={() =>
-                          command({ action: "resolve", confirmed: true })
+                          command({
+                            action: "resolve",
+                            confirmed: true,
+                            notes: completionNotes,
+                          })
                         }
                       >
                         Resolve case
@@ -1064,16 +1140,43 @@ export function CaseApp() {
                   .map(([key, text]) => (
                     <div key={key}>
                       <dt>{humanize(key)}</dt>
-                      <dd>{String(text)}</dd>
+                      <dd>{String(text) || "None recorded"}</dd>
                     </div>
                   ))}
               </dl>
+              <h3>Inspection</h3>
+              <p>
+                {(value.investigation.evidence ?? [])
+                  .filter(
+                    (item) =>
+                      item.key === "inspection" &&
+                      item.verification_state === "verified",
+                  )
+                  .map(
+                    (item) =>
+                      `${humanize(candidateValue(item))} (confirmed, nozzle-only inspection)`,
+                  )
+                  .join("; ") || "No confirmed inspection recorded."}
+              </p>
+              <h3>Ranked causes</h3>
+              <ol>
+                {value.ranking.map((cause) => (
+                  <li key={cause.hypothesis_id}>
+                    {cause.label}: {cause.score} heuristic points
+                  </li>
+                ))}
+              </ol>
+              <SummaryEvidence value={value} />
               <p role="status">Resolved · saved to this case</p>
               <p>Simulated case; expert procedure review pending.</p>
             </section>
           )}
         </fieldset>
         {busy && <p role="status">Saving or loading…</p>}
+        {value &&
+          (!!value.diagnostic_history?.length ||
+            !!value.ranking.length ||
+            !!value.summary) && <DiagnosticHistory value={value} />}
         {value && (
           <details className="prototype-timeline">
             <summary>Case timeline · saved history</summary>
@@ -1082,6 +1185,27 @@ export function CaseApp() {
                 <li key={i}>
                   <time>{item.timestamp}</time> · {humanize(item.state)} —{" "}
                   {item.description}
+                  {item.diagnostic_revision != null && (
+                    <p>
+                      <a
+                        href={`#diagnosis-revision-${item.diagnostic_revision}`}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          const target = document.getElementById(
+                            `diagnosis-revision-${item.diagnostic_revision}`,
+                          ) as HTMLDetailsElement | null;
+                          if (target) {
+                            target.open = true;
+                            target.focus();
+                            target.scrollIntoView({ block: "nearest" });
+                          }
+                        }}
+                      >
+                        View diagnostic snapshot at revision{" "}
+                        {item.diagnostic_revision}
+                      </a>
+                    </p>
+                  )}
                 </li>
               ))}
             </ol>

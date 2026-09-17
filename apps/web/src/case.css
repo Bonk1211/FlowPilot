@@ -1,6 +1,32 @@
 .case-workspace {
   padding-bottom: var(--space-7);
 }
+.case-restart {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 30rem;
+}
+.case-restart p {
+  flex-basis: 100%;
+  margin: 0;
+}
+.prototype-summary details {
+  overflow-wrap: anywhere;
+}
+.case-audit {
+  overflow-wrap: anywhere;
+}
+.case-audit details,
+.prototype-summary details {
+  margin-block: var(--space-3);
+}
+.case-audit summary,
+.prototype-summary summary {
+  cursor: pointer;
+  padding-block: var(--space-2);
+}
 .case-controls {
   border: 0;
   padding: 0;

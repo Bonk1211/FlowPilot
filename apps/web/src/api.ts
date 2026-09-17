@@ -25,7 +25,9 @@ async function request<T>(
         typeof problem?.detail === "string"
           ? problem.detail
           : response.status === 422
-            ? "The log could not be previewed. Check the log text and timezone, then try again."
+            ? path === "/logs/preview"
+              ? "The log could not be previewed. Check the log text and timezone, then try again."
+              : "The submitted values are invalid. Review the required fields and try again."
             : "The service could not complete this request. Please try again.",
       );
     }
@@ -58,6 +60,12 @@ export const loadCase = (id: string) =>
   request<Case>(`/investigations/${encodeURIComponent(id)}`);
 export const createCase = (body: CreateCase) =>
   request<Case>("/investigations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+export const resetDemo = (body: CreateCase) =>
+  request<Case>("/demo/reset", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),

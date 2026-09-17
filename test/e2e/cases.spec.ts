@@ -1,4 +1,5 @@
-import { expect, test, type Page } from "@playwright/test";
+import { start, discovery, inspect } from "../helpers/caseJourney";
+import { expect, test } from "@playwright/test";
 import unitExamples from "../../fixtures/v1/evidence-units.json" with { type: "json" };
 import { candidateValue } from "../../apps/web/src/presentation";
 import legacy from "../../fixtures/v1/golden-scenario.json" with { type: "json" };
@@ -69,13 +70,11 @@ test("recovery requires complete checks and two calibration failures block retri
     .getByText("Last submitted recovery checks", { exact: true })
     .click();
   await expect(
-    page
-      .locator("details")
-      .filter({
-        has: page.locator("summary", {
-          hasText: "Last submitted recovery checks",
-        }),
+    page.locator("details").filter({
+      has: page.locator("summary", {
+        hasText: "Last submitted recovery checks",
       }),
+    }),
   ).toContainText("calibration");
   await page
     .getByLabel("I confirm these simulated recovery observations.")
@@ -132,60 +131,9 @@ test("legacy case view retains original evidence and has no mutation controls", 
   await expect(page.getByRole("button")).toHaveCount(0);
 });
 
-async function start(page: Page) {
-  await page.goto("/");
-  await page
-    .getByRole("button", { name: "Start investigation", exact: true })
-    .click();
-  await expect(page).toHaveURL(/\?case=CASE-/);
-}
-
-async function discovery(page: Page, intermittent = false) {
-  await page
-    .getByRole("button", {
-      name: intermittent ? "Blobs or line-end droplets" : "Incomplete coverage",
-      exact: true,
-    })
-    .click();
-  await expect(
-    page.getByRole("heading", {
-      name: intermittent
-        ? "Does flux weight pass despite blobs or droplets?"
-        : "Has measured flux weight been falling?",
-    }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Yes", exact: true }).click();
-  await page.getByRole("button", { name: "Stable / no known change" }).click();
-  await page.getByRole("button", { name: "Not recorded", exact: true }).click();
-  await page.getByRole("button", { name: "Not recorded", exact: true }).click();
-  await page.getByRole("button", { name: "Diagnose case" }).click();
-  await expect(
-    page.getByRole("heading", { name: "Ranked causes" }),
-  ).toBeVisible();
-}
-
-async function inspect(page: Page, positive: boolean) {
-  await page
-    .getByRole("button", { name: "Start illustrative inspection" })
-    .click();
-  const next = page.getByRole("button", { name: "Next step", exact: true });
-  while (await next.isEnabled()) await next.click();
-  await page
-    .getByRole("button", {
-      name: positive ? "Obstruction found" : "No obstruction found",
-      exact: true,
-    })
-    .click();
-  await expect(
-    page.getByRole("button", { name: "Confirm observation" }),
-  ).toBeDisabled();
-  await page.getByRole("checkbox").check();
-  await page.getByRole("button", { name: "Confirm observation" }).click();
-}
-
 test("complete persisted journey with sample log, failed verification and refresh", async ({
   page,
-}) => {
+}, testInfo) => {
   test.setTimeout(60_000);
   await start(page);
   await page.getByRole("button", { name: "Use sample machine log" }).click();
@@ -199,6 +147,22 @@ test("complete persisted journey with sample log, failed verification and refres
       .filter({ hasText: /Attached demo-industry-machine.log/ }),
   ).toBeVisible();
   await discovery(page);
+  const operator = page.locator(".prototype-ledger-row").filter({
+    has: page.getByRole("heading", { name: "operator report", exact: true }),
+  });
+  await operator.getByText("Correct this evidence", { exact: true }).click();
+  await operator.getByLabel("Correction type").selectOption("edit");
+  await operator
+    .getByLabel("Replacement value")
+    .fill("Corrected coverage report for audit");
+  await operator
+    .getByLabel("Correction reason")
+    .fill("Clarify the reported symptom");
+  await operator.getByRole("checkbox").check();
+  await operator.getByRole("button", { name: "Save correction" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Review the diagnosis" }),
+  ).toBeVisible();
   const rawLog = page.locator("details").filter({
     has: page.locator("summary", {
       hasText: "Retained machine events and raw log",
@@ -273,6 +237,9 @@ test("complete persisted journey with sample log, failed verification and refres
   await page
     .getByLabel("I confirm this simulated case is ready to resolve.")
     .check();
+  await page
+    .getByLabel("Completion notes (optional)")
+    .fill("Audit follow-up: both lanes accepted.");
   await page.getByRole("button", { name: "Resolve case", exact: true }).click();
   await expect(
     page.getByText("Resolved · saved to this case", { exact: true }),
@@ -281,6 +248,70 @@ test("complete persisted journey with sample log, failed verification and refres
   await expect(
     page.getByRole("heading", { name: "Review the completed case" }),
   ).toBeVisible();
+  const summary = page.locator(".prototype-summary");
+  await expect(summary).toContainText("Audit follow-up: both lanes accepted.");
+  const current = summary
+    .locator("details")
+    .filter({ has: page.locator("summary", { hasText: /^Current evidence/ }) });
+  await current.locator("summary").click();
+  await expect(current).toContainText("Corrected coverage report for audit");
+  await expect(current).not.toContainText(
+    "The latest inspected tray has declining flux spray coverage.",
+  );
+  await expect(current).toContainText("verification passed: true");
+  await expect(current).not.toContainText("verification passed: false");
+  const earlier = summary
+    .locator("details")
+    .filter({ has: page.locator("summary", { hasText: /^Earlier recovery/ }) });
+  await earlier.locator("summary").click();
+  await expect(earlier).toContainText("verification passed: false");
+  const rejected = summary.locator("details").filter({
+    has: page.locator("summary", { hasText: /^Rejected or superseded/ }),
+  });
+  await rejected.locator("summary").click();
+  await expect(rejected).toContainText(
+    "The latest inspected tray has declining flux spray coverage.",
+  );
+  await expect(rejected).toContainText("rejected");
+  await expect(rejected.locator("time")).toHaveCount(1);
+  const history = page.getByRole("region", { name: "Diagnostic history" });
+  await expect(history.locator(":scope > details")).toHaveCount(3);
+  const initial = history.locator(":scope > details").first();
+  await initial.locator(":scope > summary").click();
+  await expect(initial).toContainText("Fluid-path restriction: 40 points");
+  const final = history.locator(":scope > details").last();
+  await final.locator(":scope > summary").click();
+  await expect(final).toContainText("Fluid-path restriction: 80 points");
+  await page
+    .getByText("Case timeline · saved history", { exact: true })
+    .click();
+  await page
+    .getByRole("link", { name: /View diagnostic snapshot at revision/ })
+    .first()
+    .click();
+  await expect(initial).toBeFocused();
+  await current.locator("summary").click();
+  await initial.locator(":scope > summary").click();
+  await final.locator(":scope > summary").click();
+  await page
+    .getByText("Case timeline · saved history", { exact: true })
+    .click();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: testInfo.outputPath("audit-summary-desktop.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 375, height: 812 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: testInfo.outputPath("audit-summary-mobile.png"),
+    fullPage: true,
+  });
 });
 
 test("negative observation requires confirmation and retains ordered case history", async ({
@@ -339,7 +370,7 @@ test("uploaded log preserves unknowns and missing timezone; intermittent branch 
     "Missing: Air-cap and coaxial-air inspection",
   );
   await expect(air).not.toContainText("Weight versus pattern");
-  const finding = page.locator("details").filter({
+  const finding = page.locator(".prototype-diagnosis details").filter({
     has: page.locator("summary", {
       hasText: "fluid path specialist · atomization fault",
     }),
@@ -367,6 +398,15 @@ test("failed mutation preserves case and stale revisions can recover", async ({
     }),
   ).toBeVisible();
   await page.unroute("**/api/investigations/*/actions");
+  await expect(
+    page.getByRole("button", { name: "Incomplete coverage", exact: true }),
+  ).toBeDisabled();
+  await page
+    .getByRole("button", { name: "Reload saved case / retry connection" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Incomplete coverage", exact: true }),
+  ).toBeEnabled();
   const updated = await request.post(`/api/investigations/${id}/actions`, {
     data: {
       action: "answer",
