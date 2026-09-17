@@ -14,7 +14,7 @@ from pydantic import ValidationError
 def test_golden_api_matches_shared_fixture_without_database(tmp_path, monkeypatch):
     database = tmp_path / "unused.db"
     monkeypatch.setenv("FLOWPILOT_DATABASE_URL", f"sqlite:///{database.as_posix()}")
-    raw = json.loads(fixture_path("v1/golden-scenario.json").read_text(encoding="utf-8"))
+    raw = json.loads(fixture_path("v2/golden-scenario.json").read_text(encoding="utf-8"))
     with TestClient(create_app()) as client:
         response = client.get("/api/demo/golden-scenario")
     assert response.status_code == 200
@@ -34,7 +34,7 @@ def test_golden_log_is_real_parser_output():
 def test_positive_and_negative_outcomes_are_distinct_and_verification_is_separate():
     scenario = load_golden_scenario()
     snapshots = {s.id: s for s in scenario.snapshots}
-    assert snapshots["found"].state == "inspection_completed"
+    assert snapshots["found"].state == "inspection_recommended"
     assert not any(c.confirmed for c in snapshots["found"].ranking)
     assert snapshots["corrective"].state == "cause_confirmed"
     assert snapshots["verification"].state == "corrective_action_completed"
@@ -43,8 +43,8 @@ def test_positive_and_negative_outcomes_are_distinct_and_verification_is_separat
     negative = snapshots["negative"]
     assert negative.state == "diagnosing"
     assert not any(c.confirmed for c in negative.ranking)
-    assert negative.ranking[0].hypothesis_id == "material_viscosity_change"
-    assert negative.recommendation_id == "material"
+    assert negative.ranking[0].hypothesis_id == "fluid_supply_fault"
+    assert negative.recommendation_id == "air_supply"
 
 
 def test_negative_inspection_is_recorded_before_reassessment():

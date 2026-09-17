@@ -2,35 +2,20 @@
 
 from typing import Literal
 
-from pydantic import Field, model_validator
+from pydantic import model_validator
 
 from flowpilot.diagnosis.models import AgentFinding
+from flowpilot.imaging import Measurement
 from flowpilot.ingestion.models import IngestionResult
 from flowpilot.investigations.models import Contract, Investigation, InvestigationState
 from flowpilot.procedures.models import ProcedureStep
+from flowpilot.recovery import RecoveryChecks
 from flowpilot.settings import fixture_path
 
 
-class Dot(Contract):
-    id: str
-    x: float
-    y: float
-    diameter_px: float = Field(ge=0)
-    classification: Literal["normal", "undersized", "oversized", "missing"]
-
-
-class ImageMeasurement(Contract):
+class ImageMeasurement(Measurement):
     id: str
     label: str
-    synthetic: Literal[True]
-    width: int = Field(gt=0)
-    height: int = Field(gt=0)
-    dots: list[Dot]
-    mean_diameter_px: float
-    variation_px: float
-    golden_min_px: float
-    golden_max_px: float
-    quality_summary: str
     evidence_ids: list[str]
 
 
@@ -123,8 +108,8 @@ class GoldenSnapshot(Contract):
 
 
 class GoldenScenario(Contract):
-    schema_version: Literal["1.0"]
-    fixture_version: Literal["1.0"]
+    schema_version: Literal["2.0"]
+    fixture_version: Literal["2.0"]
     simulated: Literal[True]
     investigation: Investigation
     images: list[ImageMeasurement]
@@ -134,10 +119,11 @@ class GoldenScenario(Contract):
     findings: list[AgentFinding]
     recommendations: list[TestRecommendation]
     procedure_steps: list[ProcedureStep]
-    procedure_review: Literal["pending_expert_review"]
+    procedure_review: Literal["feedback_received_approval_pending"]
     outcomes: list[InspectionOutcome]
     snapshots: list[GoldenSnapshot]
     initial_snapshot_id: str
+    recovery_checks: RecoveryChecks
     verification: VerificationComparison
     summary: CaseSummary
 
@@ -187,5 +173,5 @@ class GoldenScenario(Contract):
 
 def load_golden_scenario() -> GoldenScenario:
     return GoldenScenario.model_validate_json(
-        fixture_path("v1/golden-scenario.json").read_text(encoding="utf-8")
+        fixture_path("v2/golden-scenario.json").read_text(encoding="utf-8")
     )

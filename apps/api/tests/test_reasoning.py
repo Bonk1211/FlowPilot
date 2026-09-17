@@ -15,7 +15,7 @@ def case_with_ranking():
 def result(role, payload):
     finding = {
         "agent": role,
-        "hypothesis_id": "material_viscosity_change",
+        "hypothesis_id": "material_condition",
         "supporting_evidence_ids": [payload["evidence"][0]["id"]],
         "conflicting_evidence_ids": [],
         "source_refs": [payload["evidence"][0]["source_ref"]],
@@ -29,10 +29,14 @@ def result(role, payload):
         return {
             "findings": [
                 {**finding, "hypothesis_id": hypothesis}
-                for hypothesis in ("partial_cartridge_nozzle_restriction", "trapped_air_bubble")
+                for hypothesis in (
+                    "fluid_path_restriction",
+                    "atomization_fault",
+                    "fluid_supply_fault",
+                )
             ]
         }
-    return {"findings": [finding]}
+    return {"findings": [finding, {**finding, "hypothesis_id": "alignment_fault"}]}
 
 
 def run(case, generate, **kwargs):
@@ -51,7 +55,7 @@ def test_live_specialists_run_concurrently_then_critic_without_mutating_facts():
             assert len(started) >= 2
             assert schema is SpecialistResult
         else:
-            assert len(payload["findings"]) == 3
+            assert len(payload["findings"]) == 5
             assert schema is CriticResult
         return result(role, payload)
 
@@ -59,7 +63,7 @@ def test_live_specialists_run_concurrently_then_critic_without_mutating_facts():
     assert started == ["fluid_path_specialist", "material_process_specialist", "diagnostic_critic"]
     assert case.reasoning.mode == "live"
     assert case.findings_mode == "live"
-    assert len(case.findings) == 4
+    assert len(case.findings) == 6
     assert case.model_dump()["ranking"] == original["ranking"]
     assert case.model_dump()["investigation"] == original["investigation"]
     assert case.reasoning.evidence_revision == case.revision

@@ -27,15 +27,17 @@ def client(tmp_path, monkeypatch):
         yield result
 
 
-def create(client, sample="undersized"):
+def create(client, sample="incomplete"):
     response = client.post(
-        "/api/investigations", json={"report": "Small epoxy dots", "sample_id": sample}
+        "/api/investigations", json={"report": "Declining flux coverage", "sample_id": sample}
     )
     assert response.status_code == 201, response.text
     return response.json()
 
 
 def act(client, case, action, **values):
+    if action == "verify" and "checks" not in values:
+        values["checks"] = load_golden_scenario().recovery_checks.model_dump()
     response = client.post(
         f"/api/investigations/{case['investigation']['id']}/actions",
         json={
@@ -61,35 +63,26 @@ def diagnose(client, intermittent=False):
     return act(client, case, "diagnose")
 
 
-@pytest.mark.parametrize(
-    "sample,mean,abnormal,missing",
-    [
-        ("normal", 30, 0, 0),
-        ("undersized", 18, 12, 0),
-        ("oversized", 40, 12, 0),
-        ("missing", 30, 1, 1),
-    ],
-)
-def test_raster_measurements(sample, mean, abnormal, missing):
+@pytest.mark.parametrize("sample", ["normal", "incomplete", "coarse", "shifted", "overspray"])
+def test_raster_measurements(sample):
     result = sample_measurement(sample)
-    assert result.mean_diameter_px == mean
-    assert result.abnormal_count == abnormal
-    assert result.missing_count == missing
     assert result.passed == (sample == "normal")
-    assert result.variation_px == 0
-    assert result.mean_position_error_px == 0
-    assert result.mean_shape_consistency > 0.95
+    assert result.coverage_pct == (
+        70.83 if sample == "incomplete" else 87.5 if sample == "shifted" else 100
+    )
+    assert (result.coarse_area_px > 0) == (sample == "coarse")
+    assert (result.outside_keep_out_px > 0) == (sample in ("overspray", "shifted"))
 
 
-def test_empty_raster_has_twelve_missing_dots_and_never_passes():
-    result = measure(bytes([255] * WIDTH * HEIGHT), "missing")
-    assert result.missing_count == 12
+def test_empty_raster_never_passes():
+    result = measure(bytes([255] * WIDTH * HEIGHT), "normal")
+    assert result.coverage_pct == 0
     assert not result.passed
 
 
 def test_measurement_uses_pixels_not_sample_label_and_png_contains_same_raster():
     pixels = generate_raster("normal")
-    assert measure(pixels, "undersized").mean_diameter_px == 30
+    assert measure(pixels, "incomplete").passed
     encoded = png(pixels)
     assert encoded[:8] == b"\x89PNG\r\n\x1a\n"
     offset, compressed = 8, b""
@@ -137,8 +130,8 @@ def test_negative_confirmation_changes_scores_and_preserves_inspection_history(c
     case = act(client, case, "inspect", outcome="no_obstruction_found")
     case = act(client, case, "confirm_observation", confirmed=True)
     assert [e["state"] for e in case["timeline"][-2:]] == ["inspection_completed", "diagnosing"]
-    assert case["ranking"][0]["hypothesis_id"] == "material_viscosity_change"
-    assert case["recommendation"]["id"] == "material"
+    assert case["ranking"][0]["hypothesis_id"] == "fluid_supply_fault"
+    assert case["recommendation"]["id"] == "air_supply"
     assert not any(c["confirmed"] for c in case["ranking"])
     evidence = case["investigation"]["evidence"]
     assert [e["value"] for e in evidence if e["key"] == "inspection"] == ["no_obstruction_found"]
@@ -155,9 +148,9 @@ def test_adaptive_question_and_intermittent_ranking(client):
     case = create(client)
     case = act(client, case, "answer", question_id="frequency", value="intermittent")
     assert case["next_question"]["id"] == "intermittent"
-    assert "normal dots return" in case["next_question"]["prompt"]
+    assert "flux weight pass" in case["next_question"]["prompt"]
     ranked = diagnose(client, intermittent=True)
-    assert ranked["ranking"][0]["hypothesis_id"] == "trapped_air_bubble"
+    assert ranked["ranking"][0]["hypothesis_id"] == "atomization_fault"
     keys = {e["key"] for e in ranked["investigation"]["evidence"]}
     assert "material_temperature" not in keys
 
@@ -204,7 +197,7 @@ def test_failed_verification_retry_and_stale_revision(client):
     case = act(client, case, "confirm_observation", confirmed=True)
     case = act(client, case, "complete_action", confirmed=True)
     stale = case["revision"]
-    case = act(client, case, "verify", sample_id="missing")
+    case = act(client, case, "verify", sample_id="coarse")
     path = f"/api/investigations/{case['investigation']['id']}"
     assert case["investigation"]["state"] == "corrective_action_completed"
     assert (
@@ -239,7 +232,7 @@ def test_bad_answers_missing_confirmation_and_unsupported_diagnosis(client):
         client.post(path, json={"revision": 0, "action": "resolve", "confirmed": False}).status_code
         == 422
     )
-    for sample in ("normal", "missing", "oversized"):
+    for sample in ("normal",):
         unsupported = create(client, sample)
         assert not unsupported["diagnosis_supported"]
         assert unsupported["ranking"] == []

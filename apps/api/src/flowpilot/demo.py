@@ -15,7 +15,7 @@ class DemoLogMetadata(Contract):
 
 
 class DemoScenario(Contract):
-    schema_version: Literal["1.0"]
+    schema_version: Literal["2.0"]
     investigation: Investigation
     sample_log: LogPreviewRequest
     log_metadata: DemoLogMetadata
@@ -23,11 +23,11 @@ class DemoScenario(Contract):
 
 def load_scenario() -> DemoScenario:
     investigation = Investigation.model_validate_json(
-        fixture_path("v1/reported-investigation.json").read_text(encoding="utf-8")
+        fixture_path("v2/reported-investigation.json").read_text(encoding="utf-8")
     )
     metadata = json.loads(fixture_path("demo-industry-machine.metadata.json").read_bytes())
     return DemoScenario(
-        schema_version="1.0",
+        schema_version="2.0",
         investigation=investigation,
         sample_log=LogPreviewRequest(
             text=fixture_path("demo-industry-machine.log").read_bytes().decode("utf-8"),

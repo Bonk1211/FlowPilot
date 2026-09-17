@@ -47,21 +47,21 @@ def test_edit_retires_old_branch_and_records_original_values(client):  # noqa: F
     for answer in ["yes", "no", "unknown", "unknown"]:
         case = act(client, case, "answer", question_id=case["next_question"]["id"], value=answer)
     case = act(client, case, "diagnose")
-    assert case["ranking"][0]["hypothesis_id"] == "trapped_air_bubble"
+    assert case["ranking"][0]["hypothesis_id"] == "atomization_fault"
     assert case["reasoning"]["evidence_revision"] == case["revision"]
 
 
 def test_image_rejection_retires_derived_score_and_pending_inspection(client):  # noqa: F811
     case = diagnose(client)
     case = act(client, case, "inspect", outcome="obstruction_found")
-    case = act(client, case, "correct_evidence", **correction(case, "mean_dot_diameter_px"))
+    case = act(client, case, "correct_evidence", **correction(case, "coverage_pct"))
     assert not case["diagnosis_supported"]
     assert case["pending_outcome"] is None
     assert case["recommendation"] is None
     retired = {
         e["id"] for e in case["investigation"]["evidence"] if e["verification_state"] == "rejected"
     }
-    assert len(retired) == 2
+    assert len(retired) == 5
     assert not any(c["evidence_id"] in retired for r in case["ranking"] for c in r["contributions"])
 
 
@@ -92,7 +92,7 @@ def test_invalid_corrections_do_not_change_storage(client, changes):  # noqa: F8
         json={
             "action": "correct_evidence",
             "revision": case["revision"],
-            **correction(case, "undersized", **changes),
+            **correction(case, "incomplete_coverage", **changes),
         },
     )
     assert response.status_code == 422

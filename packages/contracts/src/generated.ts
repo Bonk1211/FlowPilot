@@ -221,8 +221,25 @@ export interface components {
             answers: {
                 [key: string]: string;
             };
+            /**
+             * Calibration Attempts
+             * @default 0
+             */
+            calibration_attempts: number;
+            /**
+             * Calibration Failures
+             * @default 0
+             */
+            calibration_failures: number;
+            /** Corrective Action */
+            corrective_action: ("nozzle_cleaning" | "nozzle_replacement") | null;
             /** Diagnosis Supported */
             diagnosis_supported: boolean;
+            /**
+             * Escalated
+             * @default false
+             */
+            escalated: boolean;
             /** Findings */
             findings: components["schemas"]["AgentFinding"][];
             /**
@@ -233,7 +250,8 @@ export interface components {
             findings_mode: "cached_templates" | "live";
             investigation: components["schemas"]["Investigation"];
             log: components["schemas"]["IngestionResult"] | null;
-            measurement: components["schemas"]["Measurement"];
+            /** Measurement */
+            measurement: components["schemas"]["Measurement"] | components["schemas"]["LegacyMeasurement"];
             next_question: components["schemas"]["DiscoveryQuestion"] | null;
             /** Pending Outcome */
             pending_outcome: ("obstruction_found" | "no_obstruction_found") | null;
@@ -248,6 +266,7 @@ export interface components {
             ranking: components["schemas"]["RankedCause"][];
             reasoning: components["schemas"]["ReasoningRun"] | null;
             recommendation: components["schemas"]["TestRecommendation"] | null;
+            recovery: components["schemas"]["RecoveryChecks"] | null;
             /**
              * Revision
              * @default 0
@@ -256,13 +275,20 @@ export interface components {
             /**
              * Rules Version
              * @default 1.0
-             * @constant
+             * @enum {string}
              */
-            rules_version: "1.0";
+            rules_version: "1.0" | "2.0";
+            /**
+             * Scenario Version
+             * @default 1.0
+             * @enum {string}
+             */
+            scenario_version: "1.0" | "2.0";
             summary: components["schemas"]["CaseSummary"] | null;
             /** Timeline */
             timeline: components["schemas"]["TimelineEntry"][];
-            verification: components["schemas"]["Measurement"] | null;
+            /** Verification */
+            verification: components["schemas"]["Measurement"] | components["schemas"]["LegacyMeasurement"] | null;
         };
         /** CaseSummary */
         CaseSummary: {
@@ -277,13 +303,34 @@ export interface components {
             /** Verification */
             verification: string;
         };
+        /** CompleteAction */
+        CompleteAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "complete_action";
+            /**
+             * Confirmed
+             * @constant
+             */
+            confirmed: true;
+            /**
+             * Corrective Action
+             * @default nozzle_replacement
+             * @enum {string}
+             */
+            corrective_action: "nozzle_cleaning" | "nozzle_replacement";
+            /** Revision */
+            revision: number;
+        };
         /** Confirm */
         Confirm: {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
              */
-            action: "complete_action" | "confirm_observation" | "resolve";
+            action: "confirm_observation" | "resolve";
             /**
              * Confirmed
              * @constant
@@ -324,10 +371,10 @@ export interface components {
             report: string;
             /**
              * Sample Id
-             * @default undersized
+             * @default incomplete
              * @enum {string}
              */
-            sample_id: "normal" | "undersized" | "oversized" | "missing";
+            sample_id: "normal" | "incomplete" | "coarse" | "shifted" | "overspray";
         };
         /** CriticResult */
         CriticResult: {
@@ -373,7 +420,7 @@ export interface components {
              * Schema Version
              * @constant
              */
-            schema_version: "1.0";
+            schema_version: "2.0";
         };
         /** Diagnose */
         Diagnose: {
@@ -395,22 +442,6 @@ export interface components {
             prompt: string;
             /** Rationale */
             rationale: string;
-        };
-        /** Dot */
-        Dot: {
-            /**
-             * Classification
-             * @enum {string}
-             */
-            classification: "normal" | "undersized" | "oversized" | "missing";
-            /** Diameter Px */
-            diameter_px: number;
-            /** Id */
-            id: string;
-            /** X */
-            x: number;
-            /** Y */
-            y: number;
         };
         /** Evidence */
         Evidence: {
@@ -481,7 +512,7 @@ export interface components {
              * Fixture Version
              * @constant
              */
-            fixture_version: "1.0";
+            fixture_version: "2.0";
             /** Images */
             images: components["schemas"]["ImageMeasurement"][];
             /** Initial Snapshot Id */
@@ -494,18 +525,19 @@ export interface components {
              * Procedure Review
              * @constant
              */
-            procedure_review: "pending_expert_review";
+            procedure_review: "feedback_received_approval_pending";
             /** Procedure Steps */
             procedure_steps: components["schemas"]["ProcedureStep"][];
             /** Questions */
             questions: components["schemas"]["DiscoveryQuestion"][];
             /** Recommendations */
             recommendations: components["schemas"]["TestRecommendation"][];
+            recovery_checks: components["schemas"]["RecoveryChecks"];
             /**
              * Schema Version
              * @constant
              */
-            schema_version: "1.0";
+            schema_version: "2.0";
             /**
              * Simulated
              * @constant
@@ -571,32 +603,50 @@ export interface components {
         };
         /** ImageMeasurement */
         ImageMeasurement: {
-            /** Dots */
-            dots: components["schemas"]["Dot"][];
+            /** Coarse Area Px */
+            coarse_area_px: number;
+            /** Coverage Pct */
+            coverage_pct: number;
+            /** Displacement Px */
+            displacement_px: number;
             /** Evidence Ids */
             evidence_ids: string[];
-            /** Golden Max Px */
-            golden_max_px: number;
-            /** Golden Min Px */
-            golden_min_px: number;
-            /** Height */
+            /**
+             * Height
+             * @default 160
+             */
             height: number;
             /** Id */
             id: string;
+            /** Image Url */
+            image_url: string;
+            /** Keep Out Bounds */
+            keep_out_bounds?: number[];
             /** Label */
             label: string;
-            /** Mean Diameter Px */
-            mean_diameter_px: number;
-            /** Quality Summary */
-            quality_summary: string;
+            /** Outside Keep Out Px */
+            outside_keep_out_px: number;
+            /** Passed */
+            passed: boolean;
             /**
-             * Synthetic
+             * Sample Id
+             * @enum {string}
+             */
+            sample_id: "normal" | "incomplete" | "coarse" | "shifted" | "overspray";
+            /**
+             * Simulated
+             * @default true
              * @constant
              */
-            synthetic: true;
-            /** Variation Px */
-            variation_px: number;
-            /** Width */
+            simulated: true;
+            /** Target Bounds */
+            target_bounds?: number[];
+            /** Uncovered Area Px */
+            uncovered_area_px: number;
+            /**
+             * Width
+             * @default 360
+             */
             width: number;
         };
         /** IngestionResult */
@@ -687,9 +737,9 @@ export interface components {
             /**
              * Schema Version
              * @default 1.0
-             * @constant
+             * @enum {string}
              */
-            schema_version: "1.0";
+            schema_version: "1.0" | "2.0";
             /** Simulated */
             simulated: boolean;
             /**
@@ -701,6 +751,71 @@ export interface components {
             title: string;
         };
         JsonValue: unknown;
+        /** LaneCheck */
+        LaneCheck: {
+            /**
+             * All Units Accepted
+             * @default unknown
+             * @enum {string}
+             */
+            all_units_accepted: "pass" | "fail" | "unknown";
+            /** Lane */
+            lane: string;
+        };
+        /** LegacyMeasurement */
+        LegacyMeasurement: {
+            /** Abnormal Count */
+            abnormal_count: number;
+            /** Deviation Px */
+            deviation_px: number;
+            /** Dots */
+            dots: components["schemas"]["MeasuredDot"][];
+            /**
+             * Golden Max Px
+             * @default 32
+             */
+            golden_max_px: number;
+            /**
+             * Golden Min Px
+             * @default 28
+             */
+            golden_min_px: number;
+            /**
+             * Height
+             * @default 160
+             */
+            height: number;
+            /** Image Url */
+            image_url: string;
+            /** Mean Diameter Px */
+            mean_diameter_px: number;
+            /** Mean Position Error Px */
+            mean_position_error_px: number;
+            /** Mean Shape Consistency */
+            mean_shape_consistency: number;
+            /** Missing Count */
+            missing_count: number;
+            /** Passed */
+            passed: boolean;
+            /**
+             * Sample Id
+             * @enum {string}
+             */
+            sample_id: "normal" | "undersized" | "oversized" | "missing";
+            /**
+             * Simulated
+             * @default true
+             * @constant
+             */
+            simulated: true;
+            /** Variation Px */
+            variation_px: number;
+            /**
+             * Width
+             * @default 360
+             */
+            width: number;
+        };
         /** LogPreviewRequest */
         LogPreviewRequest: {
             /**
@@ -777,22 +892,12 @@ export interface components {
         };
         /** Measurement */
         Measurement: {
-            /** Abnormal Count */
-            abnormal_count: number;
-            /** Deviation Px */
-            deviation_px: number;
-            /** Dots */
-            dots: components["schemas"]["MeasuredDot"][];
-            /**
-             * Golden Max Px
-             * @default 32
-             */
-            golden_max_px: number;
-            /**
-             * Golden Min Px
-             * @default 28
-             */
-            golden_min_px: number;
+            /** Coarse Area Px */
+            coarse_area_px: number;
+            /** Coverage Pct */
+            coverage_pct: number;
+            /** Displacement Px */
+            displacement_px: number;
             /**
              * Height
              * @default 160
@@ -800,29 +905,27 @@ export interface components {
             height: number;
             /** Image Url */
             image_url: string;
-            /** Mean Diameter Px */
-            mean_diameter_px: number;
-            /** Mean Position Error Px */
-            mean_position_error_px: number;
-            /** Mean Shape Consistency */
-            mean_shape_consistency: number;
-            /** Missing Count */
-            missing_count: number;
+            /** Keep Out Bounds */
+            keep_out_bounds?: number[];
+            /** Outside Keep Out Px */
+            outside_keep_out_px: number;
             /** Passed */
             passed: boolean;
             /**
              * Sample Id
              * @enum {string}
              */
-            sample_id: "normal" | "undersized" | "oversized" | "missing";
+            sample_id: "normal" | "incomplete" | "coarse" | "shifted" | "overspray";
             /**
              * Simulated
              * @default true
              * @constant
              */
             simulated: true;
-            /** Variation Px */
-            variation_px: number;
+            /** Target Bounds */
+            target_bounds?: number[];
+            /** Uncovered Area Px */
+            uncovered_area_px: number;
             /**
              * Width
              * @default 360
@@ -846,7 +949,7 @@ export interface components {
              * Model Node Id
              * @enum {string}
              */
-            model_node_id: "fluid_reservoir" | "feed_tube" | "jet_actuator" | "service_cartridge" | "nozzle" | "vision_camera" | "substrate_tray";
+            model_node_id: "bfs_bottle" | "pickup_tube" | "fluid_qd" | "dj2200_valve" | "air_cap" | "coaxial_air" | "valve_air" | "bfs_air" | "fluid_reservoir" | "feed_tube" | "jet_actuator" | "service_cartridge" | "nozzle" | "vision_camera" | "substrate_tray";
             /** Step Id */
             step_id: string;
             /** Title */
@@ -892,11 +995,69 @@ export interface components {
             model: string | null;
             /**
              * Prompt Version
-             * @default m2.3
+             * @default flux-2.0
              */
             prompt_version: string;
             /** Timestamp */
             timestamp: string;
+        };
+        /** RecoveryChecks */
+        RecoveryChecks: {
+            /**
+             * Calibration
+             * @default unknown
+             * @enum {string}
+             */
+            calibration: "pass" | "fail" | "unknown";
+            /**
+             * Confirmed
+             * @default false
+             */
+            confirmed: boolean;
+            /** Expected Lanes */
+            expected_lanes?: string[];
+            /** First Carriers */
+            first_carriers?: components["schemas"]["LaneCheck"][];
+            /**
+             * Limits Reference
+             * @default
+             */
+            limits_reference: string;
+            /**
+             * Pressure Within Limits
+             * @default unknown
+             * @enum {string}
+             */
+            pressure_within_limits: "pass" | "fail" | "unknown";
+            /**
+             * Profile
+             * @default synthetic_demo
+             * @constant
+             */
+            profile: "synthetic_demo";
+            /**
+             * Prompted Setup
+             * @default unknown
+             * @enum {string}
+             */
+            prompted_setup: "pass" | "fail" | "unknown";
+            /**
+             * Subsequent Required
+             * @default unknown
+             * @enum {string}
+             */
+            subsequent_required: "yes" | "no" | "unknown";
+            /**
+             * Subsequent Trays Accepted
+             * @default 0
+             */
+            subsequent_trays_accepted: number;
+            /**
+             * Weight Within Limits
+             * @default unknown
+             * @enum {string}
+             */
+            weight_within_limits: "pass" | "fail" | "unknown";
         };
         /** ScoreContribution */
         ScoreContribution: {
@@ -976,13 +1137,14 @@ export interface components {
              * @enum {string}
              */
             action: "verify";
+            checks?: components["schemas"]["RecoveryChecks"];
             /** Revision */
             revision: number;
             /**
              * Sample Id
              * @enum {string}
              */
-            sample_id: "normal" | "undersized" | "oversized" | "missing";
+            sample_id: "normal" | "incomplete" | "coarse" | "shifted" | "overspray";
         };
     };
     responses: never;
@@ -1038,7 +1200,7 @@ export interface operations {
             query?: never;
             header?: never;
             path: {
-                sample_id: "normal" | "undersized" | "oversized" | "missing";
+                sample_id: "normal" | "incomplete" | "coarse" | "shifted" | "overspray";
             };
             cookie?: never;
         };
@@ -1179,7 +1341,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AttachLog"] | components["schemas"]["Answer"] | components["schemas"]["Diagnose"] | components["schemas"]["Inspect"] | components["schemas"]["Confirm"] | components["schemas"]["Verify"] | components["schemas"]["CorrectEvidence"];
+                "application/json": components["schemas"]["AttachLog"] | components["schemas"]["Answer"] | components["schemas"]["Diagnose"] | components["schemas"]["Inspect"] | components["schemas"]["Confirm"] | components["schemas"]["CompleteAction"] | components["schemas"]["Verify"] | components["schemas"]["CorrectEvidence"];
             };
         };
         responses: {

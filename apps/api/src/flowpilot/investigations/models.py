@@ -34,7 +34,7 @@ class Evidence(Contract):
 
 
 class Investigation(Contract):
-    schema_version: Literal["1.0"] = "1.0"
+    schema_version: Literal["1.0", "2.0"] = "1.0"
     id: str
     title: str
     process: str

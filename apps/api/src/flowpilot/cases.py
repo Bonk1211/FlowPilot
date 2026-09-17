@@ -28,8 +28,10 @@ from flowpilot.imaging import Measurement, SampleId, generate_raster, png, sampl
 from flowpilot.ingestion.industry_event_log import parse_industry_event_log
 from flowpilot.ingestion.models import IngestionResult, LogPreviewRequest
 from flowpilot.investigations.models import Contract, Evidence, Investigation
+from flowpilot.legacy_imaging import LegacyMeasurement
 from flowpilot.persistence.database import Base, make_engine
 from flowpilot.procedures.models import ProcedureStep
+from flowpilot.recovery import RecoveryChecks
 from flowpilot.settings import fixture_path
 
 
@@ -44,9 +46,15 @@ class Case(Contract):
     model_config = ConfigDict(extra="forbid", json_schema_serialization_defaults_required=True)
     investigation: Investigation
     revision: int = 0
-    rules_version: Literal["1.0"] = "1.0"
-    measurement: Measurement
-    verification: Measurement | None = None
+    scenario_version: Literal["1.0", "2.0"] = "1.0"
+    rules_version: Literal["1.0", "2.0"] = "1.0"
+    recovery: RecoveryChecks | None = None
+    calibration_attempts: int = 0
+    calibration_failures: int = 0
+    escalated: bool = False
+    corrective_action: Literal["nozzle_cleaning", "nozzle_replacement"] | None = None
+    measurement: Measurement | LegacyMeasurement
+    verification: Measurement | LegacyMeasurement | None = None
     log: IngestionResult | None = None
     answers: dict[str, str] = Field(default_factory=dict)
     next_question: DiscoveryQuestion | None = None
@@ -65,7 +73,7 @@ class Case(Contract):
 
 class CreateCase(Contract):
     report: str = Field(min_length=1, max_length=2000)
-    sample_id: SampleId = "undersized"
+    sample_id: SampleId = "incomplete"
 
 
 class ActionBase(Contract):
@@ -93,13 +101,20 @@ class Inspect(ActionBase):
 
 
 class Confirm(ActionBase):
-    action: Literal["confirm_observation", "complete_action", "resolve"]
+    action: Literal["confirm_observation", "resolve"]
     confirmed: Literal[True]
+
+
+class CompleteAction(ActionBase):
+    action: Literal["complete_action"]
+    confirmed: Literal[True]
+    corrective_action: Literal["nozzle_cleaning", "nozzle_replacement"] = "nozzle_replacement"
 
 
 class Verify(ActionBase):
     action: Literal["verify"]
     sample_id: SampleId
+    checks: RecoveryChecks = Field(default_factory=RecoveryChecks)
 
 
 class CorrectEvidence(ActionBase):
@@ -112,7 +127,7 @@ class CorrectEvidence(ActionBase):
 
 
 CaseAction = Annotated[
-    AttachLog | Answer | Diagnose | Inspect | Confirm | Verify | CorrectEvidence,
+    AttachLog | Answer | Diagnose | Inspect | Confirm | CompleteAction | Verify | CorrectEvidence,
     Field(discriminator="action"),
 ]
 
@@ -160,12 +175,15 @@ def create_case(request: CreateCase) -> Case:
     if not request.report.strip():
         raise HTTPException(422, "Enter an operator report.")
     measurement = sample_measurement(request.sample_id)
-    supported = all(d.classification == "undersized" for d in measurement.dots)
+    supported = not measurement.passed
     case = Case(
+        scenario_version="2.0",
+        rules_version="2.0",
         investigation=Investigation(
+            schema_version="2.0",
             id=f"CASE-{uuid4().hex[:12]}",
             title=request.report.strip(),
-            process="Precision epoxy dispensing",
+            process="S-932 / DJ-2200 atomized flux spraying",
             state="reported",
             simulated=True,
             reported_at=now(),
@@ -178,29 +196,49 @@ def create_case(request: CreateCase) -> Case:
     evidence(case, "operator_report", request.report.strip(), verified=True)
     evidence(
         case,
-        "mean_dot_diameter_px",
-        measurement.mean_diameter_px,
+        "coverage_pct",
+        measurement.coverage_pct,
         "synthetic_image_measurement",
         measurement.image_url,
-        unit="px",
+        unit="%",
     )
-    evidence(case, "undersized", supported, "synthetic_image_measurement", measurement.image_url)
+    for key, observed in {
+        "incomplete_coverage": measurement.coverage_pct < 100,
+        "coarse_deposits": measurement.coarse_area_px > 0,
+        "shifted_pattern": measurement.displacement_px > 1 and measurement.coverage_pct >= 85,
+        "overspray": measurement.outside_keep_out_px > 0,
+    }.items():
+        evidence(case, key, observed, "synthetic_image_measurement", measurement.image_url)
     transition(case, "reported", "Operator report created; controlled raster measured.")
     return case
 
 
 def missing_evidence(case: Case, hypothesis_id: str) -> list[str]:
     verified = [e for e in case.investigation.evidence if e.verification_state == "verified"]
-    if hypothesis_id == "material_viscosity_change":
-        return ["Material temperature", "Material open time"]
-    if hypothesis_id == "trapped_air_bubble":
+    if hypothesis_id == "material_condition":
+        return ["Material temperature", "Pot life and idle-purge history"]
+    if hypothesis_id == "atomization_fault":
         known = any(e.key == "intermittent" and e.value == "yes" for e in verified)
-        return [] if known else ["Intermittent recovery"]
-    return [] if any(e.key == "inspection" for e in verified) else ["Physical inspection"]
+        return (
+            ["Air-cap and coaxial-air inspection"]
+            if known
+            else ["Weight versus pattern", "Air-cap and coaxial-air inspection"]
+        )
+    if hypothesis_id == "fluid_supply_fault":
+        return ["Actual pressure stability", "BFS and connection checks"]
+    if hypothesis_id == "alignment_fault":
+        return ["Nozzle straightness and offsets", "Recipe teaching"]
+    return (
+        []
+        if any(e.key == "inspection" and e.value == "obstruction_found" for e in verified)
+        else ["Authorized nozzle inspection", "Upstream fluid-path inspection"]
+    )
 
 
 def normalize_case(case: Case) -> Case:
     """Repair derived presentation on load; never write storage or alter workflow history."""
+    if case.scenario_version == "1.0":
+        return case
     if case.log:
         for item in case.investigation.evidence:
             if item.source_type != "machine_log" or item.unit is not None:
@@ -229,7 +267,7 @@ def normalize_case(case: Case) -> Case:
 def rank(case: Case):
     case.findings_mode = "cached_templates"
     case.reasoning = None
-    rules = json.loads(fixture_path("v1/scoring-rules.json").read_text(encoding="utf-8"))
+    rules = json.loads(fixture_path("v2/scoring-rules.json").read_text(encoding="utf-8"))
     causes = []
     confirmed = any(
         e.key == "inspection"
@@ -237,7 +275,7 @@ def rank(case: Case):
         and e.verification_state == "verified"
         for e in case.investigation.evidence
     )
-    for index, (cause_id, label) in enumerate(rules["labels"].items()):
+    for cause_id, label in rules["labels"].items():
         contributions = []
         for item in case.investigation.evidence:
             if item.verification_state == "rejected":
@@ -246,12 +284,12 @@ def rank(case: Case):
                 if (
                     item.key == rule["key"]
                     and item.value == rule["value"]
-                    and rule["weights"][index]
+                    and rule["weights"].get(cause_id, 0)
                 ):
                     contributions.append(
                         ScoreContribution(
                             evidence_id=item.id,
-                            weight=rule["weights"][index],
+                            weight=rule["weights"].get(cause_id, 0),
                             explanation=rule["explanation"],
                         )
                     )
@@ -261,7 +299,7 @@ def rank(case: Case):
                 hypothesis_id=cause_id,
                 label=label,
                 score=sum(c.weight for c in contributions),
-                confirmed=confirmed and index == 0,
+                confirmed=confirmed and cause_id == "fluid_path_restriction",
                 contributions=contributions,
                 missing_evidence=missing,
             )
@@ -271,7 +309,7 @@ def rank(case: Case):
     case.findings = [
         AgentFinding(
             agent="fluid_path_specialist"
-            if c.hypothesis_id != "material_viscosity_change"
+            if c.hypothesis_id not in ("material_condition", "alignment_fault")
             else "material_process_specialist",
             hypothesis_id=c.hypothesis_id,
             supporting_evidence_ids=[s.evidence_id for s in c.contributions if s.weight > 0],
@@ -385,6 +423,10 @@ def correct_evidence(case: Case, action: CorrectEvidence):
 
 
 def apply_action(case: Case, action: CaseAction) -> Case:
+    if case.scenario_version == "1.0":
+        raise HTTPException(
+            409, "Legacy epoxy cases are read-only. Start a new flux investigation."
+        )
     state = case.investigation.state
 
     def require(condition, message="This action is not available in the current case state."):
@@ -433,7 +475,7 @@ def apply_action(case: Case, action: CaseAction) -> Case:
         rank(case)
         case.recommendation = load_golden_scenario().recommendations[0]
         transition(
-            case, "inspection_recommended", "Ranked three causes; inspect to test restriction."
+            case, "inspection_recommended", "Ranked five causes; inspect to test restriction."
         )
     elif action.action == "inspect":
         require(state == "inspection_recommended" and case.pending_outcome is None)
@@ -453,44 +495,79 @@ def apply_action(case: Case, action: CaseAction) -> Case:
             transition(case, "cause_confirmed", "Technician confirmed the obstruction observation.")
         else:
             case.recommendation = next(
-                r for r in load_golden_scenario().recommendations if r.id == "material"
+                r for r in load_golden_scenario().recommendations if r.id == "air_supply"
             )
-            transition(case, "diagnosing", "No obstruction; review material conditions next.")
+            transition(
+                case,
+                "diagnosing",
+                "No nozzle obstruction; review air cap and pressure supply next.",
+            )
     elif action.action == "complete_action":
         require(state == "cause_confirmed")
         evidence(
             case,
             "corrective_action",
-            "Simulated site-approved cartridge replacement recorded",
+            "Simulated " + action.corrective_action.replace("_", " ") + " recorded",
             source_ref="confirmed_action",
             verified=True,
         )
+        case.corrective_action = action.corrective_action
         transition(case, "corrective_action_completed", "Simulated corrective action confirmed.")
     elif action.action == "verify":
         require(state == "corrective_action_completed")
+        require(
+            not case.escalated,
+            "Two calibration failures require maintenance escalation; "
+            "ordinary retries are blocked.",
+        )
         case.verification = sample_measurement(action.sample_id)
+        case.recovery = action.checks
+        if action.checks.confirmed and action.checks.calibration != "unknown":
+            case.calibration_attempts += 1
+            case.calibration_failures += int(action.checks.calibration == "fail")
+        case.escalated = case.calibration_failures >= 2
+        passed = case.verification.passed and action.checks.complete() and not case.escalated
+        evidence(
+            case,
+            "recovery_checks",
+            action.checks.model_dump(mode="json"),
+            source_ref="confirmed_simulated_recovery",
+            verified=action.checks.confirmed,
+        )
         evidence(
             case,
             "verification_passed",
-            case.verification.passed,
+            passed,
             "synthetic_image_measurement",
             case.verification.image_url,
-            verified=True,
+            verified=action.checks.confirmed,
         )
         transition(
             case,
-            "verification_passed" if case.verification.passed else state,
-            "Verification passed."
-            if case.verification.passed
-            else "Verification failed; case remains open. Select another sample to retry.",
+            "verification_passed" if passed else state,
+            "Verification passed; simulated recovery only."
+            if passed
+            else "Two calibration failures: maintenance escalation required."
+            if case.escalated
+            else "Verification incomplete or failed; case remains open.",
         )
     elif action.action == "resolve":
-        require(state == "verification_passed" and case.verification and case.verification.passed)
+        require(
+            state == "verification_passed"
+            and case.verification
+            and case.verification.passed
+            and case.recovery
+            and case.recovery.complete()
+            and not case.escalated
+        )
         case.summary = CaseSummary(
             problem=case.investigation.title,
-            confirmed_cause="Cartridge / nozzle restriction",
-            corrective_action="Simulated site-approved cartridge replacement recorded",
-            verification=f"Mean {case.verification.mean_diameter_px} px; all dots within 28–32 px.",
+            confirmed_cause="Nozzle restriction",
+            corrective_action="Simulated "
+            + (case.corrective_action or "nozzle_replacement").replace("_", " "),
+            verification=(
+                "Visual and recovery checks passed; synthetic recovery only, not lot release."
+            ),
             evidence_ids=[e.id for e in case.investigation.evidence],
         )
         transition(case, "resolved", "Resolution explicitly confirmed; case summary saved.")
@@ -503,7 +580,9 @@ router = APIRouter(prefix="/api", tags=["cases"])
 
 @router.get("/demo/images", response_model=list[Measurement])
 def images():
-    return [sample_measurement(s) for s in ("normal", "undersized", "oversized", "missing")]
+    return [
+        sample_measurement(s) for s in ("normal", "incomplete", "coarse", "shifted", "overspray")
+    ]
 
 
 @router.get("/demo/images/{sample_id}.png")

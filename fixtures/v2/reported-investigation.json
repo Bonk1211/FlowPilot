@@ -1,0 +1,22 @@
+{
+  "schema_version": "2.0",
+  "id": "CASE-DEMO-001",
+  "title": "Declining flux spray coverage",
+  "process": "S-932 / DJ-2200 atomized flux spraying",
+  "state": "reported",
+  "simulated": true,
+  "reported_at": "2026-09-16T10:20:00+08:00",
+  "evidence": [
+    {
+      "id": "EV-DEMO-001",
+      "key": "operator_report",
+      "value": "The latest inspected tray has consistently incomplete flux spray coverage.",
+      "unit": null,
+      "source_type": "technician_input",
+      "source_ref": "demo-operator-report",
+      "quality": "medium",
+      "verification_state": "provisional",
+      "timestamp": "2026-09-16T10:20:00+08:00"
+    }
+  ]
+}

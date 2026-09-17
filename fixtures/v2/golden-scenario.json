@@ -1,0 +1,2365 @@
+{
+  "schema_version": "2.0",
+  "fixture_version": "2.0",
+  "simulated": true,
+  "investigation": {
+    "schema_version": "2.0",
+    "id": "CASE-DEMO-001",
+    "title": "Declining flux spray coverage",
+    "process": "S-932 / DJ-2200 atomized flux spraying",
+    "state": "reported",
+    "simulated": true,
+    "reported_at": "2026-09-16T10:20:00+08:00",
+    "evidence": [
+      {
+        "id": "EV-DEMO-001",
+        "key": "operator_report",
+        "value": "The latest inspected tray has consistently incomplete flux spray coverage.",
+        "unit": null,
+        "source_type": "technician_input",
+        "source_ref": "demo-operator-report",
+        "quality": "medium",
+        "verification_state": "provisional",
+        "timestamp": "2026-09-16T10:20:00+08:00"
+      },
+      {
+        "id": "EV-IMAGE",
+        "key": "coverage_pct",
+        "value": 70.83,
+        "unit": "%",
+        "source_type": "synthetic_image_measurement",
+        "source_ref": "golden-demo#EV-IMAGE",
+        "quality": "high",
+        "verification_state": "provisional",
+        "timestamp": "2026-09-16T10:25:00+08:00"
+      },
+      {
+        "id": "EV-PERSIST",
+        "key": "continuous",
+        "value": "yes",
+        "unit": null,
+        "source_type": "technician_input",
+        "source_ref": "golden-demo#EV-PERSIST",
+        "quality": "high",
+        "verification_state": "verified",
+        "timestamp": "2026-09-16T10:25:00+08:00"
+      },
+      {
+        "id": "EV-FOUND",
+        "key": "inspection",
+        "value": "obstruction_found",
+        "unit": null,
+        "source_type": "technician_input",
+        "source_ref": "golden-demo#EV-FOUND",
+        "quality": "high",
+        "verification_state": "verified",
+        "timestamp": "2026-09-16T10:25:00+08:00"
+      },
+      {
+        "id": "EV-CLEAR",
+        "key": "inspection",
+        "value": "no_obstruction_found",
+        "unit": null,
+        "source_type": "technician_input",
+        "source_ref": "golden-demo#EV-CLEAR",
+        "quality": "high",
+        "verification_state": "verified",
+        "timestamp": "2026-09-16T10:25:00+08:00"
+      },
+      {
+        "id": "EV-ACTION",
+        "key": "corrective_action",
+        "value": "Simulated site-approved nozzle replacement recorded",
+        "unit": null,
+        "source_type": "technician_input",
+        "source_ref": "golden-demo#EV-ACTION",
+        "quality": "high",
+        "verification_state": "verified",
+        "timestamp": "2026-09-16T10:25:00+08:00"
+      },
+      {
+        "id": "EV-VERIFY",
+        "key": "coverage_pct",
+        "value": 100,
+        "unit": "%",
+        "source_type": "synthetic_image_measurement",
+        "source_ref": "golden-demo#EV-VERIFY",
+        "quality": "high",
+        "verification_state": "verified",
+        "timestamp": "2026-09-16T10:25:00+08:00"
+      },
+      {
+        "id": "EV-SYMPTOM",
+        "key": "incomplete_coverage",
+        "value": true,
+        "unit": null,
+        "source_type": "synthetic_image_measurement",
+        "source_ref": "golden-demo#EV-IMAGE",
+        "quality": "high",
+        "verification_state": "provisional",
+        "timestamp": "2026-09-16T10:25:00+08:00"
+      },
+      {
+        "id": "EV-FOUND-PENDING",
+        "key": "inspection",
+        "value": "obstruction_found",
+        "unit": null,
+        "source_type": "technician_input",
+        "source_ref": "golden-demo#EV-FOUND",
+        "quality": "high",
+        "verification_state": "provisional",
+        "timestamp": "2026-09-16T10:25:00+08:00"
+      },
+      {
+        "id": "EV-CLEAR-PENDING",
+        "key": "inspection",
+        "value": "no_obstruction_found",
+        "unit": null,
+        "source_type": "technician_input",
+        "source_ref": "golden-demo#EV-CLEAR",
+        "quality": "high",
+        "verification_state": "provisional",
+        "timestamp": "2026-09-16T10:25:00+08:00"
+      }
+    ]
+  },
+  "images": [
+    {
+      "id": "before",
+      "label": "Before action",
+      "evidence_ids": [
+        "EV-IMAGE",
+        "EV-SYMPTOM"
+      ],
+      "sample_id": "incomplete",
+      "image_url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAACgCAAAAAAEQqlkAAABe0lEQVR4nO3dAQ3AIAADQcTOvwXwsJEnZHcKmjfQMUmM0wP+QuiI0BGhI0JHhI4IHRE6InRE6IjQEaEjQkeEjggdEToidEToiNARoSNCR4SOCB0ROiJ0ROiI0BGhI0JHhI4IHRE6InRE6IjQEaEjQkeEjggd+RT6ucauXO8JHRE6InRE6IjQEaEjQkeEjggdEToidEToiNARoSNCR4SOCB0ROiJ0ROiI0BGhI0JHhI4IHRE6InRE6IjQEaEjQkeEjggdEToidEToiNARoSNCR4SOCB0ROiJ0ROiI0BGhI0JHhI4IHRE6InRE6IjQEaEjQkeEjggdEToidEToiNARoSNCR4SOCB0ROiJ0ROiI0BGhI0JHhI4IHRE6InRE6IjQEaEjQkccR0aEjggdEToidEToiNARoSNCR4SOCB0ROiJ0ROiI0BGhI0JHhI4IHRE6InRE6IjQEaEjQkeEjggdEToidEToiNARoSNCR4SOCB0ROiJ0ROiI0BGhIwu5tP/SEIJ5VQAAAABJRU5ErkJggg==",
+      "simulated": true,
+      "width": 360,
+      "height": 160,
+      "target_bounds": [
+        60,
+        40,
+        300,
+        120
+      ],
+      "keep_out_bounds": [
+        40,
+        20,
+        320,
+        140
+      ],
+      "coverage_pct": 70.83,
+      "uncovered_area_px": 5600,
+      "displacement_px": 35.0,
+      "outside_keep_out_px": 0,
+      "coarse_area_px": 0,
+      "passed": false
+    },
+    {
+      "id": "after",
+      "label": "Recovered spray",
+      "evidence_ids": [
+        "EV-VERIFY"
+      ],
+      "sample_id": "normal",
+      "image_url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAWgAAACgCAAAAAAEQqlkAAABdklEQVR4nO3QQQkAIADAQMPav4JWEIT58C7B2FgkxuuAXxgdMTpidMToiNERoyNGR4yOGB0xOmJ0xOiI0RGjI0ZHjI4YHTE6YnTE6IjREaMjRkeMjhgdMTpidMToiNERoyNGR4yOGB0xOmJ0xOiI0RGjI1ej52eMjhgdMTpidMToiNERoyNGR4yOGB0xOmJ0xOiI0RGjI0ZHjI4YHTE6YnTE6IjREaMjRkeMjhgdMTpidMToiNERoyNGR4yOGB0xOmJ0xOiI0RGjI0ZHjI4YHTE6YnTE6IjREaMjRkeMjhgdMTpidMToiNERoyNGR4yOGB0xOmJ0xOiI0RGjI0ZHjI4YHTE6YnTE6IjREaMjRkeMjhgdMTpidMToiNERoyPPRnPO6IjREaMjRkeMjhgdMTpidMToiNERoyNGR4yOGB0xOmJ0xOiI0RGjI0ZHjI4YHTE6YnTE6IjREaMjRkeMjhgdMTpidMToiNERoyNGR4yOGB0xOrIBU07Ab0JVsg8AAAAASUVORK5CYII=",
+      "simulated": true,
+      "width": 360,
+      "height": 160,
+      "target_bounds": [
+        60,
+        40,
+        300,
+        120
+      ],
+      "keep_out_bounds": [
+        40,
+        20,
+        320,
+        140
+      ],
+      "coverage_pct": 100.0,
+      "uncovered_area_px": 0,
+      "displacement_px": 0.0,
+      "outside_keep_out_px": 0,
+      "coarse_area_px": 0,
+      "passed": true
+    }
+  ],
+  "log_preview": {
+    "format": "industry_event_log_v1",
+    "sourceName": "demo-industry-machine.log",
+    "sourceDigest": "51267898a41e1b4586ff5195c6262b8a75c54703088bbca46adb39750d4dfd52",
+    "timezone": "+08:00",
+    "events": [
+      {
+        "id": "LOG-cdd9f0d5cbec26211728",
+        "kind": "run_started",
+        "occurredAt": "2026-09-13T01:13:30.268+08:00",
+        "localTimestamp": "2026-09-13T01:13:30.268",
+        "lineStart": 1,
+        "lineEnd": 1,
+        "sourceRef": "demo-industry-machine.log#L1",
+        "raw": "2026-09-13,01:13:30.268,Run Started,Board #78:",
+        "payload": "Run Started,Board #78:",
+        "fields": {
+          "boardId": "78"
+        }
+      },
+      {
+        "id": "LOG-34cfebdb5fc4197ac607",
+        "kind": "timer_between_boards_started",
+        "occurredAt": "2026-09-13T01:13:30.268+08:00",
+        "localTimestamp": "2026-09-13T01:13:30.268",
+        "lineStart": 2,
+        "lineEnd": 2,
+        "sourceRef": "demo-industry-machine.log#L2",
+        "raw": "2026-09-13,01:13:30.268,Begin of Timer Between Boards,Conveyor 1 Timer Between Boards Started...",
+        "payload": "Begin of Timer Between Boards,Conveyor 1 Timer Between Boards Started...",
+        "fields": {
+          "conveyor": 1
+        }
+      },
+      {
+        "id": "LOG-ea7465ee06cca607abe4",
+        "kind": "run_finished",
+        "occurredAt": "2026-09-13T01:15:34.934+08:00",
+        "localTimestamp": "2026-09-13T01:15:34.934",
+        "lineStart": 3,
+        "lineEnd": 3,
+        "sourceRef": "demo-industry-machine.log#L3",
+        "raw": "2026-09-13,01:15:34.934,Run Finished,Board #78, Status: PASS",
+        "payload": "Run Finished,Board #78, Status: PASS",
+        "fields": {
+          "boardId": "78",
+          "status": "PASS"
+        }
+      },
+      {
+        "id": "LOG-445b332a50be60e286f7",
+        "kind": "timer_between_boards_stopped",
+        "occurredAt": "2026-09-13T01:15:34.095+08:00",
+        "localTimestamp": "2026-09-13T01:15:34.095",
+        "lineStart": 4,
+        "lineEnd": 4,
+        "sourceRef": "demo-industry-machine.log#L4",
+        "raw": "2026-09-13,01:15:34.095,End of Timer Between Boards,Conveyor 1 Timer Between Boards Stopped, Duration = 123.493 sec.",
+        "payload": "End of Timer Between Boards,Conveyor 1 Timer Between Boards Stopped, Duration = 123.493 sec.",
+        "fields": {
+          "conveyor": 1,
+          "durationSeconds": 123.493
+        }
+      },
+      {
+        "id": "LOG-4dfd24decea8b038a055",
+        "kind": "fiducial_find_started",
+        "occurredAt": "2026-09-13T01:15:35.398+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.398",
+        "lineStart": 5,
+        "lineEnd": 5,
+        "sourceRef": "demo-industry-machine.log#L5",
+        "raw": "2026-09-13,01:15:35.398,Fiducial Find Begin",
+        "payload": "Fiducial Find Begin",
+        "fields": {}
+      },
+      {
+        "id": "LOG-418ec2ad9294611d3236",
+        "kind": "fiducial_found",
+        "occurredAt": "2026-09-13T01:15:35.398+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.398",
+        "lineStart": 6,
+        "lineEnd": 6,
+        "sourceRef": "demo-industry-machine.log#L6",
+        "raw": "2026-09-13,01:15:35.398,Fid Found,jedec:Fid 1,13.516,9.390,inch,Fid Score = 74",
+        "payload": "Fid Found,jedec:Fid 1,13.516,9.390,inch,Fid Score = 74",
+        "fields": {
+          "fiducialId": "1",
+          "x": 13.516,
+          "y": 9.39,
+          "positionUnit": "inch",
+          "score": 74.0
+        }
+      },
+      {
+        "id": "LOG-62fad80c55317a898748",
+        "kind": "fiducial_found",
+        "occurredAt": "2026-09-13T01:15:35.450+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.450",
+        "lineStart": 7,
+        "lineEnd": 7,
+        "sourceRef": "demo-industry-machine.log#L7",
+        "raw": "2026-09-13,01:15:35.450,Fid Found,jedec:Fid 2,2.931,7.625,inch,Fid Score = 74",
+        "payload": "Fid Found,jedec:Fid 2,2.931,7.625,inch,Fid Score = 74",
+        "fields": {
+          "fiducialId": "2",
+          "x": 2.931,
+          "y": 7.625,
+          "positionUnit": "inch",
+          "score": 74.0
+        }
+      },
+      {
+        "id": "LOG-c104a05004d676e6d668",
+        "kind": "frame_location_correction",
+        "occurredAt": "2026-09-13T01:15:35.451+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.451",
+        "lineStart": 8,
+        "lineEnd": 8,
+        "sourceRef": "demo-industry-machine.log#L8",
+        "raw": "2026-09-13,01:15:35.451,Frame Location-Corr Local,( 0.012 inch,-0.014 inch,-0.01 deg)",
+        "payload": "Frame Location-Corr Local,( 0.012 inch,-0.014 inch,-0.01 deg)",
+        "fields": {
+          "x": 0.012,
+          "xUnit": "inch",
+          "y": -0.014,
+          "yUnit": "inch",
+          "rotation": -0.01,
+          "rotationUnit": "deg"
+        }
+      },
+      {
+        "id": "LOG-b69f05f9ce5747f53d47",
+        "kind": "frame_location_relative_to_base",
+        "occurredAt": "2026-09-13T01:15:35.451+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.451",
+        "lineStart": 9,
+        "lineEnd": 9,
+        "sourceRef": "demo-industry-machine.log#L9",
+        "raw": "2026-09-13,01:15:35.451,Frame Location-Rel to Base,(13.508 inch, 9.411 inch,0.20 deg)",
+        "payload": "Frame Location-Rel to Base,(13.508 inch, 9.411 inch,0.20 deg)",
+        "fields": {
+          "x": 13.508,
+          "xUnit": "inch",
+          "y": 9.411,
+          "yUnit": "inch",
+          "rotation": 0.2,
+          "rotationUnit": "deg"
+        }
+      },
+      {
+        "id": "LOG-2aebf16739c3374e914d",
+        "kind": "fiducial_find_finished",
+        "occurredAt": "2026-09-13T01:15:35.451+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.451",
+        "lineStart": 10,
+        "lineEnd": 10,
+        "sourceRef": "demo-industry-machine.log#L10",
+        "raw": "2026-09-13,01:15:35.451,Fiducial Find End",
+        "payload": "Fiducial Find End",
+        "fields": {}
+      },
+      {
+        "id": "LOG-e71b79cec3b0bf13ffd2",
+        "kind": "height_sense_started",
+        "occurredAt": "2026-09-13T01:15:35.519+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.519",
+        "lineStart": 11,
+        "lineEnd": 11,
+        "sourceRef": "demo-industry-machine.log#L11",
+        "raw": "2026-09-13,01:15:35.519,Height Sense Begin",
+        "payload": "Height Sense Begin",
+        "fields": {}
+      },
+      {
+        "id": "LOG-2f46ddcf6ccf324a368b",
+        "kind": "height_sense_finished",
+        "occurredAt": "2026-09-13T01:15:35.918+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.918",
+        "lineStart": 12,
+        "lineEnd": 12,
+        "sourceRef": "demo-industry-machine.log#L12",
+        "raw": "2026-09-13,01:15:35.918,Height Sense End",
+        "payload": "Height Sense End",
+        "fields": {}
+      },
+      {
+        "id": "LOG-83357b5b9b9fcd39b658",
+        "kind": "height_sense_result",
+        "occurredAt": "2026-09-13T01:15:35.920+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.920",
+        "lineStart": 13,
+        "lineEnd": 13,
+        "sourceRef": "demo-industry-machine.log#L13",
+        "raw": "2026-09-13,01:15:35.920,Height Sense Results,Z-1.2626 at -5.1900,-2.0165 (inch rel to Wkpc)",
+        "payload": "Height Sense Results,Z-1.2626 at -5.1900,-2.0165 (inch rel to Wkpc)",
+        "fields": {
+          "z": -1.2626,
+          "x": -5.19,
+          "y": -2.0165,
+          "coordinateContext": "inch rel to Wkpc"
+        }
+      },
+      {
+        "id": "LOG-7a1e43ff9f1ba0504d58",
+        "kind": "timer_instruction_result",
+        "occurredAt": "2026-09-13T01:15:35.921+08:00",
+        "localTimestamp": "2026-09-13T01:15:35.921",
+        "lineStart": 14,
+        "lineEnd": 15,
+        "sourceRef": "demo-industry-machine.log#L14-L15",
+        "raw": "2026-09-13,01:15:35.921,TIME_BETWEEN_BOARDS Results,Instruction: TIME_BETWEEN_BOARDS_LANE1 <= 120.000; Run Time:\nTIME_BETWEEN_BOARDS_LANE1 = 123.493",
+        "payload": "TIME_BETWEEN_BOARDS Results,Instruction: TIME_BETWEEN_BOARDS_LANE1 <= 120.000; Run Time:\nTIME_BETWEEN_BOARDS_LANE1 = 123.493",
+        "fields": {
+          "instructionMetric": "TIME_BETWEEN_BOARDS_LANE1",
+          "operator": "<=",
+          "thresholdSeconds": 120.0,
+          "runtimeMetric": "TIME_BETWEEN_BOARDS_LANE1",
+          "runtimeSeconds": 123.493
+        }
+      },
+      {
+        "id": "LOG-9a2c77f9a49ce3fd741a",
+        "kind": "run_started",
+        "occurredAt": "2026-09-13T01:16:20.085+08:00",
+        "localTimestamp": "2026-09-13T01:16:20.085",
+        "lineStart": 16,
+        "lineEnd": 16,
+        "sourceRef": "demo-industry-machine.log#L16",
+        "raw": "2026-09-13,01:16:20.085,Run Started,Board #79:",
+        "payload": "Run Started,Board #79:",
+        "fields": {
+          "boardId": "79"
+        }
+      }
+    ],
+    "runs": [
+      {
+        "boardId": "78",
+        "startedAt": "2026-09-13T01:13:30.268+08:00",
+        "finishedAt": "2026-09-13T01:15:34.934+08:00",
+        "status": "PASS",
+        "startSourceRef": "demo-industry-machine.log#L1",
+        "finishSourceRef": "demo-industry-machine.log#L3",
+        "complete": true
+      },
+      {
+        "boardId": "79",
+        "startedAt": "2026-09-13T01:16:20.085+08:00",
+        "finishedAt": null,
+        "status": null,
+        "startSourceRef": "demo-industry-machine.log#L16",
+        "finishSourceRef": null,
+        "complete": false
+      }
+    ],
+    "evidenceCandidates": [
+      {
+        "sourceType": "machine_log",
+        "sourceRef": "demo-industry-machine.log#L3",
+        "timestamp": "2026-09-13T01:15:34.934+08:00",
+        "verificationState": "provisional",
+        "key": "machine_run_status",
+        "value": "PASS",
+        "unit": null,
+        "context": {
+          "boardId": "78"
+        }
+      },
+      {
+        "sourceType": "machine_log",
+        "sourceRef": "demo-industry-machine.log#L4",
+        "timestamp": "2026-09-13T01:15:34.095+08:00",
+        "verificationState": "provisional",
+        "key": "time_between_boards",
+        "value": 123.493,
+        "unit": "s",
+        "context": {
+          "conveyor": 1
+        }
+      },
+      {
+        "sourceType": "machine_log",
+        "sourceRef": "demo-industry-machine.log#L6",
+        "timestamp": "2026-09-13T01:15:35.398+08:00",
+        "verificationState": "provisional",
+        "key": "fiducial_score",
+        "value": 74.0,
+        "unit": null,
+        "context": {
+          "fiducialId": "1"
+        }
+      },
+      {
+        "sourceType": "machine_log",
+        "sourceRef": "demo-industry-machine.log#L6",
+        "timestamp": "2026-09-13T01:15:35.398+08:00",
+        "verificationState": "provisional",
+        "key": "fiducial_position",
+        "value": {
+          "x": 13.516,
+          "y": 9.39
+        },
+        "unit": "inch",
+        "context": {
+          "fiducialId": "1"
+        }
+      },
+      {
+        "sourceType": "machine_log",
+        "sourceRef": "demo-industry-machine.log#L7",
+        "timestamp": "2026-09-13T01:15:35.450+08:00",
+        "verificationState": "provisional",
+        "key": "fiducial_score",
+        "value": 74.0,
+        "unit": null,
+        "context": {
+          "fiducialId": "2"
+        }
+      },
+      {
+        "sourceType": "machine_log",
+        "sourceRef": "demo-industry-machine.log#L7",
+        "timestamp": "2026-09-13T01:15:35.450+08:00",
+        "verificationState": "provisional",
+        "key": "fiducial_position",
+        "value": {
+          "x": 2.931,
+          "y": 7.625
+        },
+        "unit": "inch",
+        "context": {
+          "fiducialId": "2"
+        }
+      },
+      {
+        "sourceType": "machine_log",
+        "sourceRef": "demo-industry-machine.log#L8",
+        "timestamp": "2026-09-13T01:15:35.451+08:00",
+        "verificationState": "provisional",
+        "key": "frame_location_correction",
+        "value": {
+          "x": 0.012,
+          "y": -0.014,
+          "rotation": -0.01
+        },
+        "unit": {
+          "x": "inch",
+          "y": "inch",
+          "rotation": "deg"
+        },
+        "context": null
+      },
+      {
+        "sourceType": "machine_log",
+        "sourceRef": "demo-industry-machine.log#L9",
+        "timestamp": "2026-09-13T01:15:35.451+08:00",
+        "verificationState": "provisional",
+        "key": "frame_location_relative_to_base",
+        "value": {
+          "x": 13.508,
+          "y": 9.411,
+          "rotation": 0.2
+        },
+        "unit": {
+          "x": "inch",
+          "y": "inch",
+          "rotation": "deg"
+        },
+        "context": null
+      },
+      {
+        "sourceType": "machine_log",
+        "sourceRef": "demo-industry-machine.log#L13",
+        "timestamp": "2026-09-13T01:15:35.920+08:00",
+        "verificationState": "provisional",
+        "key": "height_sense_result",
+        "value": {
+          "z": -1.2626,
+          "x": -5.19,
+          "y": -2.0165
+        },
+        "unit": "inch rel to Wkpc",
+        "context": null
+      }
+    ],
+    "warnings": [
+      {
+        "code": "continuation_line",
+        "line": 15,
+        "message": "A non-timestamped line was retained as part of the preceding event."
+      },
+      {
+        "code": "timestamp_out_of_order",
+        "line": 4,
+        "relatedLine": 3,
+        "message": "Event timestamps moved backwards; source order was preserved and no events were reordered."
+      },
+      {
+        "code": "run_finish_missing",
+        "message": "Board 79 started without a matching finish in this file.",
+        "line": 16
+      }
+    ],
+    "timeRange": {
+      "start": "2026-09-13T01:13:30.268+08:00",
+      "end": "2026-09-13T01:16:20.085+08:00"
+    },
+    "stats": {
+      "eventCount": 15,
+      "recognizedEventCount": 15,
+      "unknownEventCount": 0,
+      "runCount": 2
+    }
+  },
+  "questions": [
+    {
+      "id": "frequency",
+      "prompt": "Which spray symptom was observed?",
+      "rationale": "Separate poor coverage from poor atomization.",
+      "options": [
+        {
+          "value": "continuous",
+          "label": "Incomplete coverage",
+          "next_question_id": "continuous"
+        },
+        {
+          "value": "intermittent",
+          "label": "Blobs or line-end droplets",
+          "next_question_id": "intermittent"
+        },
+        {
+          "value": "unknown",
+          "label": "Not recorded",
+          "next_question_id": "continuous"
+        }
+      ]
+    },
+    {
+      "id": "continuous",
+      "prompt": "Has measured flux weight been falling?",
+      "rationale": "Weight must come from a measurement or technician report, never from the image.",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "next_question_id": "change"
+        },
+        {
+          "value": "no",
+          "label": "No",
+          "next_question_id": "change"
+        },
+        {
+          "value": "unknown",
+          "label": "Not recorded",
+          "next_question_id": "change"
+        }
+      ]
+    },
+    {
+      "id": "intermittent",
+      "prompt": "Does flux weight pass despite blobs or droplets?",
+      "rationale": "Stable weight does not establish acceptable atomization.",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "next_question_id": "change"
+        },
+        {
+          "value": "no",
+          "label": "No",
+          "next_question_id": "change"
+        },
+        {
+          "value": "unknown",
+          "label": "Not recorded",
+          "next_question_id": "change"
+        }
+      ]
+    },
+    {
+      "id": "change",
+      "prompt": "What does fluid pressure show?",
+      "rationale": "Distinguish rising demand from unstable actual pressure.",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Rising demand",
+          "next_question_id": "temperature"
+        },
+        {
+          "value": "unstable",
+          "label": "Unstable actual pressure",
+          "next_question_id": "temperature"
+        },
+        {
+          "value": "no",
+          "label": "Stable / no known change",
+          "next_question_id": "temperature"
+        },
+        {
+          "value": "unknown",
+          "label": "Not recorded",
+          "next_question_id": "temperature"
+        }
+      ]
+    },
+    {
+      "id": "temperature",
+      "prompt": "Any material-condition or idle-purge concerns?",
+      "rationale": "Review flux identity, pot life, stabilization, and downtime.",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "next_question_id": "service"
+        },
+        {
+          "value": "no",
+          "label": "No",
+          "next_question_id": "service"
+        },
+        {
+          "value": "unknown",
+          "label": "Not recorded",
+          "next_question_id": "service"
+        }
+      ]
+    },
+    {
+      "id": "service",
+      "prompt": "Was there a collision or recent setup change?",
+      "rationale": "Bent nozzles and incorrect offsets can shift a pattern.",
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "next_question_id": null
+        },
+        {
+          "value": "no",
+          "label": "No",
+          "next_question_id": null
+        },
+        {
+          "value": "unknown",
+          "label": "Not recorded",
+          "next_question_id": null
+        }
+      ]
+    }
+  ],
+  "first_question_id": "frequency",
+  "findings": [
+    {
+      "agent": "fluid_path_specialist",
+      "hypothesis_id": "fluid_path_restriction",
+      "supporting_evidence_ids": [
+        "EV-PERSIST",
+        "EV-SYMPTOM"
+      ],
+      "conflicting_evidence_ids": [],
+      "missing_evidence": [
+        "Product limits and authorized process checks"
+      ],
+      "source_refs": [],
+      "confidence_band": "low",
+      "summary": "Fluid-path restriction: compare cited observations; compatibility is not proof."
+    },
+    {
+      "agent": "fluid_path_specialist",
+      "hypothesis_id": "fluid_supply_fault",
+      "supporting_evidence_ids": [
+        "EV-PERSIST",
+        "EV-SYMPTOM"
+      ],
+      "conflicting_evidence_ids": [],
+      "missing_evidence": [
+        "Product limits and authorized process checks"
+      ],
+      "source_refs": [],
+      "confidence_band": "low",
+      "summary": "Fluid-pressure / BFS supply fault: compare cited observations; compatibility is not proof."
+    },
+    {
+      "agent": "material_process_specialist",
+      "hypothesis_id": "material_condition",
+      "supporting_evidence_ids": [
+        "EV-PERSIST",
+        "EV-SYMPTOM"
+      ],
+      "conflicting_evidence_ids": [],
+      "missing_evidence": [
+        "Product limits and authorized process checks"
+      ],
+      "source_refs": [],
+      "confidence_band": "low",
+      "summary": "Material condition / idle purge: compare cited observations; compatibility is not proof."
+    },
+    {
+      "agent": "fluid_path_specialist",
+      "hypothesis_id": "atomization_fault",
+      "supporting_evidence_ids": [
+        "EV-SYMPTOM"
+      ],
+      "conflicting_evidence_ids": [],
+      "missing_evidence": [
+        "Product limits and authorized process checks"
+      ],
+      "source_refs": [],
+      "confidence_band": "low",
+      "summary": "Coaxial-air / atomization fault: compare cited observations; compatibility is not proof."
+    },
+    {
+      "agent": "material_process_specialist",
+      "hypothesis_id": "alignment_fault",
+      "supporting_evidence_ids": [
+        "EV-SYMPTOM"
+      ],
+      "conflicting_evidence_ids": [],
+      "missing_evidence": [
+        "Product limits and authorized process checks"
+      ],
+      "source_refs": [],
+      "confidence_band": "low",
+      "summary": "Nozzle / alignment / recipe fault: compare cited observations; compatibility is not proof."
+    },
+    {
+      "agent": "diagnostic_critic",
+      "hypothesis_id": "fluid_path_restriction",
+      "supporting_evidence_ids": [],
+      "conflicting_evidence_ids": [],
+      "missing_evidence": [
+        "Product limits and authorized process checks"
+      ],
+      "source_refs": [],
+      "confidence_band": "low",
+      "summary": "A falling weight trend cannot identify a unique cause. Machine PASS and weight calibration do not establish spray quality."
+    }
+  ],
+  "recommendations": [
+    {
+      "id": "inspection",
+      "name": "Nozzle and air-cap inspection",
+      "duration_minutes": 10,
+      "required_parts": [
+        "Nozzle",
+        "Air cap"
+      ],
+      "instructions": "Review external hoses, connections, pattern and pressure observations first. Record only the result of a nozzle inspection permitted by the controlled site procedure.",
+      "rationale": "A confirmed nozzle obstruction supports restriction; a clear nozzle redirects checks without excluding upstream restriction.",
+      "expected_outcomes": [
+        "Obstruction found: record observation before corrective action.",
+        "No obstruction found: check air cap, coaxial air, then pressure supply."
+      ],
+      "safety_note": "Illustrative only. Stop processing and contain affected material. Follow the site certification and isolation procedure; EMO is not isolation."
+    },
+    {
+      "id": "air_supply",
+      "name": "Air-cap and pressure-supply checks",
+      "duration_minutes": 10,
+      "required_parts": [
+        "Air cap",
+        "Coaxial air",
+        "BFS"
+      ],
+      "instructions": "Check in order: air-cap installation/centering; coaxial air; fluid-pressure setpoint versus actual; BFS/QDs/tubing; valve condition through maintenance; material/pot life/idle purge; nozzle offsets and recipe teaching.",
+      "rationale": "A clear nozzle does not exclude an upstream restriction. Start with atomization and supply checks, not an assumed viscosity fault.",
+      "expected_outcomes": [
+        "Record further evidence with authorized personnel; this case remains open."
+      ],
+      "safety_note": "Internal valve, regulator, solenoid or electrical work belongs to authorized maintenance under the applicable isolation procedure."
+    }
+  ],
+  "procedure_steps": [
+    {
+      "step_id": "contain",
+      "title": "Stop and contain affected material",
+      "model_node_id": "substrate_tray",
+      "camera_preset": "assembly_overview",
+      "highlight": "warning",
+      "instruction": "Stop processing and segregate affected units under the applicable recovery procedure. Review alarms and pattern observations.",
+      "caution": "Do not dry-cycle a production lot. The prototype does not release material."
+    },
+    {
+      "step_id": "supply",
+      "title": "Review the BFS and fluid path externally",
+      "model_node_id": "bfs_bottle",
+      "camera_preset": "assembly_overview",
+      "highlight": "active",
+      "instruction": "Identify bottle, pickup, tubing and QDs. Review visible leaks, kinks, clamps and pressure observations without disconnecting fittings.",
+      "caution": "Never open a pressurized BFS. EMO is not zero-energy isolation. Follow controlled pressure-release and LOTO requirements."
+    },
+    {
+      "step_id": "air",
+      "title": "Locate the coaxial air cap",
+      "model_node_id": "air_cap",
+      "camera_preset": "nozzle_closeup",
+      "highlight": "active",
+      "instruction": "Identify the air cap around the nozzle and its separate coaxial-air supply. Compare centering and pattern observations.",
+      "caution": "Use the approved service position and interlocked machine state. Never bypass interlocks."
+    },
+    {
+      "step_id": "nozzle",
+      "title": "Review the authorized nozzle observation",
+      "model_node_id": "nozzle",
+      "camera_preset": "nozzle_closeup",
+      "highlight": "active",
+      "instruction": "Record a nozzle-only observation made by an authorized person under the applicable procedure. A clear nozzle says nothing definitive about upstream tubing or valve internals.",
+      "caution": "No drilling, reaming, forced wire, unapproved air, valve IPA flushing, air-cap immersion, or internal QD solvent cleaning. Cleaning tools, PPE and settings require the controlled procedure."
+    },
+    {
+      "step_id": "restore",
+      "title": "Restore and hand off",
+      "model_node_id": "dj2200_valve",
+      "camera_preset": "valve_closeup",
+      "highlight": "active",
+      "instruction": "Record the observation. Internal valve, micrometer, regulator, solenoid and electrical work require authorized maintenance. Restore guards and return to the prescribed idle-purge state.",
+      "caution": "Heated purge surfaces may be hot. Expert feedback received; revised procedure approval pending."
+    }
+  ],
+  "procedure_review": "feedback_received_approval_pending",
+  "outcomes": [
+    {
+      "outcome": "obstruction_found",
+      "evidence_id": "EV-FOUND",
+      "next_snapshot_id": "found"
+    },
+    {
+      "outcome": "no_obstruction_found",
+      "evidence_id": "EV-CLEAR",
+      "next_snapshot_id": "clear"
+    }
+  ],
+  "snapshots": [
+    {
+      "id": "report",
+      "screen": "report",
+      "title": "Review the reported defect",
+      "state": "reported",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST",
+        "EV-SYMPTOM"
+      ],
+      "ranking": [],
+      "recommendation_id": null,
+      "next_snapshot_id": "log",
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        }
+      ]
+    },
+    {
+      "id": "log",
+      "screen": "log",
+      "title": "Review the machine context",
+      "state": "reported",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST",
+        "EV-SYMPTOM"
+      ],
+      "ranking": [],
+      "recommendation_id": null,
+      "next_snapshot_id": "questions",
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "reported",
+          "description": "Review the machine context"
+        }
+      ]
+    },
+    {
+      "id": "questions",
+      "screen": "questions",
+      "title": "Establish the symptom pattern",
+      "state": "diagnosing",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST",
+        "EV-SYMPTOM"
+      ],
+      "ranking": [],
+      "recommendation_id": null,
+      "next_snapshot_id": "diagnosis",
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        }
+      ]
+    },
+    {
+      "id": "diagnosis",
+      "screen": "diagnosis",
+      "title": "Compare the possible causes",
+      "state": "inspection_recommended",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST",
+        "EV-SYMPTOM"
+      ],
+      "ranking": [
+        {
+          "hypothesis_id": "fluid_path_restriction",
+          "label": "Fluid-path restriction",
+          "score": 40,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 25,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 15,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "fluid_supply_fault",
+          "label": "Fluid-pressure / BFS supply fault",
+          "score": 25,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 10,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 15,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "material_condition",
+          "label": "Material condition / idle purge",
+          "score": 15,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 5,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 10,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "atomization_fault",
+          "label": "Coaxial-air / atomization fault",
+          "score": 10,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 10,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "alignment_fault",
+          "label": "Nozzle / alignment / recipe fault",
+          "score": 5,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 5,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        }
+      ],
+      "recommendation_id": "inspection",
+      "next_snapshot_id": "inspection",
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        },
+        {
+          "timestamp": "2026-09-16T10:22:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Compare the possible causes"
+        }
+      ]
+    },
+    {
+      "id": "inspection",
+      "screen": "inspection",
+      "title": "Inspect the nozzle and air cap",
+      "state": "inspection_recommended",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST",
+        "EV-SYMPTOM"
+      ],
+      "ranking": [
+        {
+          "hypothesis_id": "fluid_path_restriction",
+          "label": "Fluid-path restriction",
+          "score": 40,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 25,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 15,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "fluid_supply_fault",
+          "label": "Fluid-pressure / BFS supply fault",
+          "score": 25,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 10,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 15,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "material_condition",
+          "label": "Material condition / idle purge",
+          "score": 15,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 5,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 10,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "atomization_fault",
+          "label": "Coaxial-air / atomization fault",
+          "score": 10,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 10,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "alignment_fault",
+          "label": "Nozzle / alignment / recipe fault",
+          "score": 5,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 5,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        }
+      ],
+      "recommendation_id": "inspection",
+      "next_snapshot_id": null,
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        },
+        {
+          "timestamp": "2026-09-16T10:22:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Compare the possible causes"
+        },
+        {
+          "timestamp": "2026-09-16T10:23:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Inspect the nozzle and air cap"
+        }
+      ]
+    },
+    {
+      "id": "found",
+      "screen": "confirmation",
+      "title": "Confirm the inspection observation",
+      "state": "inspection_recommended",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST",
+        "EV-FOUND-PENDING",
+        "EV-SYMPTOM"
+      ],
+      "ranking": [
+        {
+          "hypothesis_id": "fluid_path_restriction",
+          "label": "Fluid-path restriction",
+          "score": 40,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 25,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 15,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "fluid_supply_fault",
+          "label": "Fluid-pressure / BFS supply fault",
+          "score": 25,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 10,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 15,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "material_condition",
+          "label": "Material condition / idle purge",
+          "score": 15,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 5,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 10,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "atomization_fault",
+          "label": "Coaxial-air / atomization fault",
+          "score": 10,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 10,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "alignment_fault",
+          "label": "Nozzle / alignment / recipe fault",
+          "score": 5,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 5,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        }
+      ],
+      "recommendation_id": null,
+      "next_snapshot_id": "corrective",
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        },
+        {
+          "timestamp": "2026-09-16T10:22:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Compare the possible causes"
+        },
+        {
+          "timestamp": "2026-09-16T10:23:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Inspect the nozzle and air cap"
+        }
+      ]
+    },
+    {
+      "id": "negative",
+      "screen": "diagnosis",
+      "title": "A clear path changes the next check",
+      "state": "diagnosing",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST",
+        "EV-CLEAR",
+        "EV-SYMPTOM"
+      ],
+      "ranking": [
+        {
+          "hypothesis_id": "fluid_supply_fault",
+          "label": "Fluid-pressure / BFS supply fault",
+          "score": 35,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 10,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-CLEAR",
+              "weight": 10,
+              "explanation": "A clear nozzle weakens nozzle restriction but cannot exclude an upstream restriction."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 15,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "atomization_fault",
+          "label": "Coaxial-air / atomization fault",
+          "score": 25,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-CLEAR",
+              "weight": 15,
+              "explanation": "A clear nozzle weakens nozzle restriction but cannot exclude an upstream restriction."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 10,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "fluid_path_restriction",
+          "label": "Fluid-path restriction",
+          "score": 15,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 25,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-CLEAR",
+              "weight": -25,
+              "explanation": "A clear nozzle weakens nozzle restriction but cannot exclude an upstream restriction."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 15,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "material_condition",
+          "label": "Material condition / idle purge",
+          "score": 15,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 5,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 10,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "alignment_fault",
+          "label": "Nozzle / alignment / recipe fault",
+          "score": 5,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 5,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        }
+      ],
+      "recommendation_id": "air_supply",
+      "next_snapshot_id": null,
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        },
+        {
+          "timestamp": "2026-09-16T10:22:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Compare the possible causes"
+        },
+        {
+          "timestamp": "2026-09-16T10:23:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Inspect the nozzle and air cap"
+        },
+        {
+          "timestamp": "2026-09-16T10:25:00+08:00",
+          "state": "inspection_completed",
+          "description": "Inspection completed; no obstruction found."
+        },
+        {
+          "timestamp": "2026-09-16T10:26:00+08:00",
+          "state": "diagnosing",
+          "description": "A clear path changes the next check"
+        }
+      ]
+    },
+    {
+      "id": "corrective",
+      "screen": "corrective",
+      "title": "Record the simulated corrective action",
+      "state": "cause_confirmed",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST",
+        "EV-FOUND",
+        "EV-SYMPTOM"
+      ],
+      "ranking": [
+        {
+          "hypothesis_id": "fluid_path_restriction",
+          "label": "Fluid-path restriction",
+          "score": 80,
+          "confirmed": true,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 25,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-FOUND",
+              "weight": 40,
+              "explanation": "Confirmed nozzle obstruction establishes a restriction; recovery still needs verification."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 15,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "fluid_supply_fault",
+          "label": "Fluid-pressure / BFS supply fault",
+          "score": 25,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 10,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 15,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "material_condition",
+          "label": "Material condition / idle purge",
+          "score": 15,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 5,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 10,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "atomization_fault",
+          "label": "Coaxial-air / atomization fault",
+          "score": 10,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 10,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "alignment_fault",
+          "label": "Nozzle / alignment / recipe fault",
+          "score": 5,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 5,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        }
+      ],
+      "recommendation_id": null,
+      "next_snapshot_id": "verification",
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        },
+        {
+          "timestamp": "2026-09-16T10:22:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Compare the possible causes"
+        },
+        {
+          "timestamp": "2026-09-16T10:23:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Inspect the nozzle and air cap"
+        },
+        {
+          "timestamp": "2026-09-16T10:24:00+08:00",
+          "state": "inspection_completed",
+          "description": "Confirm the inspection observation"
+        },
+        {
+          "timestamp": "2026-09-16T10:25:00+08:00",
+          "state": "cause_confirmed",
+          "description": "Record the simulated corrective action"
+        }
+      ]
+    },
+    {
+      "id": "verification",
+      "screen": "verification",
+      "title": "Compare recovery with the golden range",
+      "state": "corrective_action_completed",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST",
+        "EV-FOUND",
+        "EV-ACTION",
+        "EV-SYMPTOM"
+      ],
+      "ranking": [
+        {
+          "hypothesis_id": "fluid_path_restriction",
+          "label": "Fluid-path restriction",
+          "score": 80,
+          "confirmed": true,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 25,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-FOUND",
+              "weight": 40,
+              "explanation": "Confirmed nozzle obstruction establishes a restriction; recovery still needs verification."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 15,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "fluid_supply_fault",
+          "label": "Fluid-pressure / BFS supply fault",
+          "score": 25,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 10,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 15,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "material_condition",
+          "label": "Material condition / idle purge",
+          "score": 15,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 5,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 10,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "atomization_fault",
+          "label": "Coaxial-air / atomization fault",
+          "score": 10,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 10,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "alignment_fault",
+          "label": "Nozzle / alignment / recipe fault",
+          "score": 5,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 5,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        }
+      ],
+      "recommendation_id": null,
+      "next_snapshot_id": "verified",
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        },
+        {
+          "timestamp": "2026-09-16T10:22:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Compare the possible causes"
+        },
+        {
+          "timestamp": "2026-09-16T10:23:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Inspect the nozzle and air cap"
+        },
+        {
+          "timestamp": "2026-09-16T10:24:00+08:00",
+          "state": "inspection_completed",
+          "description": "Confirm the inspection observation"
+        },
+        {
+          "timestamp": "2026-09-16T10:25:00+08:00",
+          "state": "cause_confirmed",
+          "description": "Record the simulated corrective action"
+        },
+        {
+          "timestamp": "2026-09-16T10:26:00+08:00",
+          "state": "corrective_action_completed",
+          "description": "Compare recovery with the golden range"
+        }
+      ]
+    },
+    {
+      "id": "verified",
+      "screen": "verification",
+      "title": "Recovery is within the golden range",
+      "state": "verification_passed",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST",
+        "EV-FOUND",
+        "EV-ACTION",
+        "EV-VERIFY",
+        "EV-SYMPTOM"
+      ],
+      "ranking": [
+        {
+          "hypothesis_id": "fluid_path_restriction",
+          "label": "Fluid-path restriction",
+          "score": 80,
+          "confirmed": true,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 25,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-FOUND",
+              "weight": 40,
+              "explanation": "Confirmed nozzle obstruction establishes a restriction; recovery still needs verification."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 15,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "fluid_supply_fault",
+          "label": "Fluid-pressure / BFS supply fault",
+          "score": 25,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 10,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 15,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "material_condition",
+          "label": "Material condition / idle purge",
+          "score": 15,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 5,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 10,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "atomization_fault",
+          "label": "Coaxial-air / atomization fault",
+          "score": 10,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 10,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "alignment_fault",
+          "label": "Nozzle / alignment / recipe fault",
+          "score": 5,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 5,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        }
+      ],
+      "recommendation_id": null,
+      "next_snapshot_id": "summary",
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        },
+        {
+          "timestamp": "2026-09-16T10:22:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Compare the possible causes"
+        },
+        {
+          "timestamp": "2026-09-16T10:23:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Inspect the nozzle and air cap"
+        },
+        {
+          "timestamp": "2026-09-16T10:24:00+08:00",
+          "state": "inspection_completed",
+          "description": "Confirm the inspection observation"
+        },
+        {
+          "timestamp": "2026-09-16T10:25:00+08:00",
+          "state": "cause_confirmed",
+          "description": "Record the simulated corrective action"
+        },
+        {
+          "timestamp": "2026-09-16T10:26:00+08:00",
+          "state": "corrective_action_completed",
+          "description": "Compare recovery with the golden range"
+        },
+        {
+          "timestamp": "2026-09-16T10:27:00+08:00",
+          "state": "verification_passed",
+          "description": "Recovery is within the golden range"
+        }
+      ]
+    },
+    {
+      "id": "summary",
+      "screen": "summary",
+      "title": "Review the completed case",
+      "state": "resolved",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST",
+        "EV-FOUND",
+        "EV-ACTION",
+        "EV-VERIFY",
+        "EV-SYMPTOM"
+      ],
+      "ranking": [
+        {
+          "hypothesis_id": "fluid_path_restriction",
+          "label": "Fluid-path restriction",
+          "score": 80,
+          "confirmed": true,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 25,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-FOUND",
+              "weight": 40,
+              "explanation": "Confirmed nozzle obstruction establishes a restriction; recovery still needs verification."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 15,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "fluid_supply_fault",
+          "label": "Fluid-pressure / BFS supply fault",
+          "score": 25,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 10,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 15,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "material_condition",
+          "label": "Material condition / idle purge",
+          "score": 15,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 5,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 10,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "atomization_fault",
+          "label": "Coaxial-air / atomization fault",
+          "score": 10,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 10,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "alignment_fault",
+          "label": "Nozzle / alignment / recipe fault",
+          "score": 5,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 5,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        }
+      ],
+      "recommendation_id": null,
+      "next_snapshot_id": null,
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        },
+        {
+          "timestamp": "2026-09-16T10:22:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Compare the possible causes"
+        },
+        {
+          "timestamp": "2026-09-16T10:23:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Inspect the nozzle and air cap"
+        },
+        {
+          "timestamp": "2026-09-16T10:24:00+08:00",
+          "state": "inspection_completed",
+          "description": "Confirm the inspection observation"
+        },
+        {
+          "timestamp": "2026-09-16T10:25:00+08:00",
+          "state": "cause_confirmed",
+          "description": "Record the simulated corrective action"
+        },
+        {
+          "timestamp": "2026-09-16T10:26:00+08:00",
+          "state": "corrective_action_completed",
+          "description": "Compare recovery with the golden range"
+        },
+        {
+          "timestamp": "2026-09-16T10:27:00+08:00",
+          "state": "verification_passed",
+          "description": "Recovery is within the golden range"
+        },
+        {
+          "timestamp": "2026-09-16T10:28:00+08:00",
+          "state": "resolved",
+          "description": "Review the completed case"
+        }
+      ]
+    },
+    {
+      "id": "clear",
+      "screen": "confirmation",
+      "title": "Confirm the clear-nozzle observation",
+      "state": "inspection_recommended",
+      "evidence_ids": [
+        "EV-DEMO-001",
+        "EV-IMAGE",
+        "EV-PERSIST",
+        "EV-CLEAR-PENDING",
+        "EV-SYMPTOM"
+      ],
+      "ranking": [
+        {
+          "hypothesis_id": "fluid_path_restriction",
+          "label": "Fluid-path restriction",
+          "score": 40,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 25,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 15,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "fluid_supply_fault",
+          "label": "Fluid-pressure / BFS supply fault",
+          "score": 25,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 10,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 15,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "material_condition",
+          "label": "Material condition / idle purge",
+          "score": 15,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-PERSIST",
+              "weight": 5,
+              "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+            },
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 10,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "atomization_fault",
+          "label": "Coaxial-air / atomization fault",
+          "score": 10,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 10,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        },
+        {
+          "hypothesis_id": "alignment_fault",
+          "label": "Nozzle / alignment / recipe fault",
+          "score": 5,
+          "confirmed": false,
+          "contributions": [
+            {
+              "evidence_id": "EV-SYMPTOM",
+              "weight": 5,
+              "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+            }
+          ],
+          "missing_evidence": [
+            "Product limits and authorized process checks"
+          ]
+        }
+      ],
+      "recommendation_id": null,
+      "next_snapshot_id": "negative",
+      "timeline": [
+        {
+          "timestamp": "2026-09-16T10:20:00+08:00",
+          "state": "reported",
+          "description": "Review the reported defect"
+        },
+        {
+          "timestamp": "2026-09-16T10:21:00+08:00",
+          "state": "diagnosing",
+          "description": "Establish the symptom pattern"
+        },
+        {
+          "timestamp": "2026-09-16T10:22:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Compare the possible causes"
+        },
+        {
+          "timestamp": "2026-09-16T10:23:00+08:00",
+          "state": "inspection_recommended",
+          "description": "Inspect the nozzle and air cap"
+        }
+      ]
+    }
+  ],
+  "initial_snapshot_id": "report",
+  "verification": {
+    "before_image_id": "before",
+    "after_image_id": "after",
+    "passed": true,
+    "explanation": "Synthetic recovery: full coverage, centered pattern, no coarse deposits or overspray; Prompted Setup, calibration, weight/pressure compliance, and first carriers in both lanes confirmed. Subsequent inspection explicitly not required in this demo profile."
+  },
+  "summary": {
+    "problem": "Consistently incomplete flux spray coverage",
+    "confirmed_cause": "Nozzle restriction",
+    "corrective_action": "Simulated nozzle replacement recorded under the applicable site procedure",
+    "verification": "Synthetic recovery: full coverage, centered pattern, no coarse deposits or overspray; Prompted Setup, calibration, weight/pressure compliance, and first carriers in both lanes confirmed. Subsequent inspection explicitly not required in this demo profile.",
+    "evidence_ids": [
+      "EV-FOUND",
+      "EV-ACTION",
+      "EV-VERIFY"
+    ]
+  },
+  "recovery_checks": {
+    "profile": "synthetic_demo",
+    "prompted_setup": "pass",
+    "calibration": "pass",
+    "weight_within_limits": "pass",
+    "pressure_within_limits": "pass",
+    "limits_reference": "Synthetic training profile; not ATRMS limits",
+    "expected_lanes": [
+      "A",
+      "B"
+    ],
+    "first_carriers": [
+      {
+        "lane": "A",
+        "all_units_accepted": "pass"
+      },
+      {
+        "lane": "B",
+        "all_units_accepted": "pass"
+      }
+    ],
+    "subsequent_required": "no",
+    "subsequent_trays_accepted": 0,
+    "confirmed": true
+  }
+}

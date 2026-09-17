@@ -22,14 +22,14 @@ from test_cases import act, client, create  # noqa: F401
 
 
 def with_log():
-    case = create_case(CreateCase(report="Small dots"))
+    case = create_case(CreateCase(report="Incomplete coverage"))
     return apply_action(
         case, AttachLog(action="attach_log", revision=0, log=load_scenario().sample_log)
     )
 
 
 def intermittent_case(value="yes"):
-    case = create_case(CreateCase(report="Small dots"))
+    case = create_case(CreateCase(report="Incomplete coverage"))
     for answer in ["intermittent", value, "no", "unknown", "unknown"]:
         case = apply_action(
             case,
@@ -93,21 +93,21 @@ def test_missing_recovery_matches_verified_observation(answer, verification, mis
     ).verification_state = verification
     rank(case)
     normalize_case(case)
-    cause = next(c for c in case.ranking if c.hypothesis_id == "trapped_air_bubble")
+    cause = next(c for c in case.ranking if c.hypothesis_id == "atomization_fault")
     finding = next(
         f
         for f in case.findings
-        if f.hypothesis_id == "trapped_air_bubble" and f.agent != "diagnostic_critic"
+        if f.hypothesis_id == "atomization_fault" and f.agent != "diagnostic_critic"
     )
-    assert ("Intermittent recovery" in cause.missing_evidence) == missing
+    assert ("Weight versus pattern" in cause.missing_evidence) == missing
     assert finding.missing_evidence == cause.missing_evidence
 
 
 def test_absent_recovery_remains_missing():
-    case = create_case(CreateCase(report="Small dots"))
+    case = create_case(CreateCase(report="Incomplete coverage"))
     rank(case)
-    cause = next(c for c in case.ranking if c.hypothesis_id == "trapped_air_bubble")
-    assert cause.missing_evidence == ["Intermittent recovery"]
+    cause = next(c for c in case.ranking if c.hypothesis_id == "atomization_fault")
+    assert cause.missing_evidence == ["Weight versus pattern", "Air-cap and coaxial-air inspection"]
 
 
 @pytest.mark.parametrize("mismatch", ["duplicate", "key", "source", "value", "existing"])
@@ -149,11 +149,11 @@ def test_legacy_read_repairs_presentation_without_writing_and_next_action_persis
         if isinstance(item.unit, dict):
             item.unit = None
     for cause in case.ranking:
-        if cause.hypothesis_id == "trapped_air_bubble":
-            cause.missing_evidence = ["Intermittent recovery"]
+        if cause.hypothesis_id == "atomization_fault":
+            cause.missing_evidence = ["Weight versus pattern"]
     for finding in case.findings:
-        if finding.hypothesis_id == "trapped_air_bubble" and finding.agent != "diagnostic_critic":
-            finding.missing_evidence = ["Intermittent recovery"]
+        if finding.hypothesis_id == "atomization_fault" and finding.agent != "diagnostic_critic":
+            finding.missing_evidence = ["Weight versus pattern"]
     legacy = case.model_dump(mode="json")
     engine = make_engine()
     try:
@@ -164,12 +164,9 @@ def test_legacy_read_repairs_presentation_without_writing_and_next_action_persis
         path = f"/api/investigations/{case.investigation.id}"
         loaded = client.get(path).json()
         assert any(isinstance(e["unit"], dict) for e in loaded["investigation"]["evidence"])
-        assert (
-            next(c for c in loaded["ranking"] if c["hypothesis_id"] == "trapped_air_bubble")[
-                "missing_evidence"
-            ]
-            == []
-        )
+        assert next(c for c in loaded["ranking"] if c["hypothesis_id"] == "atomization_fault")[
+            "missing_evidence"
+        ] == ["Air-cap and coaxial-air inspection"]
         assert loaded["revision"] == legacy["revision"]
         assert loaded["timeline"] == legacy["timeline"]
         assert loaded["investigation"]["state"] == legacy["investigation"]["state"]

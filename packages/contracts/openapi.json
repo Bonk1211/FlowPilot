@@ -138,8 +138,38 @@
             "title": "Answers",
             "type": "object"
           },
+          "calibration_attempts": {
+            "default": 0,
+            "title": "Calibration Attempts",
+            "type": "integer"
+          },
+          "calibration_failures": {
+            "default": 0,
+            "title": "Calibration Failures",
+            "type": "integer"
+          },
+          "corrective_action": {
+            "anyOf": [
+              {
+                "enum": [
+                  "nozzle_cleaning",
+                  "nozzle_replacement"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corrective Action"
+          },
           "diagnosis_supported": {
             "title": "Diagnosis Supported",
+            "type": "boolean"
+          },
+          "escalated": {
+            "default": false,
+            "title": "Escalated",
             "type": "boolean"
           },
           "findings": {
@@ -172,7 +202,15 @@
             ]
           },
           "measurement": {
-            "$ref": "#/components/schemas/Measurement"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Measurement"
+              },
+              {
+                "$ref": "#/components/schemas/LegacyMeasurement"
+              }
+            ],
+            "title": "Measurement"
           },
           "next_question": {
             "anyOf": [
@@ -238,15 +276,37 @@
               }
             ]
           },
+          "recovery": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecoveryChecks"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "revision": {
             "default": 0,
             "title": "Revision",
             "type": "integer"
           },
           "rules_version": {
-            "const": "1.0",
             "default": "1.0",
+            "enum": [
+              "1.0",
+              "2.0"
+            ],
             "title": "Rules Version",
+            "type": "string"
+          },
+          "scenario_version": {
+            "default": "1.0",
+            "enum": [
+              "1.0",
+              "2.0"
+            ],
+            "title": "Scenario Version",
             "type": "string"
           },
           "summary": {
@@ -272,15 +332,25 @@
                 "$ref": "#/components/schemas/Measurement"
               },
               {
+                "$ref": "#/components/schemas/LegacyMeasurement"
+              },
+              {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Verification"
           }
         },
         "required": [
           "investigation",
           "revision",
+          "scenario_version",
           "rules_version",
+          "recovery",
+          "calibration_attempts",
+          "calibration_failures",
+          "escalated",
+          "corrective_action",
           "measurement",
           "verification",
           "log",
@@ -338,13 +408,48 @@
         "title": "CaseSummary",
         "type": "object"
       },
+      "CompleteAction": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "const": "complete_action",
+            "title": "Action",
+            "type": "string"
+          },
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "corrective_action": {
+            "default": "nozzle_replacement",
+            "enum": [
+              "nozzle_cleaning",
+              "nozzle_replacement"
+            ],
+            "title": "Corrective Action",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision",
+          "action",
+          "confirmed"
+        ],
+        "title": "CompleteAction",
+        "type": "object"
+      },
       "Confirm": {
         "additionalProperties": false,
         "properties": {
           "action": {
             "enum": [
               "confirm_observation",
-              "complete_action",
               "resolve"
             ],
             "title": "Action",
@@ -439,12 +544,13 @@
             "type": "string"
           },
           "sample_id": {
-            "default": "undersized",
+            "default": "incomplete",
             "enum": [
               "normal",
-              "undersized",
-              "oversized",
-              "missing"
+              "incomplete",
+              "coarse",
+              "shifted",
+              "overspray"
             ],
             "title": "Sample Id",
             "type": "string"
@@ -544,7 +650,7 @@
             "$ref": "#/components/schemas/LogPreviewRequest"
           },
           "schema_version": {
-            "const": "1.0",
+            "const": "2.0",
             "title": "Schema Version",
             "type": "string"
           }
@@ -609,47 +715,6 @@
           "options"
         ],
         "title": "DiscoveryQuestion",
-        "type": "object"
-      },
-      "Dot": {
-        "additionalProperties": false,
-        "properties": {
-          "classification": {
-            "enum": [
-              "normal",
-              "undersized",
-              "oversized",
-              "missing"
-            ],
-            "title": "Classification",
-            "type": "string"
-          },
-          "diameter_px": {
-            "minimum": 0,
-            "title": "Diameter Px",
-            "type": "number"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "x": {
-            "title": "X",
-            "type": "number"
-          },
-          "y": {
-            "title": "Y",
-            "type": "number"
-          }
-        },
-        "required": [
-          "id",
-          "x",
-          "y",
-          "diameter_px",
-          "classification"
-        ],
-        "title": "Dot",
         "type": "object"
       },
       "Evidence": {
@@ -828,7 +893,7 @@
             "type": "string"
           },
           "fixture_version": {
-            "const": "1.0",
+            "const": "2.0",
             "title": "Fixture Version",
             "type": "string"
           },
@@ -857,7 +922,7 @@
             "type": "array"
           },
           "procedure_review": {
-            "const": "pending_expert_review",
+            "const": "feedback_received_approval_pending",
             "title": "Procedure Review",
             "type": "string"
           },
@@ -882,8 +947,11 @@
             "title": "Recommendations",
             "type": "array"
           },
+          "recovery_checks": {
+            "$ref": "#/components/schemas/RecoveryChecks"
+          },
           "schema_version": {
-            "const": "1.0",
+            "const": "2.0",
             "title": "Schema Version",
             "type": "string"
           },
@@ -922,6 +990,7 @@
           "outcomes",
           "snapshots",
           "initial_snapshot_id",
+          "recovery_checks",
           "verification",
           "summary"
         ],
@@ -1067,12 +1136,17 @@
       "ImageMeasurement": {
         "additionalProperties": false,
         "properties": {
-          "dots": {
-            "items": {
-              "$ref": "#/components/schemas/Dot"
-            },
-            "title": "Dots",
-            "type": "array"
+          "coarse_area_px": {
+            "title": "Coarse Area Px",
+            "type": "integer"
+          },
+          "coverage_pct": {
+            "title": "Coverage Pct",
+            "type": "number"
+          },
+          "displacement_px": {
+            "title": "Displacement Px",
+            "type": "number"
           },
           "evidence_ids": {
             "items": {
@@ -1081,16 +1155,8 @@
             "title": "Evidence Ids",
             "type": "array"
           },
-          "golden_max_px": {
-            "title": "Golden Max Px",
-            "type": "number"
-          },
-          "golden_min_px": {
-            "title": "Golden Min Px",
-            "type": "number"
-          },
           "height": {
-            "exclusiveMinimum": 0,
+            "default": 160,
             "title": "Height",
             "type": "integer"
           },
@@ -1098,45 +1164,74 @@
             "title": "Id",
             "type": "string"
           },
+          "image_url": {
+            "title": "Image Url",
+            "type": "string"
+          },
+          "keep_out_bounds": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Keep Out Bounds",
+            "type": "array"
+          },
           "label": {
             "title": "Label",
             "type": "string"
           },
-          "mean_diameter_px": {
-            "title": "Mean Diameter Px",
-            "type": "number"
+          "outside_keep_out_px": {
+            "title": "Outside Keep Out Px",
+            "type": "integer"
           },
-          "quality_summary": {
-            "title": "Quality Summary",
-            "type": "string"
-          },
-          "synthetic": {
-            "const": true,
-            "title": "Synthetic",
+          "passed": {
+            "title": "Passed",
             "type": "boolean"
           },
-          "variation_px": {
-            "title": "Variation Px",
-            "type": "number"
+          "sample_id": {
+            "enum": [
+              "normal",
+              "incomplete",
+              "coarse",
+              "shifted",
+              "overspray"
+            ],
+            "title": "Sample Id",
+            "type": "string"
+          },
+          "simulated": {
+            "const": true,
+            "default": true,
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "target_bounds": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Target Bounds",
+            "type": "array"
+          },
+          "uncovered_area_px": {
+            "title": "Uncovered Area Px",
+            "type": "integer"
           },
           "width": {
-            "exclusiveMinimum": 0,
+            "default": 360,
             "title": "Width",
             "type": "integer"
           }
         },
         "required": [
+          "sample_id",
+          "image_url",
+          "coverage_pct",
+          "uncovered_area_px",
+          "displacement_px",
+          "outside_keep_out_px",
+          "coarse_area_px",
+          "passed",
           "id",
           "label",
-          "synthetic",
-          "width",
-          "height",
-          "dots",
-          "mean_diameter_px",
-          "variation_px",
-          "golden_min_px",
-          "golden_max_px",
-          "quality_summary",
           "evidence_ids"
         ],
         "title": "ImageMeasurement",
@@ -1375,8 +1470,11 @@
             "type": "string"
           },
           "schema_version": {
-            "const": "1.0",
             "default": "1.0",
+            "enum": [
+              "1.0",
+              "2.0"
+            ],
             "title": "Schema Version",
             "type": "string"
           },
@@ -1415,6 +1513,131 @@
         "type": "object"
       },
       "JsonValue": {},
+      "LaneCheck": {
+        "additionalProperties": false,
+        "properties": {
+          "all_units_accepted": {
+            "default": "unknown",
+            "enum": [
+              "pass",
+              "fail",
+              "unknown"
+            ],
+            "title": "All Units Accepted",
+            "type": "string"
+          },
+          "lane": {
+            "maxLength": 80,
+            "minLength": 1,
+            "title": "Lane",
+            "type": "string"
+          }
+        },
+        "required": [
+          "lane"
+        ],
+        "title": "LaneCheck",
+        "type": "object"
+      },
+      "LegacyMeasurement": {
+        "additionalProperties": false,
+        "properties": {
+          "abnormal_count": {
+            "title": "Abnormal Count",
+            "type": "integer"
+          },
+          "deviation_px": {
+            "title": "Deviation Px",
+            "type": "number"
+          },
+          "dots": {
+            "items": {
+              "$ref": "#/components/schemas/MeasuredDot"
+            },
+            "title": "Dots",
+            "type": "array"
+          },
+          "golden_max_px": {
+            "default": 32,
+            "title": "Golden Max Px",
+            "type": "number"
+          },
+          "golden_min_px": {
+            "default": 28,
+            "title": "Golden Min Px",
+            "type": "number"
+          },
+          "height": {
+            "default": 160,
+            "title": "Height",
+            "type": "integer"
+          },
+          "image_url": {
+            "title": "Image Url",
+            "type": "string"
+          },
+          "mean_diameter_px": {
+            "title": "Mean Diameter Px",
+            "type": "number"
+          },
+          "mean_position_error_px": {
+            "title": "Mean Position Error Px",
+            "type": "number"
+          },
+          "mean_shape_consistency": {
+            "title": "Mean Shape Consistency",
+            "type": "number"
+          },
+          "missing_count": {
+            "title": "Missing Count",
+            "type": "integer"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "sample_id": {
+            "enum": [
+              "normal",
+              "undersized",
+              "oversized",
+              "missing"
+            ],
+            "title": "Sample Id",
+            "type": "string"
+          },
+          "simulated": {
+            "const": true,
+            "default": true,
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "variation_px": {
+            "title": "Variation Px",
+            "type": "number"
+          },
+          "width": {
+            "default": 360,
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "sample_id",
+          "image_url",
+          "dots",
+          "mean_diameter_px",
+          "variation_px",
+          "deviation_px",
+          "missing_count",
+          "abnormal_count",
+          "mean_position_error_px",
+          "mean_shape_consistency",
+          "passed"
+        ],
+        "title": "LegacyMeasurement",
+        "type": "object"
+      },
       "LogPreviewRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1657,29 +1880,16 @@
       "Measurement": {
         "additionalProperties": false,
         "properties": {
-          "abnormal_count": {
-            "title": "Abnormal Count",
+          "coarse_area_px": {
+            "title": "Coarse Area Px",
             "type": "integer"
           },
-          "deviation_px": {
-            "title": "Deviation Px",
+          "coverage_pct": {
+            "title": "Coverage Pct",
             "type": "number"
           },
-          "dots": {
-            "items": {
-              "$ref": "#/components/schemas/MeasuredDot"
-            },
-            "title": "Dots",
-            "type": "array"
-          },
-          "golden_max_px": {
-            "default": 32,
-            "title": "Golden Max Px",
-            "type": "number"
-          },
-          "golden_min_px": {
-            "default": 28,
-            "title": "Golden Min Px",
+          "displacement_px": {
+            "title": "Displacement Px",
             "type": "number"
           },
           "height": {
@@ -1691,20 +1901,15 @@
             "title": "Image Url",
             "type": "string"
           },
-          "mean_diameter_px": {
-            "title": "Mean Diameter Px",
-            "type": "number"
+          "keep_out_bounds": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Keep Out Bounds",
+            "type": "array"
           },
-          "mean_position_error_px": {
-            "title": "Mean Position Error Px",
-            "type": "number"
-          },
-          "mean_shape_consistency": {
-            "title": "Mean Shape Consistency",
-            "type": "number"
-          },
-          "missing_count": {
-            "title": "Missing Count",
+          "outside_keep_out_px": {
+            "title": "Outside Keep Out Px",
             "type": "integer"
           },
           "passed": {
@@ -1714,9 +1919,10 @@
           "sample_id": {
             "enum": [
               "normal",
-              "undersized",
-              "oversized",
-              "missing"
+              "incomplete",
+              "coarse",
+              "shifted",
+              "overspray"
             ],
             "title": "Sample Id",
             "type": "string"
@@ -1727,9 +1933,16 @@
             "title": "Simulated",
             "type": "boolean"
           },
-          "variation_px": {
-            "title": "Variation Px",
-            "type": "number"
+          "target_bounds": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Target Bounds",
+            "type": "array"
+          },
+          "uncovered_area_px": {
+            "title": "Uncovered Area Px",
+            "type": "integer"
           },
           "width": {
             "default": 360,
@@ -1740,14 +1953,11 @@
         "required": [
           "sample_id",
           "image_url",
-          "dots",
-          "mean_diameter_px",
-          "variation_px",
-          "deviation_px",
-          "missing_count",
-          "abnormal_count",
-          "mean_position_error_px",
-          "mean_shape_consistency",
+          "coverage_pct",
+          "uncovered_area_px",
+          "displacement_px",
+          "outside_keep_out_px",
+          "coarse_area_px",
           "passed"
         ],
         "title": "Measurement",
@@ -1779,6 +1989,14 @@
           },
           "model_node_id": {
             "enum": [
+              "bfs_bottle",
+              "pickup_tube",
+              "fluid_qd",
+              "dj2200_valve",
+              "air_cap",
+              "coaxial_air",
+              "valve_air",
+              "bfs_air",
               "fluid_reservoir",
               "feed_tube",
               "jet_actuator",
@@ -1935,7 +2153,7 @@
             "title": "Model"
           },
           "prompt_version": {
-            "default": "m2.3",
+            "default": "flux-2.0",
             "title": "Prompt Version",
             "type": "string"
           },
@@ -1951,6 +2169,103 @@
           "timestamp"
         ],
         "title": "ReasoningRun",
+        "type": "object"
+      },
+      "RecoveryChecks": {
+        "additionalProperties": false,
+        "properties": {
+          "calibration": {
+            "default": "unknown",
+            "enum": [
+              "pass",
+              "fail",
+              "unknown"
+            ],
+            "title": "Calibration",
+            "type": "string"
+          },
+          "confirmed": {
+            "default": false,
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "expected_lanes": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "title": "Expected Lanes",
+            "type": "array"
+          },
+          "first_carriers": {
+            "items": {
+              "$ref": "#/components/schemas/LaneCheck"
+            },
+            "maxItems": 8,
+            "title": "First Carriers",
+            "type": "array"
+          },
+          "limits_reference": {
+            "default": "",
+            "maxLength": 200,
+            "title": "Limits Reference",
+            "type": "string"
+          },
+          "pressure_within_limits": {
+            "default": "unknown",
+            "enum": [
+              "pass",
+              "fail",
+              "unknown"
+            ],
+            "title": "Pressure Within Limits",
+            "type": "string"
+          },
+          "profile": {
+            "const": "synthetic_demo",
+            "default": "synthetic_demo",
+            "title": "Profile",
+            "type": "string"
+          },
+          "prompted_setup": {
+            "default": "unknown",
+            "enum": [
+              "pass",
+              "fail",
+              "unknown"
+            ],
+            "title": "Prompted Setup",
+            "type": "string"
+          },
+          "subsequent_required": {
+            "default": "unknown",
+            "enum": [
+              "yes",
+              "no",
+              "unknown"
+            ],
+            "title": "Subsequent Required",
+            "type": "string"
+          },
+          "subsequent_trays_accepted": {
+            "default": 0,
+            "maximum": 100,
+            "minimum": 0,
+            "title": "Subsequent Trays Accepted",
+            "type": "integer"
+          },
+          "weight_within_limits": {
+            "default": "unknown",
+            "enum": [
+              "pass",
+              "fail",
+              "unknown"
+            ],
+            "title": "Weight Within Limits",
+            "type": "string"
+          }
+        },
+        "title": "RecoveryChecks",
         "type": "object"
       },
       "ScoreContribution": {
@@ -2176,6 +2491,9 @@
             "title": "Action",
             "type": "string"
           },
+          "checks": {
+            "$ref": "#/components/schemas/RecoveryChecks"
+          },
           "revision": {
             "minimum": 0,
             "title": "Revision",
@@ -2184,9 +2502,10 @@
           "sample_id": {
             "enum": [
               "normal",
-              "undersized",
-              "oversized",
-              "missing"
+              "incomplete",
+              "coarse",
+              "shifted",
+              "overspray"
             ],
             "title": "Sample Id",
             "type": "string"
@@ -2266,9 +2585,10 @@
             "schema": {
               "enum": [
                 "normal",
-                "undersized",
-                "oversized",
-                "missing"
+                "incomplete",
+                "coarse",
+                "shifted",
+                "overspray"
               ],
               "title": "Sample Id",
               "type": "string"
@@ -2449,7 +2769,7 @@
                   "mapping": {
                     "answer": "#/components/schemas/Answer",
                     "attach_log": "#/components/schemas/AttachLog",
-                    "complete_action": "#/components/schemas/Confirm",
+                    "complete_action": "#/components/schemas/CompleteAction",
                     "confirm_observation": "#/components/schemas/Confirm",
                     "correct_evidence": "#/components/schemas/CorrectEvidence",
                     "diagnose": "#/components/schemas/Diagnose",
@@ -2474,6 +2794,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/Confirm"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CompleteAction"
                   },
                   {
                     "$ref": "#/components/schemas/Verify"

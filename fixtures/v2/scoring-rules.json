@@ -1,0 +1,156 @@
+{
+  "version": "2.0",
+  "labels": {
+    "fluid_path_restriction": "Fluid-path restriction",
+    "atomization_fault": "Coaxial-air / atomization fault",
+    "fluid_supply_fault": "Fluid-pressure / BFS supply fault",
+    "alignment_fault": "Nozzle / alignment / recipe fault",
+    "material_condition": "Material condition / idle purge"
+  },
+  "rules": [
+    {
+      "key": "incomplete_coverage",
+      "value": true,
+      "weights": {
+        "fluid_path_restriction": 15,
+        "atomization_fault": 10,
+        "fluid_supply_fault": 15,
+        "alignment_fault": 5,
+        "material_condition": 10
+      },
+      "explanation": "Incomplete coverage is compatible with several causes, not proof of restriction."
+    },
+    {
+      "key": "coarse_deposits",
+      "value": true,
+      "weights": {
+        "fluid_path_restriction": 0,
+        "atomization_fault": 35,
+        "fluid_supply_fault": 0,
+        "alignment_fault": 0,
+        "material_condition": 5
+      },
+      "explanation": "Coarse deposits support an atomization check; mass is unknown from pixels."
+    },
+    {
+      "key": "shifted_pattern",
+      "value": true,
+      "weights": {
+        "fluid_path_restriction": 0,
+        "atomization_fault": 0,
+        "fluid_supply_fault": 0,
+        "alignment_fault": 30,
+        "material_condition": 0
+      },
+      "explanation": "A shifted pattern warrants nozzle and offset checks."
+    },
+    {
+      "key": "overspray",
+      "value": true,
+      "weights": {
+        "fluid_path_restriction": 0,
+        "atomization_fault": 20,
+        "fluid_supply_fault": 0,
+        "alignment_fault": 10,
+        "material_condition": 0
+      },
+      "explanation": "Material outside the boundary warrants air-cap and alignment checks."
+    },
+    {
+      "key": "continuous",
+      "value": "yes",
+      "weights": {
+        "fluid_path_restriction": 25,
+        "atomization_fault": 0,
+        "fluid_supply_fault": 10,
+        "alignment_fault": 0,
+        "material_condition": 5
+      },
+      "explanation": "Reported falling flux weight supports restriction, supply, and material checks."
+    },
+    {
+      "key": "intermittent",
+      "value": "yes",
+      "weights": {
+        "fluid_path_restriction": -10,
+        "atomization_fault": 30,
+        "fluid_supply_fault": 0,
+        "alignment_fault": 0,
+        "material_condition": 0
+      },
+      "explanation": "Reported stable weight with blobs favors atomization over restriction."
+    },
+    {
+      "key": "change",
+      "value": "yes",
+      "weights": {
+        "fluid_path_restriction": 5,
+        "atomization_fault": 0,
+        "fluid_supply_fault": 20,
+        "alignment_fault": 0,
+        "material_condition": 0
+      },
+      "explanation": "Rising fluid-pressure demand can accompany restriction or a supply fault; it proves neither."
+    },
+    {
+      "key": "change",
+      "value": "unstable",
+      "weights": {
+        "fluid_path_restriction": 0,
+        "atomization_fault": 0,
+        "fluid_supply_fault": 35,
+        "alignment_fault": 0,
+        "material_condition": 0
+      },
+      "explanation": "Unstable actual pressure warrants checking the regulator, BFS, and connections."
+    },
+    {
+      "key": "temperature",
+      "value": "yes",
+      "weights": {
+        "fluid_path_restriction": 0,
+        "atomization_fault": 0,
+        "fluid_supply_fault": 0,
+        "alignment_fault": 0,
+        "material_condition": 40
+      },
+      "explanation": "Downtime or material-condition concerns warrant stabilization and idle-purge review."
+    },
+    {
+      "key": "service",
+      "value": "yes",
+      "weights": {
+        "fluid_path_restriction": 0,
+        "atomization_fault": 0,
+        "fluid_supply_fault": 0,
+        "alignment_fault": 40,
+        "material_condition": 0
+      },
+      "explanation": "A collision or setup change warrants nozzle straightness and offset checks."
+    },
+    {
+      "key": "inspection",
+      "value": "no_obstruction_found",
+      "weights": {
+        "fluid_path_restriction": -25,
+        "atomization_fault": 15,
+        "fluid_supply_fault": 10,
+        "alignment_fault": 0,
+        "material_condition": 0
+      },
+      "explanation": "A clear nozzle weakens nozzle restriction but cannot exclude an upstream restriction."
+    },
+    {
+      "key": "inspection",
+      "value": "obstruction_found",
+      "weights": {
+        "fluid_path_restriction": 40,
+        "atomization_fault": 0,
+        "fluid_supply_fault": 0,
+        "alignment_fault": 0,
+        "material_condition": 0
+      },
+      "explanation": "Confirmed nozzle obstruction establishes a restriction; recovery still needs verification."
+    }
+  ]
+}

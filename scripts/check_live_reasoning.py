@@ -31,7 +31,7 @@ async def main():
                     print(model.name)
         return
     case = create_case(
-        CreateCase(report="Synthetic acceptance: consistently undersized epoxy dots.")
+        CreateCase(report="Synthetic acceptance: declining flux spray coverage.")
     )
     for value in ("continuous", "yes", "no", "unknown", "unknown"):
         apply_action(

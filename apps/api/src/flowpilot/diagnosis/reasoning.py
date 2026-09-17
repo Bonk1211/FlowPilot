@@ -14,12 +14,14 @@ from flowpilot.settings import Settings
 if TYPE_CHECKING:
     from flowpilot.cases import Case
 
-PROMPT_VERSION = "m2.3"
+PROMPT_VERSION = "flux-2.0"
 ROLES = ("fluid_path_specialist", "material_process_specialist")
 HYPOTHESES = {
-    "partial_cartridge_nozzle_restriction",
-    "material_viscosity_change",
-    "trapped_air_bubble",
+    "fluid_path_restriction",
+    "atomization_fault",
+    "fluid_supply_fault",
+    "alignment_fault",
+    "material_condition",
 }
 
 
@@ -60,9 +62,11 @@ observations. Missing facts must remain unknown. Scores and workflow gates belon
 exclusively to application code. Cite evidence IDs supporting every factual claim.
 Use only the supplied hypothesis IDs. An uncertainty may have no supporting IDs
 but must identify missing evidence. Do not cite rejected evidence.
-Fluid path specialist: return exactly two findings, one for
-partial_cartridge_nozzle_restriction and one for trapped_air_bubble.
-Material process specialist: return one finding for material_viscosity_change.
+Fluid path specialist: return three findings: fluid_path_restriction, atomization_fault,
+and fluid_supply_fault. Material process specialist: return two findings:
+alignment_fault and material_condition. This is S-932 / DJ-2200 flux spraying.
+A clear nozzle does not exclude upstream restriction. Passing weight calibration
+does not establish acceptable spray quality. Pressure demand alone proves no cause.
 Discuss both support and conflict without treating compatibility as proof.
 Each source_ref must belong to an evidence ID cited in that same finding.
 Do not put an evidence ID in both supporting and conflicting lists.
@@ -152,9 +156,9 @@ async def enrich(case: "Case", settings: Settings | None = None, generate=None):
         for role, result in zip(ROLES, responses, strict=True):
             result = SpecialistResult.model_validate(result)
             expected = (
-                HYPOTHESES - {"material_viscosity_change"}
+                HYPOTHESES - {"material_condition", "alignment_fault"}
                 if role == "fluid_path_specialist"
-                else {"material_viscosity_change"}
+                else {"material_condition", "alignment_fault"}
             )
             if (
                 len(result.findings) != len(expected)

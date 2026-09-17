@@ -19,4 +19,7 @@ export type CaseAction =
   | components["schemas"]["Diagnose"]
   | components["schemas"]["Inspect"]
   | components["schemas"]["Confirm"]
+  | components["schemas"]["CompleteAction"]
   | components["schemas"]["Verify"];
+
+export type RecoveryChecks = components["schemas"]["RecoveryChecks"];
