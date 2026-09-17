@@ -52,6 +52,34 @@ test("recovery requires complete checks and two calibration failures block retri
   await expect(
     page.getByText("Calibration attempts: 1; failures: 1.", { exact: true }),
   ).toBeVisible();
+  await expect(verify).toBeDisabled();
+  await page.reload();
+  await expect(
+    page.getByRole("combobox", {
+      name: "Auto Flux Weight Calibration",
+      exact: true,
+    }),
+  ).toHaveValue("fail");
+  await expect(
+    page.getByRole("combobox", { name: "Prompted Setup", exact: true }),
+  ).toHaveValue("pass");
+  await expect(page.getByLabel("Limits reference")).not.toHaveValue("");
+  await expect(verify).toBeDisabled();
+  await page
+    .getByText("Last submitted recovery checks", { exact: true })
+    .click();
+  await expect(
+    page
+      .locator("details")
+      .filter({
+        has: page.locator("summary", {
+          hasText: "Last submitted recovery checks",
+        }),
+      }),
+  ).toContainText("calibration");
+  await page
+    .getByLabel("I confirm these simulated recovery observations.")
+    .check();
   await verify.click();
   await expect(page.getByRole("alert")).toContainText(
     "Two calibration failures",
@@ -223,9 +251,22 @@ test("complete persisted journey with sample log, failed verification and refres
   await expect(
     page.getByRole("button", { name: "Resolve case", exact: true }),
   ).toHaveCount(0);
+  await page.reload();
+  await expect(
+    page.getByLabel("Verification sample", { exact: true }),
+  ).toHaveValue("coarse");
+  await expect(
+    page.getByLabel("I confirm these simulated recovery observations."),
+  ).not.toBeChecked();
+  await expect(
+    page.getByRole("button", { name: "Measure verification sample" }),
+  ).toBeDisabled();
   await page
     .getByLabel("Verification sample", { exact: true })
     .selectOption("normal");
+  await page
+    .getByLabel("I confirm these simulated recovery observations.")
+    .check();
   await page
     .getByRole("button", { name: "Measure verification sample" })
     .click();

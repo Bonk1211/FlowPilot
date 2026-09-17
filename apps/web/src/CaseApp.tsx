@@ -328,6 +328,15 @@ export function CaseApp() {
           setImages(samples);
           setScenario(demo);
           setValue(saved);
+          setChecks({
+            ...(saved?.recovery ?? emptyRecovery),
+            confirmed: false,
+          });
+          if (saved?.scenario_version === "2.0" && saved.verification) {
+            setVerificationSample(
+              saved.verification.sample_id as Measurement["sample_id"],
+            );
+          }
         }
       })
       .catch((e) => {
@@ -357,6 +366,7 @@ export function CaseApp() {
   }
   function accept(next: Case) {
     setValue(next);
+    setChecks({ ...(next.recovery ?? emptyRecovery), confirmed: false });
     setAck(false);
     window.history.replaceState(
       null,
@@ -951,6 +961,19 @@ export function CaseApp() {
                       </section>
                     )}
                   </div>
+                  {value.recovery && (
+                    <details className="case-section">
+                      <summary>Last submitted recovery checks</summary>
+                      <dl>
+                        {Object.entries(value.recovery).map(([key, result]) => (
+                          <div key={key}>
+                            <dt>{humanize(key)}</dt>
+                            <dd>{candidateValue({ value: result })}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </details>
+                  )}
                   {state === "corrective_action_completed" && (
                     <section className="case-section">
                       {value.verification && (
