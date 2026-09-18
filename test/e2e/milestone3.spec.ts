@@ -1,3 +1,4 @@
+import { openDisclosure } from "../helpers/disclosures";
 import { expect, test } from "@playwright/test";
 import { start, discovery, inspect } from "../helpers/caseJourney";
 
@@ -11,6 +12,9 @@ test("M3 two consecutive clean journeys preserve the previous case", async ({
   for (let run = 1; run <= 2; run++) {
     const started = Date.now();
     const id = new URL(page.url()).searchParams.get("case")!;
+    await openDisclosure(
+      page.getByText("Reported sample & optional machine log", { exact: true }),
+    );
     await page.getByRole("button", { name: "Use sample machine log" }).click();
     await page.getByRole("button", { name: "Attach previewed log" }).click();
     await expect(
@@ -29,6 +33,7 @@ test("M3 two consecutive clean journeys preserve the previous case", async ({
       .getByLabel("I confirm the simulated corrective action is complete.")
       .check();
     await page.getByRole("button", { name: "Record action complete" }).click();
+    await openDisclosure(page.getByText("Demo shortcut", { exact: true }));
     await page
       .getByRole("button", { name: "Use simulated passing check results" })
       .click();

@@ -1,0 +1,722 @@
+/* Task-first workspace: one reading column, with supporting detail on demand. */
+.case-workspace {
+  padding-inline: 0;
+  background: var(--surface-measurement);
+}
+.workflow-shell {
+  grid-template-columns: 228px minmax(0, 1fr);
+  border: 0;
+}
+.workflow-shell .case-navigator {
+  background: var(--surface-shell);
+  color: var(--text-on-shell);
+  padding: 28px 20px;
+  --text-muted: var(--text-shell-muted);
+  --text-primary: var(--text-on-shell);
+  --border-default: var(--border-shell);
+}
+.workflow-shell .case-nav-heading h2 {
+  font-size: 22px;
+}
+.workflow-shell .case-navigator .eyebrow {
+  color: var(--text-shell-muted);
+}
+.workflow-shell .case-new {
+  background: var(--teal-700);
+  border: 1px solid var(--teal-600);
+}
+.workflow-shell .case-list a:hover,
+.workflow-shell .case-list a[aria-current] {
+  background: var(--surface-instrument-panel);
+}
+.workflow-shell .case-search-control {
+  background: var(--surface-instrument-panel);
+}
+.workflow-shell .case-phase-nav {
+  padding-block: 24px;
+}
+.workflow-shell .case-phase-nav li {
+  min-height: 46px;
+  gap: 12px;
+}
+.workflow-shell .phase-dot {
+  width: 10px;
+  height: 10px;
+  background: transparent;
+}
+.workflow-shell .case-phase-nav li[aria-current] {
+  color: var(--teal-400);
+}
+.workflow-shell .case-phase-nav li.complete .phase-dot {
+  background: var(--green-400);
+  border-color: var(--green-400);
+}
+.saved-cases-disclosure {
+  margin-top: 20px;
+  font-size: 14px;
+}
+.saved-cases-disclosure > summary {
+  font-weight: 600;
+}
+.saved-cases-disclosure > summary > span {
+  margin-left: 8px;
+  color: var(--text-muted);
+}
+.nav-status {
+  margin-top: 12px;
+  color: var(--amber-300);
+  font-size: 14px;
+}
+.workflow-shell .investigation-column {
+  background: var(--surface-measurement);
+}
+.workflow-shell .investigation-scroll {
+  padding: 0 clamp(20px, 4vw, 64px) 32px;
+  scroll-padding-block: 24px;
+}
+.workflow-shell .workspace-masthead {
+  padding-block: 28px;
+  min-height: auto;
+}
+.workflow-shell .workspace-masthead h1 {
+  font-size: clamp(26px, 2.5vw, 36px);
+  letter-spacing: -0.025em;
+}
+.workflow-shell .case-controls {
+  margin-top: 24px;
+}
+.workflow-intro,
+.workflow-state {
+  display: flex;
+  gap: 16px;
+  padding: 22px 24px;
+  margin-top: 24px;
+  border-radius: 12px;
+}
+.workflow-intro {
+  background: var(--surface-document);
+  border: 1px solid var(--border-default);
+}
+.workflow-intro > svg,
+.workflow-state > svg {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--text-selection);
+}
+.workflow-intro h2,
+.workflow-state h2 {
+  margin: 0 0 6px;
+  font-size: 20px;
+}
+.workflow-intro p {
+  color: var(--text-secondary);
+  max-width: 80ch;
+}
+.workflow-state .eyebrow {
+  margin-bottom: 8px;
+  color: inherit;
+}
+.workflow-state .state-next {
+  margin-top: 12px;
+  font-weight: 600;
+}
+.state-warning {
+  background: var(--surface-provisional);
+  border: 1px solid var(--amber-300);
+  color: var(--amber-800);
+}
+.state-warning > svg {
+  color: var(--amber-800);
+}
+.state-success {
+  background: var(--green-100);
+  border: 1px solid var(--green-700);
+  color: var(--green-700);
+}
+.state-success > svg {
+  color: inherit;
+}
+.workflow-shell .primary {
+  background: var(--teal-700);
+  border-color: var(--teal-700);
+}
+.workflow-shell .primary:hover {
+  background: var(--teal-600);
+}
+.workflow-shell .case-primary-task {
+  margin-top: 0;
+  padding: 32px;
+  border-radius: 12px;
+  box-shadow: none;
+}
+.workflow-shell .case-primary-task h2 {
+  font-size: 28px;
+  max-width: 32ch;
+}
+.workflow-shell .case-primary-task .prototype-options {
+  margin-bottom: 0;
+}
+.workflow-shell .prototype-options button {
+  min-width: 140px;
+}
+.workflow-shell .next-action-banner {
+  margin-top: 0;
+  padding: 24px;
+  background: var(--surface-document);
+  border-radius: 12px;
+  border-left: 4px solid var(--selection-active);
+}
+.workflow-shell .next-action-banner p {
+  max-width: 72ch;
+}
+.workflow-shell .prototype-two {
+  gap: 24px;
+}
+.workflow-shell .prototype-two > form {
+  padding: 24px;
+  background: var(--surface-document);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+}
+.workflow-shell .prototype-two > form > p {
+  margin-block: 16px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.workflow-shell .prototype-image {
+  border-radius: 12px;
+}
+.workflow-shell .prototype-image > svg {
+  max-height: 240px;
+}
+.workflow-shell .prototype-image small {
+  font-size: 12px;
+}
+.workflow-shell .prototype-image > p {
+  font-size: 14px;
+}
+.workflow-shell .prototype-diagnosis {
+  gap: 16px;
+}
+.workflow-shell .prototype-diagnosis > section,
+.workflow-shell .prototype-diagnosis > aside {
+  padding: 24px;
+  border-radius: 12px;
+}
+.workflow-shell .prototype-diagnosis > section::before,
+.workflow-shell .prototype-diagnosis > aside::before {
+  display: none;
+}
+.workflow-shell .prototype-diagnosis > aside {
+  order: 0;
+}
+.workflow-shell .prototype-diagnosis h2 {
+  font-size: 24px;
+  margin: 6px 0 10px;
+}
+.diagnosis-intro {
+  margin-bottom: 16px;
+  color: var(--text-muted);
+}
+.workflow-shell .prototype-cause {
+  padding-block: 8px;
+}
+.workflow-shell .cause-summary {
+  min-height: 48px;
+}
+.workflow-shell .cause-summary h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.workflow-shell .cause-summary h3::before {
+  content: "+";
+  color: var(--text-selection);
+  margin-right: 12px;
+}
+.workflow-shell details[open] > .cause-summary h3::before {
+  content: "−";
+}
+.workflow-shell .prototype-cause ul {
+  padding-left: 20px;
+}
+.reasoning-disclosure {
+  margin-top: 16px;
+}
+.supporting-details {
+  margin-top: 20px;
+  border-top: 1px solid var(--border-default);
+}
+.supporting-details > summary {
+  padding-block: 8px;
+  color: var(--text-selection);
+  font-weight: 600;
+}
+.supporting-details > .prototype-two {
+  margin-top: 16px;
+}
+.workflow-shell .case-section {
+  margin-top: 24px;
+  padding-top: 24px;
+}
+.workflow-shell .case-audit {
+  margin-top: 0;
+  border-top: 0;
+}
+.inspection-stage {
+  margin-bottom: 24px;
+}
+.inspection-stage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.inspection-stage-header h2 {
+  margin: 4px 0 0;
+}
+.step-count {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 20px;
+  color: var(--text-selection);
+}
+.inspection-stage-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.65fr) minmax(260px, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+.inspection-stage .assembly-canvas {
+  height: clamp(320px, 44vh, 530px);
+}
+.inspection-stage .procedure-viewer {
+  padding: 16px;
+}
+.inspection-stage .procedure-viewer > p:last-child {
+  font-size: 12px;
+  color: var(--text-shell-muted);
+}
+.inspection-stage .current-component {
+  margin-top: 12px;
+}
+.inspection-instructions {
+  border-radius: 12px;
+  background: var(--surface-document);
+  border: 1px solid var(--border-default);
+  padding: 24px;
+}
+.active-instruction h3 {
+  font-size: 24px;
+  margin: 8px 0 16px;
+}
+.active-instruction .context-safety {
+  margin-top: 20px;
+  font-size: 14px;
+}
+.inspection-step-list {
+  list-style: none;
+  padding: 16px 0 0;
+  margin: 24px 0 0;
+  border-top: 1px solid var(--border-default);
+}
+.inspection-step-list li {
+  display: flex;
+  gap: 12px;
+  padding: 10px 0;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.inspection-step-list li > span:first-child {
+  display: grid;
+  place-items: center;
+  flex: 0 0 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--surface-measurement);
+}
+.inspection-step-list li[aria-current] {
+  color: var(--text-selection);
+  font-weight: 600;
+}
+.inspection-step-list li[aria-current] > span:first-child {
+  background: var(--teal-700);
+  color: white;
+}
+.inspection-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 16px;
+}
+.workflow-shell .inspection-outcome-card {
+  border-radius: 12px;
+}
+.workflow-shell .inspection-outcome-card h2 {
+  margin-top: 0;
+}
+.workflow-shell .guidance-region {
+  padding: 10px clamp(20px, 4vw, 64px);
+  max-height: 55vh;
+  overflow: auto;
+}
+.guidance-toggle {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  font-weight: 600;
+  color: var(--text-selection);
+  min-height: 32px;
+}
+.guidance-toggle > svg {
+  width: 20px;
+  height: 20px;
+}
+.guidance-toggle-note {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.guidance-region[open] > .guidance-toggle {
+  margin-bottom: 12px;
+}
+.action-hint {
+  margin-block: 12px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.workflow-shell .recovery-checks {
+  padding: 24px;
+  background: var(--surface-document);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+}
+.recovery-checks legend {
+  font-size: 20px;
+  font-weight: 600;
+}
+.recovery-check-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 24px;
+}
+.recovery-checks input:not([type="checkbox"]) {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 6px;
+  font: inherit;
+}
+.recovery-demo-shortcut {
+  margin-top: 16px;
+}
+.recovery-demo-shortcut p {
+  margin-bottom: 10px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+@media (max-width: 1279px) {
+  .workflow-shell {
+    grid-template-columns: 200px minmax(0, 1fr);
+    height: auto;
+  }
+  .workflow-shell .investigation-scroll {
+    padding-inline: 24px;
+  }
+  .inspection-stage-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .inspection-step-list {
+    display: none;
+  }
+  .inspection-instructions {
+    grid-row: 1;
+  }
+  .workflow-shell .guidance-region {
+    padding-inline: 24px;
+  }
+}
+@media (max-width: 1023px) {
+  .workflow-shell {
+    display: block;
+  }
+  .workflow-shell .case-navigator {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    padding: 16px 24px;
+    gap: 12px;
+  }
+  .workflow-shell .case-nav-heading h2 {
+    font-size: 18px;
+  }
+  .workflow-shell .case-nav-heading .eyebrow {
+    display: none;
+  }
+  .workflow-shell .case-new {
+    margin: 0;
+    padding-inline: 16px;
+  }
+  .workflow-shell .case-phase-nav {
+    grid-column: 1 / -1;
+    padding: 8px 0;
+    border-bottom: 0;
+  }
+  .workflow-shell .case-phase-nav li {
+    min-height: 32px;
+    gap: 6px;
+  }
+  .workflow-shell .saved-cases-disclosure {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+  .workflow-shell .case-nav-note {
+    display: none;
+  }
+  .workflow-shell .case-list {
+    display: block;
+  }
+  .workflow-shell .case-list li {
+    display: block;
+  }
+  .workflow-shell .workspace-masthead {
+    padding-block: 24px;
+  }
+}
+@media (max-width: 767px) {
+  .workflow-shell .investigation-scroll {
+    padding-inline: 16px;
+  }
+  .workflow-shell .case-navigator {
+    padding-inline: 16px;
+  }
+  .workflow-intro,
+  .workflow-state {
+    padding: 16px;
+    gap: 12px;
+  }
+  .workflow-shell .case-primary-task {
+    padding: 20px;
+  }
+  .workflow-shell .case-primary-task h2 {
+    font-size: 24px;
+  }
+  .workflow-shell .next-action-banner,
+  .workflow-shell .discovery-complete {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .workflow-shell .prototype-options {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+  .workflow-shell .prototype-options button {
+    width: 100%;
+  }
+  .workflow-shell .cause-summary {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .workflow-shell .guidance-region {
+    padding-inline: 16px;
+  }
+  .guidance-toggle-note {
+    display: none;
+  }
+  .workflow-shell .investigation-column {
+    padding-bottom: 0;
+  }
+  .workflow-shell .recovery-checks {
+    padding: 16px;
+  }
+  .recovery-check-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Independent, non-modal assistant; drafts remain mounted when minimized. */
+.guidance-widget {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 50;
+}
+.workflow-shell .chat-launcher {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  gap: 0;
+  border-radius: 50%;
+  border: 1px solid var(--teal-600);
+  background: var(--teal-700);
+  color: var(--white);
+  box-shadow: 0 6px 24px rgb(0 70 75 / 28%);
+  cursor: pointer;
+}
+.chat-launcher svg {
+  width: 25px;
+  height: 25px;
+}
+.chat-launcher span {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+.workflow-shell .chat-launcher:hover {
+  background: var(--teal-600);
+}
+.workflow-shell .chat-panel {
+  position: absolute;
+  right: 0;
+  bottom: 80px;
+  width: 400px;
+  height: min(580px, calc(100dvh - 128px));
+  max-height: none;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 18px;
+  background: var(--surface-document);
+  box-shadow: 0 16px 60px rgb(8 20 30 / 24%);
+}
+.workflow-shell .chat-panel[hidden] {
+  display: none;
+}
+.chat-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+  flex-shrink: 0;
+  background: var(--surface-shell);
+  color: var(--white);
+}
+.chat-panel-header h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.chat-panel-header p {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-shell-muted);
+}
+.chat-brand-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--teal-700);
+}
+.chat-brand-icon svg {
+  width: 22px;
+  height: 22px;
+}
+.workflow-shell .chat-close {
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  width: 44px;
+  height: 44px;
+  color: var(--white);
+  border: 0;
+  background: transparent;
+}
+.chat-close svg {
+  width: 22px;
+  height: 22px;
+}
+.chat-message-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 20px 16px;
+}
+.chat-welcome {
+  padding: 24px 12px;
+  text-align: center;
+  color: var(--text-secondary);
+}
+.chat-welcome > svg {
+  width: 36px;
+  height: 36px;
+  color: var(--text-selection);
+}
+.chat-welcome h3 {
+  margin: 16px 0 8px;
+  font-size: 20px;
+  color: var(--text-primary);
+}
+.chat-welcome p {
+  font-size: 14px;
+}
+.chat-panel .guidance-exchanges {
+  max-height: none;
+  overflow: visible;
+  margin: 0;
+}
+.chat-panel .guidance-question {
+  max-width: 90%;
+  font-size: 14px;
+}
+.chat-panel .guidance-answer {
+  padding: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  font-size: 14px;
+}
+.chat-panel .guidance-avatar {
+  display: none;
+}
+.chat-panel .guidance-citations {
+  font-size: 12px;
+}
+.chat-panel .guidance-composer {
+  flex-shrink: 0;
+  border: 0;
+  border-top: 1px solid var(--border-default);
+  border-radius: 0;
+  padding: 14px 16px;
+}
+.chat-panel .composer-heading > p {
+  max-width: none;
+}
+.chat-panel .composer-heading {
+  margin-bottom: 8px;
+}
+.chat-panel .composer-input textarea {
+  min-height: 72px;
+  max-height: 120px;
+  resize: none;
+  font-size: 14px;
+}
+.chat-loading {
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.workflow-shell .investigation-scroll {
+  padding-bottom: 104px;
+}
+@media (max-width: 600px) {
+  .guidance-widget {
+    right: 16px;
+    bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  .workflow-shell .chat-launcher {
+    width: 56px;
+    height: 56px;
+  }
+  .workflow-shell .chat-panel {
+    bottom: 68px;
+    width: calc(100vw - 32px);
+    height: min(560px, calc(100dvh - 112px));
+  }
+}

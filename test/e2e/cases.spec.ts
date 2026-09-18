@@ -1,3 +1,4 @@
+import { openDisclosure } from "../helpers/disclosures";
 import { start, discovery, inspect } from "../helpers/caseJourney";
 import { expect, test } from "@playwright/test";
 import unitExamples from "../../fixtures/v1/evidence-units.json" with { type: "json" };
@@ -21,6 +22,7 @@ test("case navigator and grounded guidance keep the case read-only", async ({
   await expect(
     page.getByRole("heading", { name: "Investigations" }),
   ).toBeVisible();
+  await openDisclosure(page.locator(".saved-cases-disclosure > summary"));
   await expect(
     page.getByRole("navigation", { name: "Recent cases" }),
   ).toContainText(caseId!);
@@ -28,6 +30,7 @@ test("case navigator and grounded guidance keep the case read-only", async ({
   const before = await (
     await request.get(`/api/investigations/${caseId}`)
   ).json();
+  await page.locator(".guidance-toggle").click();
   await page.getByText("Suggested questions", { exact: true }).click();
   await page
     .getByRole("button", { name: "Why is this the leading cause?" })
@@ -46,7 +49,7 @@ test("case navigator and grounded guidance keep the case read-only", async ({
   expect(after.timeline).toEqual(before.timeline);
 });
 
-test("desktop workspace keeps the next action, guidance, and context together", async ({
+test("desktop workspace prioritizes the next action and collapses supporting detail", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -55,12 +58,14 @@ test("desktop workspace keeps the next action, guidance, and context together", 
   await expect(
     page.getByRole("button", { name: "Start illustrative inspection" }),
   ).toBeInViewport();
+  await expect(page.locator(".guidance-toggle")).toBeInViewport();
   await expect(
-    page.getByRole("heading", { name: "Ask FlowPilot" }),
-  ).toBeInViewport();
-  await expect(
-    page.getByText("Leading hypothesis", { exact: true }),
-  ).toBeInViewport();
+    page.getByRole("dialog", { name: "FlowPilot assistant" }),
+  ).not.toBeVisible();
+  await expect(page.locator(".diagnosis-disclosure")).not.toHaveAttribute(
+    "open",
+    "",
+  );
   expect(
     await page.evaluate(
       () => document.documentElement.scrollHeight <= window.innerHeight,
@@ -96,6 +101,7 @@ test("recovery requires complete checks and two calibration failures block retri
   await expect(
     page.getByRole("button", { name: "Resolve case", exact: true }),
   ).toHaveCount(0);
+  await openDisclosure(page.getByText("Demo shortcut", { exact: true }));
   await page
     .getByRole("button", { name: "Use simulated passing check results" })
     .click();
@@ -195,6 +201,9 @@ test("complete persisted journey with sample log, failed verification and refres
 }, testInfo) => {
   test.setTimeout(60_000);
   await start(page);
+  await openDisclosure(
+    page.getByText("Reported sample & optional machine log", { exact: true }),
+  );
   await page.getByRole("button", { name: "Use sample machine log" }).click();
   await expect(
     page.getByRole("heading", { name: "Log preview", exact: true }),
@@ -206,6 +215,7 @@ test("complete persisted journey with sample log, failed verification and refres
       .filter({ hasText: /Attached demo-industry-machine.log/ }),
   ).toBeVisible();
   await discovery(page);
+  await openDisclosure(page.locator(".diagnosis-disclosure > summary"));
   const operator = page.locator(".prototype-ledger-row").filter({
     has: page.getByRole("heading", { name: "operator report", exact: true }),
   });
@@ -240,6 +250,7 @@ test("complete persisted journey with sample log, failed verification and refres
   await expect(
     page.getByRole("heading", { name: "Ranked causes" }),
   ).toBeVisible();
+  await openDisclosure(page.locator(".diagnosis-disclosure > summary"));
   const correction = page.locator(".prototype-ledger-row").filter({
     has: page.getByRole("heading", {
       name: "frame location correction",
@@ -254,6 +265,7 @@ test("complete persisted journey with sample log, failed verification and refres
     .getByLabel("I confirm the simulated corrective action is complete.")
     .check();
   await page.getByRole("button", { name: "Record action complete" }).click();
+  await openDisclosure(page.getByText("Demo shortcut", { exact: true }));
   await page
     .getByRole("button", { name: "Use simulated passing check results" })
     .click();
@@ -333,6 +345,9 @@ test("complete persisted journey with sample log, failed verification and refres
   );
   await expect(rejected).toContainText("rejected");
   await expect(rejected.locator("time")).toHaveCount(1);
+  await openDisclosure(
+    page.getByText("Diagnostic history · previous decisions", { exact: true }),
+  );
   const history = page.getByRole("region", { name: "Diagnostic history" });
   await expect(history.locator(":scope > details")).toHaveCount(3);
   const initial = history.locator(":scope > details").first();
@@ -382,6 +397,14 @@ test("negative observation requires confirmation and retains ordered case histor
   await expect(
     page.getByRole("heading", { name: "1. Fluid-pressure / BFS supply fault" }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Maintenance handoff needed" }),
+  ).toBeVisible();
+  await openDisclosure(
+    page.getByText("Inspection rationale and procedure details", {
+      exact: true,
+    }),
+  );
   await expect(page.getByText(/Case remains open/)).toBeVisible();
   await page
     .getByText("Case timeline · saved history", { exact: true })
@@ -403,6 +426,9 @@ test("uploaded log preserves unknowns and missing timezone; intermittent branch 
   page,
 }) => {
   await start(page);
+  await openDisclosure(
+    page.getByText("Reported sample & optional machine log", { exact: true }),
+  );
   await page.getByLabel("Upload controlled .log or .txt").setInputFiles({
     name: "slice.log",
     mimeType: "text/plain",
@@ -429,7 +455,10 @@ test("uploaded log preserves unknowns and missing timezone; intermittent branch 
     "Missing: Air-cap and coaxial-air inspection",
   );
   await expect(air).not.toContainText("Weight versus pattern");
-  const finding = page.locator(".prototype-diagnosis details").filter({
+  await openDisclosure(
+    page.getByText("How this diagnosis was generated", { exact: true }),
+  );
+  const finding = page.locator(".reasoning-disclosure > details").filter({
     has: page.locator("summary", {
       hasText: "fluid path specialist · atomization fault",
     }),
@@ -526,4 +555,51 @@ test("sample measurements and keyboard journey reflow at 375px", async ({
     path: testInfo.outputPath("m1-mobile-inspection.png"),
     fullPage: true,
   });
+});
+
+test("task-first disclosures preserve guidance drafts and reveal cited evidence", async ({
+  page,
+}) => {
+  await start(page);
+  await expect(
+    page.getByRole("button", { name: "Incomplete coverage", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Use sample machine log" }),
+  ).not.toBeVisible();
+  await discovery(page);
+  await expect(page.locator(".prototype-cause > details[open]")).toHaveCount(0);
+  await expect(page.getByLabel("Evidence source")).not.toBeVisible();
+  await page.locator(".guidance-toggle").click();
+  const question = page.getByRole("textbox", {
+    name: "Question about the current case",
+  });
+  await question.fill("Why is this the leading cause?");
+  await page.locator(".guidance-toggle").click();
+  await page.locator(".guidance-toggle").click();
+  await expect(question).toHaveValue("Why is this the leading cause?");
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", { name: "Open FlowPilot chat" }),
+  ).toBeFocused();
+  await page.getByRole("button", { name: "Open FlowPilot chat" }).click();
+  await expect(question).toBeFocused();
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect(
+    page.getByRole("dialog", { name: "FlowPilot assistant" }),
+  ).toBeInViewport();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page
+    .getByRole("button", { name: "Ask FlowPilot", exact: true })
+    .click();
+  const citation = page.locator(".guidance-citations a").first();
+  await expect(citation).toBeVisible();
+  const href = await citation.getAttribute("href");
+  await citation.click();
+  await expect(page.locator(href!)).toBeFocused();
+  await expect(page.getByLabel("Evidence source")).toBeVisible();
 });
