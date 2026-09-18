@@ -28,6 +28,7 @@ test("case navigator and grounded guidance keep the case read-only", async ({
   const before = await (
     await request.get(`/api/investigations/${caseId}`)
   ).json();
+  await page.getByText("Suggested questions", { exact: true }).click();
   await page
     .getByRole("button", { name: "Why is this the leading cause?" })
     .click();
@@ -43,6 +44,29 @@ test("case navigator and grounded guidance keep the case read-only", async ({
   ).json();
   expect(after.investigation.revision).toBe(before.investigation.revision);
   expect(after.timeline).toEqual(before.timeline);
+});
+
+test("desktop workspace keeps the next action, guidance, and context together", async ({
+  page,
+}, testInfo) => {
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await start(page);
+  await discovery(page);
+  await expect(
+    page.getByRole("button", { name: "Start illustrative inspection" }),
+  ).toBeInViewport();
+  await expect(
+    page.getByRole("heading", { name: "Ask FlowPilot" }),
+  ).toBeInViewport();
+  await expect(
+    page.getByText("Leading hypothesis", { exact: true }),
+  ).toBeInViewport();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollHeight <= window.innerHeight,
+    ),
+  ).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("task-lane.png") });
 });
 
 test("recovery requires complete checks and two calibration failures block retries", async ({

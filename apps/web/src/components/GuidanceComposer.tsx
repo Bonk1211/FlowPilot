@@ -69,26 +69,28 @@ export function GuidanceComposer({
       <form className="guidance-composer" onSubmit={submit}>
         <div className="composer-heading">
           <div>
-            <p className="eyebrow">Explain and guide</p>
-            <h2 id="guidance-title">Ask about this case</h2>
+            <h2 id="guidance-title">Ask FlowPilot</h2>
           </div>
           <p id="guidance-help">
             <Info aria-hidden="true" />
-            Questions cannot record evidence or authorize service.
+            Guidance only — structured controls change the case.
           </p>
         </div>
-        <div className="suggested-prompts" aria-label="Suggested questions">
-          {suggestions.map((item) => (
-            <button
-              type="button"
-              className="prompt-chip"
-              key={item}
-              onClick={() => setQuestion(item)}
-            >
-              {item}
-            </button>
-          ))}
-        </div>
+        <details className="suggested-questions">
+          <summary>Suggested questions</summary>
+          <div className="suggested-prompts" aria-label="Suggested questions">
+            {suggestions.map((item) => (
+              <button
+                type="button"
+                className="prompt-chip"
+                key={item}
+                onClick={() => setQuestion(item)}
+              >
+                {item}
+              </button>
+            ))}
+          </div>
+        </details>
         <label className="composer-input">
           <span className="sr-only">Question about the current case</span>
           <textarea
@@ -97,7 +99,7 @@ export function GuidanceComposer({
             aria-describedby="guidance-help"
             placeholder="Ask why a cause is ranked, what is unknown, or what to check next…"
             maxLength={1000}
-            rows={2}
+            rows={1}
           />
           <button
             className="composer-send"

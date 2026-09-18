@@ -227,6 +227,35 @@
 .investigation-column .prototype-diagnosis > aside {
   order: -1;
 }
+.diagnosis-disclosure > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--control-height);
+  padding: var(--space-2) 0;
+  color: var(--text-selection);
+  font-weight: 600;
+}
+.cause-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.cause-summary h3 {
+  margin: 0;
+}
+.cause-summary span {
+  color: var(--text-muted);
+  font-size: var(--font-caption);
+  white-space: nowrap;
+}
+.prototype-cause > details {
+  padding: var(--space-2) 0;
+}
+.prototype-cause > details > ul {
+  margin-top: var(--space-3);
+}
 .investigation-column .prototype-diagnosis > section,
 .investigation-column .prototype-diagnosis > aside,
 .inspection-outcome-card,
@@ -450,6 +479,9 @@
 .context-expand {
   white-space: nowrap;
 }
+.context-mobile-toggle {
+  display: none;
+}
 .context-card,
 .context-step,
 .context-empty {
@@ -620,6 +652,17 @@
   color: var(--text-muted);
   font-size: var(--font-caption);
 }
+.suggested-questions {
+  margin: var(--space-1) 0 var(--space-2);
+  font-size: var(--font-caption);
+}
+.suggested-questions > summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  color: var(--text-selection);
+  font-weight: 600;
+}
 .suggested-prompts {
   display: flex;
   flex-wrap: wrap;
@@ -640,7 +683,7 @@ button.prompt-chip {
 }
 .case-workspace .composer-input textarea {
   max-width: none;
-  min-height: 52px;
+  min-height: 46px;
   padding-right: 60px;
   background: var(--surface-workspace);
 }
@@ -748,6 +791,20 @@ button.composer-send {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-2);
   }
+  .context-mobile-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+  .context-mobile-toggle svg {
+    transition: transform 160ms ease-out;
+  }
+  .context-rail.mobile-open .context-mobile-toggle svg {
+    transform: rotate(180deg);
+  }
+  .context-rail:not(.mobile-open) .context-content {
+    display: none;
+  }
 }
 @media (max-width: 767px) {
   .investigation-column {
@@ -806,5 +863,12 @@ button.composer-send {
   }
   .guidance-question {
     max-width: 100%;
+  }
+  .cause-summary {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+  .prototype-cause {
+    padding: var(--space-2) 0;
   }
 }

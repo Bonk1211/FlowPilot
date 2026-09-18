@@ -55,9 +55,22 @@ function Diagnosis({
   const [citationTarget, setCitationTarget] = useState<{ id: string } | null>(
     null,
   );
+  const [compactView, setCompactView] = useState(
+    () => matchMedia("(max-width: 767px)").matches,
+  );
+  useEffect(() => {
+    const query = matchMedia("(max-width: 767px)");
+    const change = () => setCompactView(query.matches);
+    query.addEventListener("change", change);
+    return () => query.removeEventListener("change", change);
+  }, []);
   useEffect(() => {
     if (!citationTarget) return;
     const target = document.getElementById(citationTarget.id);
+    const disclosure = target?.closest(
+      ".diagnosis-disclosure",
+    ) as HTMLDetailsElement | null;
+    if (disclosure) disclosure.open = true;
     target?.focus({ preventScroll: true });
     target?.scrollIntoView({ block: "center" });
   }, [citationTarget]);
@@ -82,76 +95,86 @@ function Diagnosis({
       <section aria-label="Evidence ledger">
         <p className="eyebrow">01 / Evidence</p>
         <h2>What we know</h2>
-        <div className="evidence-filters">
-          <label>
-            Evidence source
-            <select value={source} onChange={(e) => setSource(e.target.value)}>
-              <option value="all">All sources</option>
-              {[
-                ...new Set(
-                  (value.investigation.evidence ?? []).map(
-                    (e) => e.source_type,
+        <details className="diagnosis-disclosure" open={!compactView}>
+          <summary>
+            Review {value.investigation.evidence?.length ?? 0} recorded
+            observations
+          </summary>
+          <div className="evidence-filters">
+            <label>
+              Evidence source
+              <select
+                value={source}
+                onChange={(e) => setSource(e.target.value)}
+              >
+                <option value="all">All sources</option>
+                {[
+                  ...new Set(
+                    (value.investigation.evidence ?? []).map(
+                      (e) => e.source_type,
+                    ),
                   ),
-                ),
-              ].map((s) => (
-                <option key={s} value={s}>
-                  {humanize(s)}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Evidence status
-            <select
-              value={verification}
-              onChange={(e) => setVerification(e.target.value)}
-            >
-              <option value="all">All statuses</option>
-              {["verified", "provisional", "rejected"].map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </label>
-        </div>
-        {locked && (
+                ].map((s) => (
+                  <option key={s} value={s}>
+                    {humanize(s)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Evidence status
+              <select
+                value={verification}
+                onChange={(e) => setVerification(e.target.value)}
+              >
+                <option value="all">All statuses</option>
+                {["verified", "provisional", "rejected"].map((s) => (
+                  <option key={s}>{s}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+          {locked && (
+            <p>
+              Evidence is locked after confirmed inspection. Start another case
+              for later corrections.
+            </p>
+          )}
+          {value.investigation.evidence
+            ?.filter(
+              (e) =>
+                (source === "all" || e.source_type === source) &&
+                (verification === "all" ||
+                  e.verification_state === verification),
+            )
+            .map((e) => (
+              <article
+                className="prototype-ledger-row"
+                key={e.id}
+                id={e.id}
+                tabIndex={-1}
+              >
+                <span className="status">{humanize(e.verification_state)}</span>
+                <h3>{humanize(e.key)}</h3>
+                <p>{candidateValue(e)}</p>
+                <small>
+                  {e.id} · {humanize(e.source_type)}
+                </small>
+                <details>
+                  <summary>Source reference</summary>
+                  <p>{e.source_ref}</p>
+                  <time>{e.timestamp}</time>
+                </details>
+                {!locked && e.verification_state !== "rejected" && (
+                  <EvidenceCorrection evidence={e} onCorrect={onCorrect} />
+                )}
+              </article>
+            ))}
           <p>
-            Evidence is locked after confirmed inspection. Start another case
-            for later corrections.
+            Missing telemetry stays unknown. Machine PASS is a run-status fact,
+            not a product-quality result.
           </p>
-        )}
-        {value.investigation.evidence
-          ?.filter(
-            (e) =>
-              (source === "all" || e.source_type === source) &&
-              (verification === "all" || e.verification_state === verification),
-          )
-          .map((e) => (
-            <article
-              className="prototype-ledger-row"
-              key={e.id}
-              id={e.id}
-              tabIndex={-1}
-            >
-              <span className="status">{humanize(e.verification_state)}</span>
-              <h3>{humanize(e.key)}</h3>
-              <p>{candidateValue(e)}</p>
-              <small>
-                {e.id} · {humanize(e.source_type)}
-              </small>
-              <details>
-                <summary>Source reference</summary>
-                <p>{e.source_ref}</p>
-                <time>{e.timestamp}</time>
-              </details>
-              {!locked && e.verification_state !== "rejected" && (
-                <EvidenceCorrection evidence={e} onCorrect={onCorrect} />
-              )}
-            </article>
-          ))}
-        <p>
-          Missing telemetry stays unknown. Machine PASS is a run-status fact,
-          not a product-quality result.
-        </p>
+        </details>
       </section>
       <section>
         <p className="eyebrow">02 / Deterministic diagnosis</p>
@@ -161,28 +184,34 @@ function Diagnosis({
         </p>
         {value.ranking.map((cause, index) => (
           <article className="prototype-cause" key={cause.hypothesis_id}>
-            <h3>
-              {index + 1}. {cause.label}
-            </h3>
-            <p>
-              <strong>{cause.score} points</strong> ·{" "}
-              {cause.confirmed ? "Confirmed by inspection" : "Unconfirmed"}
-            </p>
-            <ul>
-              {cause.contributions.map((c, i) => (
-                <li key={i}>
-                  <a
-                    href={`#${c.evidence_id}`}
-                    onClick={(event) => revealEvidence(event, c.evidence_id)}
-                  >
-                    {c.evidence_id}
-                  </a>{" "}
-                  {c.weight > 0 ? "+" : ""}
-                  {c.weight}: {c.explanation}
-                </li>
-              ))}
-            </ul>
-            <p>Missing: {cause.missing_evidence.join(", ") || "None listed"}</p>
+            <details open={!compactView || index === 0}>
+              <summary className="cause-summary">
+                <h3>
+                  {index + 1}. {cause.label}
+                </h3>
+                <span>
+                  <strong>{cause.score} points</strong> ·{" "}
+                  {cause.confirmed ? "Confirmed" : "Unconfirmed"}
+                </span>
+              </summary>
+              <ul>
+                {cause.contributions.map((c, i) => (
+                  <li key={i}>
+                    <a
+                      href={`#${c.evidence_id}`}
+                      onClick={(event) => revealEvidence(event, c.evidence_id)}
+                    >
+                      {c.evidence_id}
+                    </a>{" "}
+                    {c.weight > 0 ? "+" : ""}
+                    {c.weight}: {c.explanation}
+                  </li>
+                ))}
+              </ul>
+              <p>
+                Missing: {cause.missing_evidence.join(", ") || "None listed"}
+              </p>
+            </details>
           </article>
         ))}
         <h3>
@@ -590,9 +619,6 @@ export function CaseApp() {
                 </div>
                 {value && (
                   <div className="case-restart">
-                    <a className="secondary" href="/">
-                      Start another case
-                    </a>
                     <button
                       className="secondary"
                       disabled={busy || loading}
@@ -1299,6 +1325,7 @@ export function CaseApp() {
             )}
           </div>
           <ContextRail
+            key={phase}
             value={value}
             phase={phase}
             step={step}
