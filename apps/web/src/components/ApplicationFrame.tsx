@@ -8,10 +8,12 @@ export function ApplicationFrame({
   investigation,
   children,
   phase = "Report",
+  showPhaseRail = true,
 }: {
   investigation?: Investigation;
   children: ReactNode;
   phase?: string;
+  showPhaseRail?: boolean;
 }) {
   return (
     <div className="app">
@@ -32,25 +34,27 @@ export function ApplicationFrame({
         </div>
         <span className="demo-badge">Demo / Simulated Data</span>
       </header>
-      <div className="phase-rail" aria-label="Investigation phases">
-        <ol>
-          {phases.map((item, index) => (
-            <li key={item} aria-current={item === phase ? "step" : undefined}>
-              <span className="phase-number mono">0{index + 1}</span>
-              <span>
-                {item}
-                <span className="sr-only">
-                  {item === phase ? ": current phase" : ": workflow phase"}
+      {showPhaseRail && (
+        <div className="phase-rail" aria-label="Investigation phases">
+          <ol>
+            {phases.map((item, index) => (
+              <li key={item} aria-current={item === phase ? "step" : undefined}>
+                <span className="phase-number mono">0{index + 1}</span>
+                <span>
+                  {item}
+                  <span className="sr-only">
+                    {item === phase ? ": current phase" : ": workflow phase"}
+                  </span>
                 </span>
-              </span>
-              {index < phases.length - 1 && (
-                <CaretRight className="phase-separator" aria-hidden="true" />
-              )}
-            </li>
-          ))}
-        </ol>
-        <span className="rail-note">Operator-reported investigation</span>
-      </div>
+                {index < phases.length - 1 && (
+                  <CaretRight className="phase-separator" aria-hidden="true" />
+                )}
+              </li>
+            ))}
+          </ol>
+          <span className="rail-note">Operator-reported investigation</span>
+        </div>
+      )}
       {children}
     </div>
   );

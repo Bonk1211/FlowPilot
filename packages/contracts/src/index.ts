@@ -12,6 +12,9 @@ export type GoldenSnapshot = components["schemas"]["GoldenSnapshot"];
 export type Case = components["schemas"]["Case"];
 export type Measurement = components["schemas"]["Measurement"];
 export type CreateCase = components["schemas"]["CreateCase"];
+export type CaseListItem = components["schemas"]["CaseListItem"];
+export type CaseExplanation = components["schemas"]["CaseExplanation"];
+export type CaseExplanationRequest = components["schemas"]["CaseExplanationRequest"];
 export type CaseAction =
   | components["schemas"]["CorrectEvidence"]
   | components["schemas"]["AttachLog"]

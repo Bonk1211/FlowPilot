@@ -7,6 +7,8 @@ import type {
   CaseAction,
   CreateCase,
   Measurement,
+  CaseListItem,
+  CaseExplanation,
 } from "@flowpilot/contracts";
 
 async function request<T>(
@@ -64,6 +66,17 @@ export const createCase = (body: CreateCase) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+export const listCases = (limit = 20) =>
+  request<CaseListItem[]>(`/investigations?limit=${limit}`);
+export const explainCase = (id: string, revision: number, question: string) =>
+  request<CaseExplanation>(
+    `/investigations/${encodeURIComponent(id)}/explanations`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ revision, question }),
+    },
+  );
 export const resetDemo = (body: CreateCase) =>
   request<Case>("/demo/reset", {
     method: "POST",

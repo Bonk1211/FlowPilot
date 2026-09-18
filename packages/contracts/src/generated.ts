@@ -117,7 +117,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Cases */
+        get: operations["list_cases_api_investigations_get"];
         put?: never;
         /** New Case */
         post: operations["new_case_api_investigations_post"];
@@ -155,6 +156,23 @@ export interface paths {
         put?: never;
         /** Act */
         post: operations["act_api_investigations__case_id__actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/investigations/{case_id}/explanations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Explain */
+        post: operations["explain_api_investigations__case_id__explanations_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -311,6 +329,58 @@ export interface components {
             timeline: components["schemas"]["TimelineEntry"][];
             /** Verification */
             verification: components["schemas"]["Measurement"] | components["schemas"]["LegacyMeasurement"] | null;
+        };
+        /** CaseExplanation */
+        CaseExplanation: {
+            /** Answer */
+            answer: string;
+            /** Evidence Ids */
+            evidence_ids: string[];
+            /**
+             * Mode
+             * @default cached
+             * @constant
+             */
+            mode: "cached";
+            /**
+             * Non Mutating
+             * @default true
+             * @constant
+             */
+            non_mutating: true;
+            /** Source Refs */
+            source_refs: string[];
+            /** Timestamp */
+            timestamp: string;
+        };
+        /** CaseExplanationRequest */
+        CaseExplanationRequest: {
+            /** Question */
+            question: string;
+            /** Revision */
+            revision: number;
+        };
+        /** CaseListItem */
+        CaseListItem: {
+            /** Id */
+            id: string;
+            /**
+             * Phase
+             * @enum {string}
+             */
+            phase: "Report" | "Diagnose" | "Inspect" | "Correct" | "Verify" | "Summary";
+            /** Read Only */
+            read_only: boolean;
+            /** Scenario Version */
+            scenario_version: string;
+            /** Simulated */
+            simulated: boolean;
+            /** State */
+            state: string;
+            /** Title */
+            title: string;
+            /** Updated At */
+            updated_at: string;
         };
         /** CaseSummary */
         CaseSummary: {
@@ -1387,6 +1457,37 @@ export interface operations {
             };
         };
     };
+    list_cases_api_investigations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseListItem"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     new_case_api_investigations_post: {
         parameters: {
             query?: never;
@@ -1473,6 +1574,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Case"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    explain_api_investigations__case_id__explanations_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaseExplanationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseExplanation"];
                 };
             };
             /** @description Validation Error */

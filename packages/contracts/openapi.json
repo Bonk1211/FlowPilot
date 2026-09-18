@@ -379,6 +379,132 @@
         "title": "Case",
         "type": "object"
       },
+      "CaseExplanation": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "mode": {
+            "const": "cached",
+            "default": "cached",
+            "title": "Mode",
+            "type": "string"
+          },
+          "non_mutating": {
+            "const": true,
+            "default": true,
+            "title": "Non Mutating",
+            "type": "boolean"
+          },
+          "source_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Refs",
+            "type": "array"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "answer",
+          "evidence_ids",
+          "source_refs",
+          "timestamp"
+        ],
+        "title": "CaseExplanation",
+        "type": "object"
+      },
+      "CaseExplanationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "question": {
+            "maxLength": 1000,
+            "minLength": 2,
+            "title": "Question",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision",
+          "question"
+        ],
+        "title": "CaseExplanationRequest",
+        "type": "object"
+      },
+      "CaseListItem": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "phase": {
+            "enum": [
+              "Report",
+              "Diagnose",
+              "Inspect",
+              "Correct",
+              "Verify",
+              "Summary"
+            ],
+            "title": "Phase",
+            "type": "string"
+          },
+          "read_only": {
+            "title": "Read Only",
+            "type": "boolean"
+          },
+          "scenario_version": {
+            "title": "Scenario Version",
+            "type": "string"
+          },
+          "simulated": {
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "state",
+          "phase",
+          "scenario_version",
+          "simulated",
+          "read_only",
+          "updated_at"
+        ],
+        "title": "CaseListItem",
+        "type": "object"
+      },
       "CaseSummary": {
         "additionalProperties": false,
         "properties": {
@@ -2878,6 +3004,53 @@
       }
     },
     "/api/investigations": {
+      "get": {
+        "operationId": "list_cases_api_investigations_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CaseListItem"
+                  },
+                  "title": "Response List Cases Api Investigations Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Cases",
+        "tags": [
+          "cases"
+        ]
+      },
       "post": {
         "operationId": "new_case_api_investigations_post",
         "requestBody": {
@@ -3050,6 +3223,58 @@
           }
         },
         "summary": "Act",
+        "tags": [
+          "cases"
+        ]
+      }
+    },
+    "/api/investigations/{case_id}/explanations": {
+      "post": {
+        "operationId": "explain_api_investigations__case_id__explanations_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseExplanationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseExplanation"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Explain",
         "tags": [
           "cases"
         ]

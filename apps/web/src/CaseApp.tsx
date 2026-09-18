@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type {
   Case,
   CaseAction,
+  CaseListItem,
   DemoScenario,
   IngestionResult,
   LogPreviewRequest,
@@ -12,6 +13,8 @@ import {
   createCase,
   loadCase,
   loadImages,
+  listCases,
+  explainCase,
   loadScenario,
   previewLog,
   resetDemo,
@@ -19,7 +22,6 @@ import {
 import { ApplicationFrame } from "./components/ApplicationFrame";
 import { EvidencePreview } from "./components/EvidencePreview";
 import { EventViewer } from "./components/EventViewer";
-import { ProcedureViewer } from "./components/ProcedureViewer";
 import { EvidenceCorrection } from "./components/EvidenceCorrection";
 import { candidateValue, humanize } from "./presentation";
 import "./prototype/prototype.css";
@@ -28,6 +30,12 @@ import { sampleNames, emptyRecovery } from "./fluxModel";
 import { SprayMeasurement as ImageMeasurement } from "./components/SprayMeasurement";
 import { RecoveryForm } from "./components/RecoveryForm";
 import { DiagnosticHistory, SummaryEvidence } from "./components/CaseAudit";
+import { CaseNavigator } from "./components/CaseNavigator";
+import {
+  GuidanceComposer,
+  type GuidanceExchange,
+} from "./components/GuidanceComposer";
+import { ContextRail } from "./components/ContextRail";
 
 type WithoutRevision<T> = T extends unknown ? Omit<T, "revision"> : never;
 type Command = WithoutRevision<CaseAction>;
@@ -314,6 +322,10 @@ export function CaseApp() {
   const [correctiveAction, setCorrectiveAction] = useState<
     "nozzle_cleaning" | "nozzle_replacement"
   >("nozzle_replacement");
+  const [cases, setCases] = useState<CaseListItem[]>([]);
+  const [guidance, setGuidance] = useState<GuidanceExchange[]>([]);
+  const [guidanceBusy, setGuidanceBusy] = useState(false);
+  const [contextExpanded, setContextExpanded] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const errorPanel = useRef<HTMLElement>(null);
   const retainedLog = useRef<HTMLDetailsElement>(null);
@@ -330,12 +342,14 @@ export function CaseApp() {
     Promise.all([
       loadImages(),
       loadScenario(),
+      listCases(),
       id ? loadCase(id) : Promise.resolve(null),
     ])
-      .then(([samples, demo, saved]) => {
+      .then(([samples, demo, savedCases, saved]) => {
         if (active) {
           setImages(samples);
           setScenario(demo);
+          setCases(savedCases);
           setValue(saved);
           setChecks({
             ...(saved?.recovery ?? emptyRecovery),
@@ -378,12 +392,38 @@ export function CaseApp() {
     setValue(next);
     setChecks({ ...(next.recovery ?? emptyRecovery), confirmed: false });
     setAck(false);
+    setGuidance([]);
+    setContextExpanded(false);
     window.history.replaceState(
       null,
       "",
       `/?case=${encodeURIComponent(next.investigation.id)}`,
     );
     requestAnimationFrame(() => heading.current?.focus());
+    void listCases()
+      .then(setCases)
+      .catch(() => undefined);
+  }
+
+  async function askGuidance(question: string) {
+    if (!value || guidanceBusy) return;
+    setGuidanceBusy(true);
+    setError("");
+    try {
+      const response = await explainCase(
+        value.investigation.id,
+        value.revision,
+        question,
+      );
+      setGuidance((items) => [
+        ...items,
+        { id: `${response.timestamp}-${items.length}`, question, response },
+      ]);
+    } catch (failure) {
+      setError(message(failure));
+    } finally {
+      setGuidanceBusy(false);
+    }
   }
   async function command(action: Command) {
     if (value && !reloadRequired)
@@ -514,703 +554,759 @@ export function CaseApp() {
       </ApplicationFrame>
     );
   return (
-    <ApplicationFrame investigation={value?.investigation} phase={phase}>
+    <ApplicationFrame
+      investigation={value?.investigation}
+      phase={phase}
+      showPhaseRail={false}
+    >
       <main id="main" tabIndex={-1} className="case-workspace prototype-app">
-        <div className="prototype-banner">
-          <span>
-            {value
-              ? `Saved case · revision ${value.revision}`
-              : "M2 / Controlled dispensing investigation"}
-          </span>
-          <a href="/prototype">Offline M0 prototype</a>
-          <a href="/log-preview">Standalone log preview</a>
-        </div>
-        <section className="masthead">
-          <div>
-            <p className="eyebrow">
-              {phase} / {state ? humanize(state) : "Operator report"}
-            </p>
-            <h1 ref={heading} tabIndex={-1}>
-              {title}
-            </h1>
-            <p>
-              Measured evidence, explained rankings, and a recorded outcome.
-            </p>
-          </div>
-          {value && (
-            <div className="case-restart">
-              <a className="secondary" href="/">
-                Start another case
-              </a>
-              <button
-                className="secondary"
-                disabled={busy || loading}
-                onClick={() => void restartDemo()}
-              >
-                Restart demo
-              </button>
-              <p>
-                Restart creates a fresh simulated case. Saved cases are
-                retained.
-              </p>
-            </div>
-          )}
-        </section>
-        {error && (
-          <section
-            ref={errorPanel}
-            tabIndex={-1}
-            role="alert"
-            className="case-error"
-          >
-            <h2>Request not completed</h2>
-            <p>{error}</p>
-            <p>
-              Your last loaded case remains visible. Reload the saved case to
-              check whether an interrupted request completed.
-            </p>
-            <button
-              className="secondary"
-              disabled={busy}
-              onClick={() =>
-                void run(async () => {
-                  const id =
-                    value?.investigation.id ??
-                    new URLSearchParams(window.location.search).get("case");
-                  if (id) accept(await loadCase(id));
-                  else {
-                    setLoading(true);
-                    setAttempt((a) => a + 1);
-                  }
-                })
-              }
-            >
-              Reload saved case / retry connection
-            </button>
-          </section>
-        )}
-        {loading && <p role="status">Loading workspace…</p>}
-        <fieldset
-          key={value?.investigation.id ?? "new-report"}
-          className="case-controls"
-          disabled={busy || loading || reloadRequired}
+        <div
+          className={`technician-shell ${contextExpanded ? "context-workspace-expanded" : ""}`}
         >
-          <legend className="sr-only">Investigation controls</legend>
-          {!value && selected && (
-            <div className="prototype-two">
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void run(async () =>
-                    accept(await createCase({ report, sample_id: sample })),
-                  );
-                }}
-              >
-                <label htmlFor="report">Operator report</label>
-                <textarea
-                  id="report"
-                  required
-                  maxLength={2000}
-                  value={report}
-                  onChange={(e) => setReport(e.target.value)}
-                />
-                <label htmlFor="sample">Controlled image sample</label>
-                <select
-                  id="sample"
-                  value={sample}
-                  onChange={(e) =>
-                    setSample(e.target.value as Measurement["sample_id"])
-                  }
-                >
-                  {Object.entries(sampleNames).map(([id, name]) => (
-                    <option value={id} key={id}>
-                      {name}
-                    </option>
-                  ))}
-                </select>
-                <p>
-                  All samples are generated demo images. This demo diagnoses the
-                  flux-spray scenario; measurements do not establish a root
-                  cause.
-                </p>
-                <button
-                  className="primary"
-                  disabled={!report.trim()}
-                  type="submit"
-                >
-                  Start investigation
-                </button>
-              </form>
-              <ImageMeasurement value={selected} title="Selected sample" />
-            </div>
-          )}
-          {value && !value.ranking.length && (
-            <>
-              <div className="prototype-two">
-                <section>
-                  <h2>Reported defect</h2>
-                  <p>{value.investigation.title}</p>
-                  <p>
-                    Image evidence is provisional. It can support diagnosis but
-                    cannot confirm a cause.
-                  </p>
-                  {!value.diagnosis_supported && (
-                    <p role="status">
-                      This sample is measured, but its diagnosis is outside the
-                      controlled defect rules. Start another case with the
-                      incomplete-coverage sample to explore the complete
-                      journey.
-                    </p>
-                  )}
-                  {mayAttach && (
-                    <div className="case-log-controls">
-                      <h2>Machine context</h2>
-                      <p>
-                        Optional: preview before attaching machine facts. You
-                        may continue discovery without a log.
-                      </p>
-                      <button
-                        className="secondary"
-                        onClick={() => {
-                          if (scenario)
-                            void run(async () => {
-                              const result = await previewLog(
-                                scenario.sample_log,
-                              );
-                              setLogInput(scenario.sample_log);
-                              setPreview(result);
-                            });
-                        }}
-                      >
-                        Use sample machine log
-                      </button>
-                      <label htmlFor="log-file">
-                        Upload controlled .log or .txt
-                      </label>
-                      <input
-                        id="log-file"
-                        type="file"
-                        accept=".log,.txt"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          void run(async () => {
-                            if (
-                              !/\.(log|txt)$/i.test(file.name) ||
-                              file.size > 2_000_000
-                            )
-                              throw new Error(
-                                "Choose a .log or .txt file up to 2 MB.",
-                              );
-                            const input = {
-                              text: await file.text(),
-                              sourceName: file.name,
-                              timezoneOffset: null,
-                            };
-                            const result = await previewLog(input);
-                            setLogInput(input);
-                            setPreview(result);
-                          });
-                        }}
-                      />
-                      {preview && (
-                        <button
-                          className="primary"
-                          onClick={() => {
-                            if (logInput)
-                              command({ action: "attach_log", log: logInput });
-                          }}
-                        >
-                          Attach previewed log
-                        </button>
-                      )}
-                    </div>
-                  )}
-                  {value.log && (
-                    <p role="status">
-                      Attached {value.log.sourceName} ·{" "}
-                      {value.log.stats.eventCount} events retained
-                    </p>
-                  )}
-                </section>
-                <ImageMeasurement
-                  value={value.measurement}
-                  title="Before action"
-                />
-              </div>
-              {(preview || value.log) && scenario && (
-                <section className="case-log">
-                  {viewer ? (
-                    <EventViewer
-                      result={(value.log ?? preview)!}
-                      selectedId={eventId}
-                      onSelect={setEventId}
-                      onClose={() => {
-                        setViewer(false);
-                        requestAnimationFrame(() => {
-                          const target = document.getElementById(
-                            returnTarget.current,
-                          );
-                          const details = target?.closest("details");
-                          if (details) details.open = true;
-                          target?.focus();
-                        });
-                      }}
-                    />
-                  ) : (
-                    <EvidencePreview
-                      result={(value.log ?? preview)!}
-                      metadata={{
-                        ...scenario.log_metadata,
-                        limitations: [
-                          "Only direct facts from recognized events become provisional evidence.",
-                          "Missing timezone stays unknown; source order and raw records are retained.",
-                          "Machine PASS status is not interpreted as product quality.",
-                        ],
-                      }}
-                      onOpenViewer={(target, sourceRef) => {
-                        returnTarget.current = target;
-                        setEventId(
-                          (value.log ?? preview)?.events.find(
-                            (e) => e.sourceRef === sourceRef,
-                          )?.id ?? null,
-                        );
-                        setViewer(true);
-                      }}
-                    />
-                  )}
-                </section>
-              )}
-              {value.next_question && (
-                <section className="prototype-question case-section">
+          <CaseNavigator
+            cases={cases}
+            activeId={value?.investigation.id}
+            phase={phase}
+          />
+          <div className="investigation-column">
+            <div
+              className="investigation-scroll"
+              role="region"
+              aria-label="Investigation task"
+            >
+              <section className="masthead workspace-masthead">
+                <div>
                   <p className="eyebrow">
-                    Discovery / {Object.keys(value.answers).length + 1} of 5
+                    {phase} / {state ? humanize(state) : "Operator report"}
                   </p>
-                  <h2>{value.next_question.prompt}</h2>
-                  <p>Why this matters: {value.next_question.rationale}</p>
-                  <div className="prototype-options">
-                    {value.next_question.options.map((option) => (
-                      <button
-                        className="secondary"
-                        key={option.value}
-                        onClick={() =>
-                          command({
-                            action: "answer",
-                            question_id: value.next_question!.id,
-                            value: option.value,
-                          })
-                        }
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
-                </section>
-              )}
-              {value.questions_complete && value.diagnosis_supported && (
-                <section className="case-section">
-                  <h2>Discovery complete</h2>
-                  <p>
-                    Your answers will contribute to the deterministic ranking.
+                  <h1 ref={heading} tabIndex={-1}>
+                    {title}
+                  </h1>
+                  <p className="workspace-status">
+                    {value
+                      ? `Saved revision ${value.revision} · ${value.investigation.simulated ? "Simulated case" : "Recorded case"}`
+                      : "Start with the observed defect and controlled sample."}
                   </p>
-                  <button
-                    className="primary"
-                    onClick={() => command({ action: "diagnose" })}
-                  >
-                    Diagnose case
-                  </button>
-                </section>
-              )}
-            </>
-          )}
-          {value && value.ranking.length > 0 && !value.summary && (
-            <>
-              {phase === "Diagnose" && (
-                <>
-                  <Diagnosis value={value} onCorrect={command} />
-                  {value.log && (
-                    <details ref={retainedLog}>
-                      <summary>Retained machine events and raw log</summary>
-                      <EventViewer
-                        result={value.log}
-                        selectedId={eventId}
-                        onSelect={setEventId}
-                        onClose={() => {
-                          setEventId(null);
-                          if (retainedLog.current) {
-                            retainedLog.current.open = false;
-                            retainedLog.current
-                              .querySelector("summary")
-                              ?.focus();
-                          }
-                        }}
-                      />
-                    </details>
-                  )}
-                  {state === "inspection_recommended" && (
-                    <button
-                      className="primary"
-                      onClick={() => {
-                        setInspecting(true);
-                        requestAnimationFrame(() => heading.current?.focus());
-                      }}
-                    >
-                      Start illustrative inspection
-                    </button>
-                  )}
-                </>
-              )}
-              {phase === "Inspect" && !value.pending_outcome && (
-                <div className="prototype-two">
-                  <ProcedureViewer
-                    steps={value.procedure}
-                    index={step}
-                    onStep={setStep}
-                  />
-                  <section>
-                    <p className="eyebrow">
-                      Step {step + 1} of {value.procedure.length}
-                    </p>
-                    <h2>{value.procedure[step].title}</h2>
-                    <p>{value.procedure[step].instruction}</p>
-                    <p className="prototype-caution">
-                      {value.procedure[step].caution}
-                    </p>
-                    <p>
-                      Illustrative guide; expert review pending. These
-                      observations are simulated.
-                    </p>
-                    <div className="prototype-options">
-                      <button
-                        className="secondary"
-                        disabled={step !== value.procedure.length - 1}
-                        onClick={() =>
-                          command({
-                            action: "inspect",
-                            outcome: "obstruction_found",
-                          })
-                        }
-                      >
-                        Obstruction found
-                      </button>
-                      <button
-                        className="secondary"
-                        disabled={step !== value.procedure.length - 1}
-                        onClick={() =>
-                          command({
-                            action: "inspect",
-                            outcome: "no_obstruction_found",
-                          })
-                        }
-                      >
-                        No obstruction found
-                      </button>
-                    </div>
-                  </section>
                 </div>
-              )}
-              {value.pending_outcome && (
-                <section className="prototype-question">
-                  <h2>{humanize(value.pending_outcome)}</h2>
-                  <p>This observation has not yet changed the diagnosis.</p>
-                  <label className="prototype-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={ack}
-                      onChange={(e) => setAck(e.target.checked)}
-                    />
-                    I confirm this simulated inspection observation.
-                  </label>
-                  <button
-                    className="primary"
-                    disabled={!ack}
-                    onClick={() => {
-                      setInspecting(false);
-                      command({
-                        action: "confirm_observation",
-                        confirmed: true,
-                      });
-                    }}
-                  >
-                    Confirm observation
-                  </button>
-                </section>
-              )}
-              {phase === "Inspect" && (
-                <details className="case-section">
-                  <summary>
-                    Review or correct evidence before confirming
-                  </summary>
-                  <Diagnosis value={value} onCorrect={command} />
-                </details>
-              )}
-              {state === "cause_confirmed" && (
-                <section className="prototype-question">
-                  <h2>Obstruction confirmed</h2>
-                  <label>
-                    Simulated corrective action
-                    <select
-                      value={correctiveAction}
-                      onChange={(e) =>
-                        setCorrectiveAction(
-                          e.target.value as typeof correctiveAction,
-                        )
-                      }
+                {value && (
+                  <div className="case-restart">
+                    <a className="secondary" href="/">
+                      Start another case
+                    </a>
+                    <button
+                      className="secondary"
+                      disabled={busy || loading}
+                      onClick={() => void restartDemo()}
                     >
-                      <option value="nozzle_replacement">
-                        Nozzle replacement
-                      </option>
-                      <option value="nozzle_cleaning">
-                        Approved nozzle cleaning
-                      </option>
-                    </select>
-                  </label>
+                      Restart demo
+                    </button>
+                  </div>
+                )}
+              </section>
+              {error && (
+                <section
+                  ref={errorPanel}
+                  tabIndex={-1}
+                  role="alert"
+                  className="case-error"
+                >
+                  <h2>Request not completed</h2>
+                  <p>{error}</p>
                   <p>
-                    Record simulated nozzle cleaning or replacement under the
-                    applicable site procedure.
+                    Your last loaded case remains visible. Reload the saved case
+                    to check whether an interrupted request completed.
                   </p>
-                  <p className="prototype-caution">
-                    Expert review pending. Follow the approved site procedure;
-                    this interface does not authorize physical service.
-                  </p>
-                  <label className="prototype-checkbox">
-                    <input
-                      type="checkbox"
-                      checked={ack}
-                      onChange={(e) => setAck(e.target.checked)}
-                    />
-                    I confirm the simulated corrective action is complete.
-                  </label>
                   <button
-                    className="primary"
-                    disabled={!ack}
+                    className="secondary"
+                    disabled={busy}
                     onClick={() =>
-                      command({
-                        action: "complete_action",
-                        confirmed: true,
-                        corrective_action: correctiveAction,
+                      void run(async () => {
+                        const id =
+                          value?.investigation.id ??
+                          new URLSearchParams(window.location.search).get(
+                            "case",
+                          );
+                        if (id) accept(await loadCase(id));
+                        else {
+                          setLoading(true);
+                          setAttempt((a) => a + 1);
+                        }
                       })
                     }
                   >
-                    Record action complete
+                    Reload saved case / retry connection
                   </button>
                 </section>
               )}
-              {phase === "Verify" && (
-                <>
+              {loading && <p role="status">Loading workspace…</p>}
+              <fieldset
+                key={value?.investigation.id ?? "new-report"}
+                className="case-controls"
+                disabled={busy || loading || reloadRequired}
+              >
+                <legend className="sr-only">Investigation controls</legend>
+                {!value && selected && (
                   <div className="prototype-two">
-                    <ImageMeasurement
-                      value={value.measurement}
-                      title="Before action"
-                    />
-                    {value.verification ? (
-                      <ImageMeasurement
-                        value={value.verification}
-                        title="Verification result"
+                    <form
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        void run(async () =>
+                          accept(
+                            await createCase({ report, sample_id: sample }),
+                          ),
+                        );
+                      }}
+                    >
+                      <label htmlFor="report">Operator report</label>
+                      <textarea
+                        id="report"
+                        required
+                        maxLength={2000}
+                        value={report}
+                        onChange={(e) => setReport(e.target.value)}
                       />
-                    ) : (
-                      <section>
-                        <h2>Measure the post-action sample</h2>
-                        <p>
-                          Passing requires accepted spray coverage and all
-                          required recovery checks.
-                        </p>
-                      </section>
-                    )}
-                  </div>
-                  {value.recovery && (
-                    <details className="case-section">
-                      <summary>Last submitted recovery checks</summary>
-                      <dl>
-                        {Object.entries(value.recovery).map(([key, result]) => (
-                          <div key={key}>
-                            <dt>{humanize(key)}</dt>
-                            <dd>{candidateValue({ value: result })}</dd>
-                          </div>
-                        ))}
-                      </dl>
-                    </details>
-                  )}
-                  {state === "corrective_action_completed" && (
-                    <section className="case-section">
-                      {value.verification && (
-                        <p role="status">
-                          Verification failed. The case remains open.
-                        </p>
-                      )}
-                      <p>
-                        Calibration attempts: {value.calibration_attempts};
-                        failures: {value.calibration_failures}.
-                      </p>
-                      {value.escalated ? (
-                        <p role="alert">
-                          Two calibration failures require maintenance
-                          escalation. Ordinary retries are blocked.
-                        </p>
-                      ) : (
-                        <RecoveryForm value={checks} onChange={setChecks} />
-                      )}
-                      <label htmlFor="verification-sample">
-                        Verification sample
-                      </label>
+                      <label htmlFor="sample">Controlled image sample</label>
                       <select
-                        id="verification-sample"
-                        value={verificationSample}
+                        id="sample"
+                        value={sample}
                         onChange={(e) =>
-                          setVerificationSample(
-                            e.target.value as Measurement["sample_id"],
-                          )
+                          setSample(e.target.value as Measurement["sample_id"])
                         }
                       >
                         {Object.entries(sampleNames).map(([id, name]) => (
-                          <option key={id} value={id}>
+                          <option value={id} key={id}>
                             {name}
                           </option>
                         ))}
                       </select>
-                      <button
-                        className="primary"
-                        disabled={value.escalated || !checks.confirmed}
-                        onClick={() =>
-                          command({
-                            action: "verify",
-                            sample_id: verificationSample,
-                            checks,
-                          })
-                        }
-                      >
-                        Measure verification sample
-                      </button>
-                    </section>
-                  )}
-                  {state === "verification_passed" && (
-                    <section className="case-section">
-                      <p role="status">
-                        Verification passed. Confirm resolution to save the
-                        completed summary.
-                      </p>
-                      <label htmlFor="completion-notes">
-                        Completion notes (optional)
-                      </label>
-                      <textarea
-                        id="completion-notes"
-                        maxLength={2000}
-                        value={completionNotes}
-                        onChange={(event) =>
-                          setCompletionNotes(event.target.value)
-                        }
-                      />
                       <p>
-                        Saved with the confirmed resolution. Up to 2,000
-                        characters.
+                        All samples are generated demo images. This demo
+                        diagnoses the flux-spray scenario; measurements do not
+                        establish a root cause.
                       </p>
-                      <label className="prototype-checkbox">
-                        <input
-                          type="checkbox"
-                          checked={ack}
-                          onChange={(e) => setAck(e.target.checked)}
-                        />
-                        I confirm this simulated case is ready to resolve.
-                      </label>
                       <button
                         className="primary"
-                        disabled={!ack}
-                        onClick={() =>
-                          command({
-                            action: "resolve",
-                            confirmed: true,
-                            notes: completionNotes,
-                          })
-                        }
+                        disabled={!report.trim()}
+                        type="submit"
                       >
-                        Resolve case
+                        Start investigation
                       </button>
-                    </section>
-                  )}
-                </>
-              )}
-            </>
-          )}
-          {value?.summary && (
-            <section className="prototype-summary">
-              <h2>From observed defect to verified recovery</h2>
-              <dl>
-                {Object.entries(value.summary)
-                  .filter(([key]) => key !== "evidence_ids")
-                  .map(([key, text]) => (
-                    <div key={key}>
-                      <dt>{humanize(key)}</dt>
-                      <dd>{String(text) || "None recorded"}</dd>
+                    </form>
+                    <ImageMeasurement
+                      value={selected}
+                      title="Selected sample"
+                    />
+                  </div>
+                )}
+                {value && !value.ranking.length && (
+                  <>
+                    {value.next_question && (
+                      <section className="prototype-question case-primary-task">
+                        <p className="eyebrow">
+                          Discovery / {Object.keys(value.answers).length + 1} of
+                          5
+                        </p>
+                        <h2>{value.next_question.prompt}</h2>
+                        <p>Why this matters: {value.next_question.rationale}</p>
+                        <div className="prototype-options">
+                          {value.next_question.options.map((option) => (
+                            <button
+                              className="secondary"
+                              key={option.value}
+                              onClick={() =>
+                                command({
+                                  action: "answer",
+                                  question_id: value.next_question!.id,
+                                  value: option.value,
+                                })
+                              }
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+                    {value.questions_complete && value.diagnosis_supported && (
+                      <section className="case-primary-task discovery-complete">
+                        <div>
+                          <p className="eyebrow">Discovery complete</p>
+                          <h2>Generate the ranked diagnosis</h2>
+                          <p>
+                            Review the saved answers, then calculate the
+                            deterministic ranking.
+                          </p>
+                        </div>
+                        <button
+                          className="primary"
+                          onClick={() => command({ action: "diagnose" })}
+                        >
+                          Diagnose case
+                        </button>
+                      </section>
+                    )}
+                    <div className="prototype-two">
+                      <section>
+                        <h2>Reported defect</h2>
+                        <p>{value.investigation.title}</p>
+                        <p>
+                          Image evidence is provisional. It can support
+                          diagnosis but cannot confirm a cause.
+                        </p>
+                        {!value.diagnosis_supported && (
+                          <p role="status">
+                            This sample is measured, but its diagnosis is
+                            outside the controlled defect rules. Start another
+                            case with the incomplete-coverage sample to explore
+                            the complete journey.
+                          </p>
+                        )}
+                        {mayAttach && (
+                          <div className="case-log-controls">
+                            <h2>Machine context</h2>
+                            <p>
+                              Optional: preview before attaching machine facts.
+                              You may continue discovery without a log.
+                            </p>
+                            <button
+                              className="secondary"
+                              onClick={() => {
+                                if (scenario)
+                                  void run(async () => {
+                                    const result = await previewLog(
+                                      scenario.sample_log,
+                                    );
+                                    setLogInput(scenario.sample_log);
+                                    setPreview(result);
+                                  });
+                              }}
+                            >
+                              Use sample machine log
+                            </button>
+                            <label htmlFor="log-file">
+                              Upload controlled .log or .txt
+                            </label>
+                            <input
+                              id="log-file"
+                              type="file"
+                              accept=".log,.txt"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                void run(async () => {
+                                  if (
+                                    !/\.(log|txt)$/i.test(file.name) ||
+                                    file.size > 2_000_000
+                                  )
+                                    throw new Error(
+                                      "Choose a .log or .txt file up to 2 MB.",
+                                    );
+                                  const input = {
+                                    text: await file.text(),
+                                    sourceName: file.name,
+                                    timezoneOffset: null,
+                                  };
+                                  const result = await previewLog(input);
+                                  setLogInput(input);
+                                  setPreview(result);
+                                });
+                              }}
+                            />
+                            {preview && (
+                              <button
+                                className="primary"
+                                onClick={() => {
+                                  if (logInput)
+                                    command({
+                                      action: "attach_log",
+                                      log: logInput,
+                                    });
+                                }}
+                              >
+                                Attach previewed log
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {value.log && (
+                          <p role="status">
+                            Attached {value.log.sourceName} ·{" "}
+                            {value.log.stats.eventCount} events retained
+                          </p>
+                        )}
+                      </section>
+                      <ImageMeasurement
+                        value={value.measurement}
+                        title="Before action"
+                      />
                     </div>
-                  ))}
-              </dl>
-              <h3>Inspection</h3>
-              <p>
-                {(value.investigation.evidence ?? [])
-                  .filter(
-                    (item) =>
-                      item.key === "inspection" &&
-                      item.verification_state === "verified",
-                  )
-                  .map(
-                    (item) =>
-                      `${humanize(candidateValue(item))} (confirmed, nozzle-only inspection)`,
-                  )
-                  .join("; ") || "No confirmed inspection recorded."}
-              </p>
-              <h3>Ranked causes</h3>
-              <ol>
-                {value.ranking.map((cause) => (
-                  <li key={cause.hypothesis_id}>
-                    {cause.label}: {cause.score} heuristic points
-                  </li>
-                ))}
-              </ol>
-              <SummaryEvidence value={value} />
-              <p role="status">Resolved · saved to this case</p>
-              <p>Simulated case; expert procedure review pending.</p>
-            </section>
-          )}
-        </fieldset>
-        {busy && <p role="status">Saving or loading…</p>}
-        {value &&
-          (!!value.diagnostic_history?.length ||
-            !!value.ranking.length ||
-            !!value.summary) && <DiagnosticHistory value={value} />}
-        {value && (
-          <details className="prototype-timeline">
-            <summary>Case timeline · saved history</summary>
-            <ol>
-              {value.timeline.map((item, i) => (
-                <li key={i}>
-                  <time>{item.timestamp}</time> · {humanize(item.state)} —{" "}
-                  {item.description}
-                  {item.diagnostic_revision != null && (
-                    <p>
-                      <a
-                        href={`#diagnosis-revision-${item.diagnostic_revision}`}
-                        onClick={(event) => {
-                          event.preventDefault();
-                          const target = document.getElementById(
-                            `diagnosis-revision-${item.diagnostic_revision}`,
-                          ) as HTMLDetailsElement | null;
-                          if (target) {
-                            target.open = true;
-                            target.focus();
-                            target.scrollIntoView({ block: "nearest" });
+                    {(preview || value.log) && scenario && (
+                      <section className="case-log">
+                        {viewer ? (
+                          <EventViewer
+                            result={(value.log ?? preview)!}
+                            selectedId={eventId}
+                            onSelect={setEventId}
+                            onClose={() => {
+                              setViewer(false);
+                              requestAnimationFrame(() => {
+                                const target = document.getElementById(
+                                  returnTarget.current,
+                                );
+                                const details = target?.closest("details");
+                                if (details) details.open = true;
+                                target?.focus();
+                              });
+                            }}
+                          />
+                        ) : (
+                          <EvidencePreview
+                            result={(value.log ?? preview)!}
+                            metadata={{
+                              ...scenario.log_metadata,
+                              limitations: [
+                                "Only direct facts from recognized events become provisional evidence.",
+                                "Missing timezone stays unknown; source order and raw records are retained.",
+                                "Machine PASS status is not interpreted as product quality.",
+                              ],
+                            }}
+                            onOpenViewer={(target, sourceRef) => {
+                              returnTarget.current = target;
+                              setEventId(
+                                (value.log ?? preview)?.events.find(
+                                  (e) => e.sourceRef === sourceRef,
+                                )?.id ?? null,
+                              );
+                              setViewer(true);
+                            }}
+                          />
+                        )}
+                      </section>
+                    )}
+                  </>
+                )}
+                {value && value.ranking.length > 0 && !value.summary && (
+                  <>
+                    {phase === "Diagnose" && (
+                      <>
+                        {state === "inspection_recommended" && (
+                          <section className="next-action-banner">
+                            <div>
+                              <p className="eyebrow">Recommended next action</p>
+                              <h2>Inspect the fluid path and nozzle</h2>
+                              <p>
+                                Follow the illustrated procedure, then record
+                                one explicit observation.
+                              </p>
+                            </div>
+                            <button
+                              className="primary"
+                              aria-label="Start illustrative inspection"
+                              onClick={() => {
+                                setInspecting(true);
+                                requestAnimationFrame(() =>
+                                  heading.current?.focus(),
+                                );
+                              }}
+                            >
+                              Start inspection
+                            </button>
+                          </section>
+                        )}
+                        <Diagnosis value={value} onCorrect={command} />
+                        {value.log && (
+                          <details ref={retainedLog}>
+                            <summary>
+                              Retained machine events and raw log
+                            </summary>
+                            <EventViewer
+                              result={value.log}
+                              selectedId={eventId}
+                              onSelect={setEventId}
+                              onClose={() => {
+                                setEventId(null);
+                                if (retainedLog.current) {
+                                  retainedLog.current.open = false;
+                                  retainedLog.current
+                                    .querySelector("summary")
+                                    ?.focus();
+                                }
+                              }}
+                            />
+                          </details>
+                        )}
+                      </>
+                    )}
+                    {phase === "Inspect" && !value.pending_outcome && (
+                      <section className="inspection-outcome-card">
+                        <p className="eyebrow">
+                          Step {step + 1} of {value.procedure.length}
+                        </p>
+                        <h2>Record the inspection outcome</h2>
+                        <p>
+                          The detailed assembly and active procedure step remain
+                          in the context rail.
+                        </p>
+                        <p className="prototype-caution">
+                          Illustrative guide; expert review pending. These
+                          observations are simulated.
+                        </p>
+                        <div className="prototype-options">
+                          <button
+                            className="secondary"
+                            disabled={step !== value.procedure.length - 1}
+                            onClick={() =>
+                              command({
+                                action: "inspect",
+                                outcome: "obstruction_found",
+                              })
+                            }
+                          >
+                            Obstruction found
+                          </button>
+                          <button
+                            className="secondary"
+                            disabled={step !== value.procedure.length - 1}
+                            onClick={() =>
+                              command({
+                                action: "inspect",
+                                outcome: "no_obstruction_found",
+                              })
+                            }
+                          >
+                            No obstruction found
+                          </button>
+                        </div>
+                      </section>
+                    )}
+                    {value.pending_outcome && (
+                      <section className="prototype-question">
+                        <h2>{humanize(value.pending_outcome)}</h2>
+                        <p>
+                          This observation has not yet changed the diagnosis.
+                        </p>
+                        <label className="prototype-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={ack}
+                            onChange={(e) => setAck(e.target.checked)}
+                          />
+                          I confirm this simulated inspection observation.
+                        </label>
+                        <button
+                          className="primary"
+                          disabled={!ack}
+                          onClick={() => {
+                            setInspecting(false);
+                            command({
+                              action: "confirm_observation",
+                              confirmed: true,
+                            });
+                          }}
+                        >
+                          Confirm observation
+                        </button>
+                      </section>
+                    )}
+                    {phase === "Inspect" && (
+                      <details className="case-section">
+                        <summary>
+                          Review or correct evidence before confirming
+                        </summary>
+                        <Diagnosis value={value} onCorrect={command} />
+                      </details>
+                    )}
+                    {state === "cause_confirmed" && (
+                      <section className="prototype-question">
+                        <h2>Obstruction confirmed</h2>
+                        <label>
+                          Simulated corrective action
+                          <select
+                            value={correctiveAction}
+                            onChange={(e) =>
+                              setCorrectiveAction(
+                                e.target.value as typeof correctiveAction,
+                              )
+                            }
+                          >
+                            <option value="nozzle_replacement">
+                              Nozzle replacement
+                            </option>
+                            <option value="nozzle_cleaning">
+                              Approved nozzle cleaning
+                            </option>
+                          </select>
+                        </label>
+                        <p>
+                          Record simulated nozzle cleaning or replacement under
+                          the applicable site procedure.
+                        </p>
+                        <p className="prototype-caution">
+                          Expert review pending. Follow the approved site
+                          procedure; this interface does not authorize physical
+                          service.
+                        </p>
+                        <label className="prototype-checkbox">
+                          <input
+                            type="checkbox"
+                            checked={ack}
+                            onChange={(e) => setAck(e.target.checked)}
+                          />
+                          I confirm the simulated corrective action is complete.
+                        </label>
+                        <button
+                          className="primary"
+                          disabled={!ack}
+                          onClick={() =>
+                            command({
+                              action: "complete_action",
+                              confirmed: true,
+                              corrective_action: correctiveAction,
+                            })
                           }
-                        }}
-                      >
-                        View diagnostic snapshot at revision{" "}
-                        {item.diagnostic_revision}
-                      </a>
+                        >
+                          Record action complete
+                        </button>
+                      </section>
+                    )}
+                    {phase === "Verify" && (
+                      <>
+                        <div className="prototype-two">
+                          <ImageMeasurement
+                            value={value.measurement}
+                            title="Before action"
+                          />
+                          {value.verification ? (
+                            <ImageMeasurement
+                              value={value.verification}
+                              title="Verification result"
+                            />
+                          ) : (
+                            <section>
+                              <h2>Measure the post-action sample</h2>
+                              <p>
+                                Passing requires accepted spray coverage and all
+                                required recovery checks.
+                              </p>
+                            </section>
+                          )}
+                        </div>
+                        {value.recovery && (
+                          <details className="case-section">
+                            <summary>Last submitted recovery checks</summary>
+                            <dl>
+                              {Object.entries(value.recovery).map(
+                                ([key, result]) => (
+                                  <div key={key}>
+                                    <dt>{humanize(key)}</dt>
+                                    <dd>{candidateValue({ value: result })}</dd>
+                                  </div>
+                                ),
+                              )}
+                            </dl>
+                          </details>
+                        )}
+                        {state === "corrective_action_completed" && (
+                          <section className="case-section">
+                            {value.verification && (
+                              <p role="status">
+                                Verification failed. The case remains open.
+                              </p>
+                            )}
+                            <p>
+                              Calibration attempts: {value.calibration_attempts}
+                              ; failures: {value.calibration_failures}.
+                            </p>
+                            {value.escalated ? (
+                              <p role="alert">
+                                Two calibration failures require maintenance
+                                escalation. Ordinary retries are blocked.
+                              </p>
+                            ) : (
+                              <RecoveryForm
+                                value={checks}
+                                onChange={setChecks}
+                              />
+                            )}
+                            <label htmlFor="verification-sample">
+                              Verification sample
+                            </label>
+                            <select
+                              id="verification-sample"
+                              value={verificationSample}
+                              onChange={(e) =>
+                                setVerificationSample(
+                                  e.target.value as Measurement["sample_id"],
+                                )
+                              }
+                            >
+                              {Object.entries(sampleNames).map(([id, name]) => (
+                                <option key={id} value={id}>
+                                  {name}
+                                </option>
+                              ))}
+                            </select>
+                            <button
+                              className="primary"
+                              disabled={value.escalated || !checks.confirmed}
+                              onClick={() =>
+                                command({
+                                  action: "verify",
+                                  sample_id: verificationSample,
+                                  checks,
+                                })
+                              }
+                            >
+                              Measure verification sample
+                            </button>
+                          </section>
+                        )}
+                        {state === "verification_passed" && (
+                          <section className="case-section">
+                            <p role="status">
+                              Verification passed. Confirm resolution to save
+                              the completed summary.
+                            </p>
+                            <label htmlFor="completion-notes">
+                              Completion notes (optional)
+                            </label>
+                            <textarea
+                              id="completion-notes"
+                              maxLength={2000}
+                              value={completionNotes}
+                              onChange={(event) =>
+                                setCompletionNotes(event.target.value)
+                              }
+                            />
+                            <p>
+                              Saved with the confirmed resolution. Up to 2,000
+                              characters.
+                            </p>
+                            <label className="prototype-checkbox">
+                              <input
+                                type="checkbox"
+                                checked={ack}
+                                onChange={(e) => setAck(e.target.checked)}
+                              />
+                              I confirm this simulated case is ready to resolve.
+                            </label>
+                            <button
+                              className="primary"
+                              disabled={!ack}
+                              onClick={() =>
+                                command({
+                                  action: "resolve",
+                                  confirmed: true,
+                                  notes: completionNotes,
+                                })
+                              }
+                            >
+                              Resolve case
+                            </button>
+                          </section>
+                        )}
+                      </>
+                    )}
+                  </>
+                )}
+                {value?.summary && (
+                  <section className="prototype-summary">
+                    <h2>From observed defect to verified recovery</h2>
+                    <dl>
+                      {Object.entries(value.summary)
+                        .filter(([key]) => key !== "evidence_ids")
+                        .map(([key, text]) => (
+                          <div key={key}>
+                            <dt>{humanize(key)}</dt>
+                            <dd>{String(text) || "None recorded"}</dd>
+                          </div>
+                        ))}
+                    </dl>
+                    <h3>Inspection</h3>
+                    <p>
+                      {(value.investigation.evidence ?? [])
+                        .filter(
+                          (item) =>
+                            item.key === "inspection" &&
+                            item.verification_state === "verified",
+                        )
+                        .map(
+                          (item) =>
+                            `${humanize(candidateValue(item))} (confirmed, nozzle-only inspection)`,
+                        )
+                        .join("; ") || "No confirmed inspection recorded."}
                     </p>
-                  )}
-                </li>
-              ))}
-            </ol>
-          </details>
-        )}
+                    <h3>Ranked causes</h3>
+                    <ol>
+                      {value.ranking.map((cause) => (
+                        <li key={cause.hypothesis_id}>
+                          {cause.label}: {cause.score} heuristic points
+                        </li>
+                      ))}
+                    </ol>
+                    <SummaryEvidence value={value} />
+                    <p role="status">Resolved · saved to this case</p>
+                    <p>Simulated case; expert procedure review pending.</p>
+                  </section>
+                )}
+              </fieldset>
+              {busy && <p role="status">Saving or loading…</p>}
+              {value &&
+                (!!value.diagnostic_history?.length ||
+                  !!value.ranking.length ||
+                  !!value.summary) && <DiagnosticHistory value={value} />}
+              {value && (
+                <details className="prototype-timeline">
+                  <summary>Case timeline · saved history</summary>
+                  <ol>
+                    {value.timeline.map((item, i) => (
+                      <li key={i}>
+                        <time>{item.timestamp}</time> · {humanize(item.state)} —{" "}
+                        {item.description}
+                        {item.diagnostic_revision != null && (
+                          <p>
+                            <a
+                              href={`#diagnosis-revision-${item.diagnostic_revision}`}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                const target = document.getElementById(
+                                  `diagnosis-revision-${item.diagnostic_revision}`,
+                                ) as HTMLDetailsElement | null;
+                                if (target) {
+                                  target.open = true;
+                                  target.focus();
+                                  target.scrollIntoView({ block: "nearest" });
+                                }
+                              }}
+                            >
+                              View diagnostic snapshot at revision{" "}
+                              {item.diagnostic_revision}
+                            </a>
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </details>
+              )}
+            </div>
+            {value && (
+              <GuidanceComposer
+                exchanges={guidance}
+                busy={guidanceBusy}
+                onAsk={askGuidance}
+              />
+            )}
+          </div>
+          <ContextRail
+            value={value}
+            phase={phase}
+            step={step}
+            onStep={setStep}
+            expanded={contextExpanded}
+            onExpanded={setContextExpanded}
+          />
+        </div>
       </main>
     </ApplicationFrame>
   );

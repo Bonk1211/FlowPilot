@@ -10,6 +10,41 @@ test("evidence values preserve scalar, compound and missing units", () => {
   }
 });
 
+test("case navigator and grounded guidance keep the case read-only", async ({
+  page,
+  request,
+}) => {
+  await start(page);
+  await discovery(page);
+  const caseId = new URL(page.url()).searchParams.get("case");
+  expect(caseId).toBeTruthy();
+  await expect(
+    page.getByRole("heading", { name: "Investigations" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Recent cases" }),
+  ).toContainText(caseId!);
+
+  const before = await (
+    await request.get(`/api/investigations/${caseId}`)
+  ).json();
+  await page
+    .getByRole("button", { name: "Why is this the leading cause?" })
+    .click();
+  await page.getByRole("button", { name: "Ask FlowPilot" }).click();
+  await expect(
+    page.getByText("FlowPilot guidance", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Guidance only — this did not change the case."),
+  ).toBeVisible();
+  const after = await (
+    await request.get(`/api/investigations/${caseId}`)
+  ).json();
+  expect(after.investigation.revision).toBe(before.investigation.revision);
+  expect(after.timeline).toEqual(before.timeline);
+});
+
 test("recovery requires complete checks and two calibration failures block retries", async ({
   page,
 }, testInfo) => {

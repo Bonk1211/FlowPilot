@@ -8,7 +8,11 @@ import {
 } from "react";
 import type { ProcedureStep } from "@flowpilot/contracts";
 import { ProcedureDiagram } from "../prototype/ProcedureDiagram";
-import { modelNodes, cameraPresets } from "../prototype/model";
+import {
+  modelNodes,
+  modelNodeDetails,
+  cameraPresets,
+} from "../prototype/model";
 import "./viewer.css";
 
 const AssemblyScene = lazy(() => import("./AssemblyScene"));
@@ -75,7 +79,10 @@ export function ProcedureViewer({
       className="procedure-viewer"
       aria-label="Illustrative procedure viewer"
     >
-      <p>Illustrative assembly · expert review pending</p>
+      <p>
+        Generic illustrative fluid-dispenser model — not the exact installed
+        machine and not OEM-certified guidance.
+      </p>
       <div className="assembly-tools">
         <button
           className="secondary"
@@ -137,12 +144,22 @@ export function ProcedureViewer({
         </ViewerBoundary>
       )}
       {!twoD && !failed && mapped && (
-        <p aria-live="polite">
-          Current part:{" "}
-          <strong>
-            {modelNodes[step.model_node_id]?.label ?? step.model_node_id}
-          </strong>
-        </p>
+        <div className="current-component" aria-live="polite">
+          <p>
+            Current part:{" "}
+            <strong>
+              {modelNodes[step.model_node_id]?.label ?? step.model_node_id}
+            </strong>
+          </p>
+          {modelNodeDetails[step.model_node_id] && (
+            <>
+              <p>{modelNodeDetails[step.model_node_id].function}</p>
+              <p className="mono component-connection">
+                {modelNodeDetails[step.model_node_id].connection}
+              </p>
+            </>
+          )}
+        </div>
       )}
       <div className="assembly-tools">
         <button

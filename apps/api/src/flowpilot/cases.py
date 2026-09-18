@@ -6,10 +6,10 @@ from datetime import UTC, datetime
 from typing import Annotated, Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import ConfigDict, Field, model_serializer
-from sqlalchemy import JSON, Integer, String, update
+from sqlalchemy import JSON, Integer, String, select, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
@@ -102,6 +102,31 @@ class Case(Contract):
 class CreateCase(Contract):
     report: str = Field(min_length=1, max_length=2000)
     sample_id: SampleId = "incomplete"
+
+
+class CaseListItem(Contract):
+    id: str
+    title: str
+    state: str
+    phase: Literal["Report", "Diagnose", "Inspect", "Correct", "Verify", "Summary"]
+    scenario_version: str
+    simulated: bool
+    read_only: bool
+    updated_at: str
+
+
+class CaseExplanationRequest(Contract):
+    revision: int = Field(ge=0)
+    question: str = Field(min_length=2, max_length=1000)
+
+
+class CaseExplanation(Contract):
+    answer: str
+    evidence_ids: list[str]
+    source_refs: list[str]
+    mode: Literal["cached"] = "cached"
+    timestamp: str
+    non_mutating: Literal[True] = True
 
 
 class ActionBase(Contract):
@@ -648,6 +673,109 @@ def apply_action(case: Case, action: CaseAction) -> Case:
 router = APIRouter(prefix="/api", tags=["cases"])
 
 
+def case_phase(case: Case) -> str:
+    state = case.investigation.state
+    if state == "resolved":
+        return "Summary"
+    if state in ("verification_passed", "corrective_action_completed"):
+        return "Verify"
+    if state == "cause_confirmed":
+        return "Correct"
+    if case.pending_outcome:
+        return "Inspect"
+    if case.ranking or state == "diagnosing":
+        return "Diagnose"
+    return "Report"
+
+
+def case_list_item(case: Case) -> CaseListItem:
+    latest = case.timeline[-1].timestamp if case.timeline else case.investigation.reported_at
+    return CaseListItem(
+        id=case.investigation.id,
+        title=case.investigation.title,
+        state=case.investigation.state,
+        phase=case_phase(case),
+        scenario_version=case.scenario_version,
+        simulated=case.investigation.simulated,
+        read_only=case.scenario_version == "1.0",
+        updated_at=latest,
+    )
+
+
+def explain_case(case: Case, question_text: str) -> CaseExplanation:
+    question = question_text.strip()
+    lowered = question.casefold()
+    prohibited = (
+        "start the machine",
+        "control the machine",
+        "bypass",
+        "authorize maintenance",
+        "release the lot",
+        "approve the lot",
+    )
+    if any(term in lowered for term in prohibited):
+        return CaseExplanation(
+            answer=(
+                "FlowPilot cannot authorize maintenance, control equipment, bypass a workflow "
+                "gate, or release production. Follow the controlled site procedure and use the "
+                "visible case controls to record an authorized observation."
+            ),
+            evidence_ids=[],
+            source_refs=[],
+            timestamp=now(),
+        )
+
+    active = [item for item in case.investigation.evidence if item.verification_state != "rejected"]
+    by_id = {item.id: item for item in active}
+    evidence_ids: list[str] = []
+
+    top = case.ranking[0] if case.ranking else None
+    if top:
+        evidence_ids = [
+            contribution.evidence_id
+            for contribution in top.contributions
+            if contribution.evidence_id in by_id
+        ][:5]
+
+    if any(term in lowered for term in ("next", "do now", "action", "check")):
+        if case.recommendation:
+            answer = (
+                f"Next check: {case.recommendation.name}. "
+                f"{case.recommendation.rationale} {case.recommendation.instructions} "
+                "This guidance does not authorize physical service."
+            )
+        elif case.summary:
+            answer = "This simulated case is resolved. Review the saved summary and audit history."
+        else:
+            answer = "Complete the visible required case control before moving to the next phase."
+    elif any(term in lowered for term in ("missing", "unknown", "uncertain", "confidence")):
+        gaps = sorted({gap for cause in case.ranking for gap in cause.missing_evidence})
+        answer = (
+            "Remaining unknowns: " + "; ".join(gaps)
+            if gaps
+            else "No additional diagnostic gaps are listed for the current ranked causes."
+        )
+    elif top:
+        qualifier = "confirmed" if top.confirmed else "not confirmed"
+        answer = (
+            f"The leading hypothesis is {top.label} at {top.score} heuristic points; it is "
+            f"{qualifier}. The score is deterministic, not a probability. "
+            "Open the cited evidence before recording an inspection outcome."
+        )
+    else:
+        answer = (
+            "The case is still in intake. Complete the discovery questions and attach any "
+            "available machine evidence before requesting a ranked diagnosis."
+        )
+
+    return CaseExplanation(
+        answer=answer,
+        evidence_ids=evidence_ids,
+        source_refs=[by_id[item_id].source_ref for item_id in evidence_ids],
+        timestamp=now(),
+    )
+
+
 @router.get("/demo/images", response_model=list[Measurement])
 def images():
     return [
@@ -686,6 +814,19 @@ def new_case(request: CreateCase):
     return database_operation(save)
 
 
+@router.get("/investigations", response_model=list[CaseListItem])
+def list_cases(limit: int = Query(default=20, ge=1, le=50)):
+    def listing(session):
+        records = session.scalars(select(CaseRecord)).all()
+        items = [
+            case_list_item(normalize_case(Case.model_validate(record.payload)))
+            for record in records
+        ]
+        return sorted(items, key=lambda item: item.updated_at, reverse=True)[:limit]
+
+    return database_operation(listing)
+
+
 @router.post("/demo/reset", response_model=Case, status_code=201)
 def reset_demo(request: CreateCase):
     """Start a fresh simulated investigation; retain all existing case history."""
@@ -701,6 +842,17 @@ def get_case(case_id: str):
         return normalize_case(Case.model_validate(record.payload))
 
     return database_operation(get)
+
+
+@router.post(
+    "/investigations/{case_id}/explanations",
+    response_model=CaseExplanation,
+)
+def explain(case_id: str, request: CaseExplanationRequest):
+    case = get_case(case_id)
+    if case.revision != request.revision:
+        raise HTTPException(409, "Case changed. Reload it before requesting guidance.")
+    return explain_case(case, request.question)
 
 
 @router.post("/investigations/{case_id}/actions", response_model=Case)

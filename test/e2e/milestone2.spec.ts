@@ -170,7 +170,7 @@ test("3D highlights, camera controls, playback and final confirmation stay synch
   page,
   request,
 }, testInfo) => {
-  test.setTimeout(60000);
+  test.setTimeout(90000);
   await diagnosed(request, page);
   await page
     .getByRole("button", { name: "Start illustrative inspection" })

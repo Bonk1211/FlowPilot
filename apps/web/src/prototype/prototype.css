@@ -180,10 +180,20 @@
 .prototype-diagram figcaption {
   font-size: var(--font-compact);
 }
-.prototype-diagram rect {
+.prototype-diagram .node-shape {
   fill: var(--surface-instrument-panel);
   stroke: var(--border-on-instrument);
   stroke-width: 2;
+}
+.prototype-diagram .node-detail {
+  fill: none;
+  stroke: var(--border-on-instrument);
+  stroke-width: 2;
+}
+.prototype-diagram .tube-symbol {
+  fill: none;
+  stroke-width: 7;
+  stroke-linecap: round;
 }
 .prototype-diagram text {
   fill: var(--text-on-instrument);
@@ -192,7 +202,8 @@
 .prototype-diagram .assembly-path {
   stroke: var(--border-on-instrument);
 }
-.prototype-diagram [data-highlighted="true"] rect {
+.prototype-diagram [data-highlighted="true"] .node-shape,
+.prototype-diagram [data-highlighted="true"] .node-detail {
   stroke: var(--selection-active-on-instrument);
   stroke-width: 5;
 }

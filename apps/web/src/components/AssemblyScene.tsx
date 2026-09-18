@@ -1,6 +1,17 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  Eye,
+  House,
+  MagnifyingGlassMinus,
+  MagnifyingGlassPlus,
+} from "@phosphor-icons/react";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import type { ProcedureStep } from "@flowpilot/contracts";
 import { cameraPresets, modelNodes } from "../prototype/model";
 
@@ -12,112 +23,71 @@ type Props = {
   onInteract: () => void;
 };
 
-// Code-built illustrative geometry. Stable names are shared with the 2D guide.
-function assembly() {
-  const group = new THREE.Group();
-  const parts: [keyof typeof modelNodes, THREE.BufferGeometry, number[]][] = [
-    [
-      "bfs_bottle",
-      new THREE.CylinderGeometry(0.55, 0.55, 1.3, 32),
-      [-1.8, 1.6, 0],
-    ],
-    [
-      "feed_tube",
-      new THREE.TubeGeometry(
-        new THREE.CatmullRomCurve3([
-          new THREE.Vector3(-1.8, 1, 0),
-          new THREE.Vector3(-1.6, 0.7, 0),
-          new THREE.Vector3(-0.8, 0.8, 0),
-          new THREE.Vector3(0, 1.1, 0),
-        ]),
-        32,
-        0.1,
-        8,
-        false,
-      ),
-      [0, 0, 0],
-    ],
-    ["dj2200_valve", new THREE.BoxGeometry(0.9, 2, 0.8), [0, 0.3, 0]],
-    [
-      "fluid_qd",
-      new THREE.CylinderGeometry(0.18, 0.18, 0.4, 24),
-      [-0.8, 0.8, 0],
-    ],
-    ["nozzle", new THREE.CylinderGeometry(0.24, 0.07, 0.6, 24), [0, -0.975, 0]],
-    [
-      "pickup_tube",
-      new THREE.CylinderGeometry(0.04, 0.04, 1, 12),
-      [-1.8, 1.4, 0.4],
-    ],
-    ["air_cap", new THREE.TorusGeometry(0.28, 0.08, 12, 24), [0, -1.05, 0]],
-    ["vision_camera", new THREE.BoxGeometry(0.65, 0.65, 0.9), [1.35, -0.3, 0]],
-    ["substrate_tray", new THREE.BoxGeometry(3.7, 0.12, 2), [0, -1.75, 0]],
-  ];
-  for (const [id, geometry, position] of parts) {
-    const mesh = new THREE.Mesh(
-      geometry,
-      new THREE.MeshStandardMaterial({
-        color: 0x78999f,
-        metalness: 0.25,
-        roughness: 0.5,
-      }),
-    );
-    mesh.name = id;
-    mesh.position.set(position[0], position[1], position[2]);
-    group.add(mesh);
-  }
-  const airPaths: [keyof typeof modelNodes, THREE.Vector3[], number][] = [
-    [
-      "coaxial_air",
-      [
-        new THREE.Vector3(2, 1.6, 0),
-        new THREE.Vector3(0.7, 0, 0),
-        new THREE.Vector3(0, -1.05, 0),
-      ],
-      0x175b70,
-    ],
-    [
-      "valve_air",
-      [new THREE.Vector3(1.8, 2, 0), new THREE.Vector3(0, 1.2, 0)],
-      0x8b5a19,
-    ],
-    [
-      "bfs_air",
-      [new THREE.Vector3(-3, 2.4, 0), new THREE.Vector3(-1.8, 2.25, 0)],
-      0x78549c,
-    ],
-  ];
-  for (const [id, points, color] of airPaths) {
-    const tube = new THREE.Mesh(
-      new THREE.TubeGeometry(
-        new THREE.CatmullRomCurve3(points),
-        24,
-        0.05,
-        8,
-        false,
-      ),
-      new THREE.MeshStandardMaterial({ color }),
-    );
-    tube.name = id;
-    tube.userData.baseColor = color;
-    group.add(tube);
-  }
-  const cap = group.getObjectByName("air_cap");
-  if (cap) cap.rotation.x = Math.PI / 2;
-  const qd = group.getObjectByName("fluid_qd");
-  if (qd) qd.rotation.z = Math.PI / 2;
-  const plume = new THREE.Mesh(
-    new THREE.ConeGeometry(0.35, 0.4, 24),
-    new THREE.MeshStandardMaterial({
-      color: 0x94b8c4,
-      transparent: true,
-      opacity: 0.25,
-    }),
+type Material = THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial;
+type Runtime = {
+  camera: THREE.PerspectiveCamera;
+  controls: OrbitControls;
+  parts: THREE.Group;
+  goal: THREE.Vector3;
+  target: THREE.Vector3;
+  moving: boolean;
+  reduced: boolean;
+  highlight: string;
+  kind: string;
+  isolated: boolean;
+};
+
+const detailNames = [
+  "fastener",
+  "collar-grip",
+  "knob-grip",
+  "fixture-pin",
+  "hose-clamp",
+  "lens-detail",
+  "nozzle-thread",
+];
+
+function isDetailName(name: string) {
+  return detailNames.some(
+    (detailName) => name === detailName || name.startsWith(`${detailName}_`),
   );
-  plume.position.set(0, -1.475, 0);
-  plume.userData.baseColor = 0x94b8c4;
-  group.add(plume);
-  return group;
+}
+
+function materials(mesh: THREE.Mesh) {
+  return (
+    Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+  ) as Material[];
+}
+
+function prepareMaterials(parts: THREE.Group) {
+  parts.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return;
+    object.material = Array.isArray(object.material)
+      ? object.material.map((material) => material.clone())
+      : object.material.clone();
+    for (const material of materials(object)) {
+      material.userData.baseColor = material.color.getHex();
+      material.userData.baseEmissive = material.emissive?.getHex() ?? 0;
+      material.userData.baseOpacity = material.opacity;
+    }
+    object.castShadow = true;
+    object.receiveShadow = true;
+  });
+}
+
+function semanticOwner(object: THREE.Object3D, root: THREE.Group) {
+  let current: THREE.Object3D | null = object;
+  while (current && current.parent && current.parent !== root)
+    current = current.parent;
+  return current?.name ?? "";
+}
+
+function dispose(root: THREE.Object3D) {
+  root.traverse((object) => {
+    if (!(object instanceof THREE.Mesh)) return;
+    object.geometry.dispose();
+    for (const material of materials(object)) material.dispose();
+  });
 }
 
 export default function AssemblyScene({
@@ -128,21 +98,22 @@ export default function AssemblyScene({
   onInteract,
 }: Props) {
   const host = useRef<HTMLDivElement>(null);
-  const runtime = useRef<{
-    camera: THREE.PerspectiveCamera;
-    controls: OrbitControls;
-    parts: THREE.Group;
-    goal: THREE.Vector3;
-    target: THREE.Vector3;
-    moving: boolean;
-    reduced: boolean;
-    highlight: string;
-    kind: string;
-  } | null>(null);
+  const runtime = useRef<Runtime | null>(null);
   const callbacks = useRef({ onFailure, onInteract });
+  const [isolated, setIsolated] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const detail =
+    typeof window !== "undefined" && window.innerWidth < 1024 ? "low" : "high";
+
   useEffect(() => {
     callbacks.current = { onFailure, onInteract };
   }, [onFailure, onInteract]);
+
+  useEffect(() => {
+    const current = runtime.current;
+    if (current) current.isolated = isolated;
+  }, [isolated]);
+
   useEffect(() => {
     const container = host.current!;
     let renderer: THREE.WebGLRenderer;
@@ -152,34 +123,107 @@ export default function AssemblyScene({
       callbacks.current.onFailure();
       return;
     }
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    let disposed = false;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.08;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFShadowMap;
     renderer.domElement.setAttribute("aria-hidden", "true");
     container.append(renderer.domElement);
+
     const scene = new THREE.Scene();
-    scene.add(new THREE.HemisphereLight(0xffffff, 0x30404b, 3));
-    const light = new THREE.DirectionalLight(0xffffff, 3);
-    light.position.set(3, 5, 4);
-    scene.add(light);
-    const parts = assembly();
-    scene.add(parts);
-    const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 100);
-    camera.position.set(6, 4, 8);
+    scene.fog = new THREE.FogExp2(0x10191e, 0.025);
+    scene.add(new THREE.HemisphereLight(0xeaf7f5, 0x17242b, 2.4));
+    const key = new THREE.DirectionalLight(0xffffff, 4.2);
+    key.position.set(5, 8, 6);
+    key.castShadow = true;
+    key.shadow.mapSize.set(512, 512);
+    scene.add(key);
+    const rim = new THREE.DirectionalLight(0x65c8c4, 2.1);
+    rim.position.set(-5, 3, -4);
+    scene.add(rim);
+    const fill = new THREE.PointLight(0xd8b56b, 1.2, 18);
+    fill.position.set(-3, 1, 4);
+    scene.add(fill);
+
+    const groundMaterial = new THREE.ShadowMaterial({
+      color: 0x000000,
+      opacity: 0.34,
+    });
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(12, 9),
+      groundMaterial,
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -2.85;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    const empty = new THREE.Group();
+    scene.add(empty);
+    const camera = new THREE.PerspectiveCamera(36, 1, 0.05, 100);
+    camera.position.set(7.5, 4.8, 9.5);
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = false;
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
     controls.minDistance = 1.2;
-    controls.maxDistance = 18;
-    const state = {
+    controls.maxDistance = 20;
+    controls.maxPolarAngle = Math.PI * 0.86;
+    const state: Runtime = {
       camera,
       controls,
-      parts,
+      parts: empty,
       goal: camera.position.clone(),
       target: new THREE.Vector3(),
       moving: false,
       reduced: false,
       highlight: "",
       kind: "none",
+      isolated: false,
     };
     runtime.current = state;
+
+    new GLTFLoader().load(
+      "/models/generic-fluid-dispenser.glb",
+      (gltf) => {
+        const parts = (gltf.scene.getObjectByName("generic_fluid_dispenser") ??
+          gltf.scene.children[0]) as THREE.Group | undefined;
+        if (!parts || disposed) {
+          if (parts) dispose(parts);
+          return;
+        }
+        const required = [
+          "bfs_bottle",
+          "feed_tube",
+          "dj2200_valve",
+          "fluid_qd",
+          "air_cap",
+          "nozzle",
+          "vision_camera",
+          "substrate_tray",
+        ];
+        if (!required.every((name) => parts.getObjectByName(name))) {
+          dispose(parts);
+          callbacks.current.onFailure();
+          return;
+        }
+        prepareMaterials(parts);
+        if (detail === "low") {
+          parts.traverse((object) => {
+            if (isDetailName(object.name)) object.visible = false;
+          });
+        }
+        scene.remove(state.parts);
+        state.parts = parts;
+        scene.add(parts);
+        setLoaded(true);
+      },
+      undefined,
+      () => callbacks.current.onFailure(),
+    );
+
     const interact = () => {
       state.moving = false;
       callbacks.current.onInteract();
@@ -196,11 +240,16 @@ export default function AssemblyScene({
       if (!width || !height) return;
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
-      renderer.setSize(width, height);
+      renderer.setSize(width, height, false);
     });
     resize.observe(container);
+
     let frame = 0;
+    let lastRender = 0;
     const render = (time: number) => {
+      frame = requestAnimationFrame(render);
+      if (time - lastRender < 42) return;
+      lastRender = time;
       if (state.moving) {
         camera.position.lerp(state.goal, state.reduced ? 1 : 0.1);
         controls.target.lerp(state.target, state.reduced ? 1 : 0.1);
@@ -209,46 +258,60 @@ export default function AssemblyScene({
           controls.target.distanceTo(state.target) < 0.005
         )
           state.moving = false;
-        controls.update();
       }
-      for (const part of parts.children) {
-        const mesh = part as THREE.Mesh<
-          THREE.BufferGeometry,
-          THREE.MeshStandardMaterial
-        >;
-        const active = part.name === state.highlight && state.kind !== "none";
-        mesh.material.color.setHex(
-          active
-            ? state.kind === "warning"
-              ? 0xf5ab5f
-              : 0x5bdbc3
-            : (mesh.userData.baseColor ?? 0x78999f),
-        );
-        mesh.material.emissive.setHex(active ? 0x245c50 : 0x000000);
-        mesh.material.emissiveIntensity =
-          active && !state.reduced ? 0.6 + Math.sin(time / 450) * 0.25 : 0.6;
-      }
+      state.parts.traverse((object) => {
+        if (!(object instanceof THREE.Mesh)) return;
+        const owner = semanticOwner(object, state.parts);
+        const active = owner === state.highlight && state.kind !== "none";
+        for (const material of materials(object)) {
+          const baseColor =
+            material.userData.baseColor ?? material.color.getHex();
+          const baseEmissive = material.userData.baseEmissive ?? 0;
+          const baseOpacity = material.userData.baseOpacity ?? 1;
+          material.color.setHex(
+            active
+              ? state.kind === "warning"
+                ? 0xd9963b
+                : 0x40c8ba
+              : baseColor,
+          );
+          material.emissive?.setHex(active ? 0x164c47 : baseEmissive);
+          if (material.emissive) {
+            material.emissiveIntensity =
+              active && !state.reduced
+                ? 0.52 + Math.sin(time / 500) * 0.12
+                : active
+                  ? 0.48
+                  : 0;
+          }
+          const faded = state.isolated && owner && owner !== state.highlight;
+          material.transparent = faded || baseOpacity < 1;
+          material.opacity = faded ? Math.min(baseOpacity, 0.16) : baseOpacity;
+          material.depthWrite = !faded;
+        }
+      });
+      controls.update();
       renderer.render(scene, camera);
-      frame = requestAnimationFrame(render);
     };
     frame = requestAnimationFrame(render);
+
     return () => {
+      disposed = true;
       cancelAnimationFrame(frame);
       resize.disconnect();
       controls.removeEventListener("start", interact);
       controls.dispose();
       renderer.domElement.removeEventListener("webglcontextlost", contextLost);
-      for (const part of parts.children) {
-        const mesh = part as THREE.Mesh<THREE.BufferGeometry, THREE.Material>;
-        mesh.geometry.dispose();
-        mesh.material.dispose();
-      }
+      dispose(state.parts);
+      ground.geometry.dispose();
+      groundMaterial.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
       renderer.domElement.remove();
       runtime.current = null;
     };
-  }, []);
+  }, [detail]);
+
   useEffect(() => {
     const current = runtime.current;
     const preset =
@@ -263,7 +326,9 @@ export default function AssemblyScene({
     current.kind = step.highlight;
     current.reduced = reduced;
     current.moving = true;
+    setIsolated(false);
   }, [step, reset, reduced]);
+
   function adjust(kind: "left" | "right" | "up" | "down" | "in" | "out") {
     const current = runtime.current;
     if (!current) return;
@@ -271,45 +336,80 @@ export default function AssemblyScene({
     callbacks.current.onInteract();
     const offset = current.camera.position.clone().sub(current.controls.target);
     if (kind === "in" || kind === "out") {
-      offset.multiplyScalar(kind === "in" ? 0.85 : 1.15).clampLength(1.2, 18);
+      offset.multiplyScalar(kind === "in" ? 0.82 : 1.18).clampLength(1.2, 20);
     } else if (kind === "left" || kind === "right") {
       offset.applyAxisAngle(
         new THREE.Vector3(0, 1, 0),
         kind === "left" ? -0.2 : 0.2,
       );
     } else {
-      const shift = kind === "up" ? 0.2 : -0.2;
-      current.controls.target.y += shift;
+      current.controls.target.y += kind === "up" ? 0.2 : -0.2;
     }
     current.camera.position.copy(current.controls.target).add(offset);
     current.controls.update();
   }
+
+  function overview() {
+    const current = runtime.current;
+    if (!current) return;
+    current.goal.set(7.5, 4.8, 9.5);
+    current.target.set(0, -0.15, 0);
+    current.moving = true;
+    setIsolated(false);
+  }
+
   return (
     <>
       <div
         ref={host}
         className="assembly-canvas"
         role="img"
-        aria-label={`3D dispensing assembly. Highlighted part: ${modelNodes[step.model_node_id]?.label ?? "unknown"}`}
+        aria-label={`Detailed generic fluid-dispenser assembly. Highlighted part: ${modelNodes[step.model_node_id]?.label ?? "unknown"}`}
         data-node-id={step.model_node_id}
         data-camera-preset={step.camera_preset}
         data-highlighted={step.highlight !== "none"}
         data-reduced-motion={reduced}
+        data-model-detail={detail}
+        data-model-loaded={loaded}
       />
+      {!loaded && <p role="status">Loading detailed assembly…</p>}
       <div className="assembly-tools" aria-label="Camera controls">
-        {(["left", "right", "up", "down", "in", "out"] as const).map((kind) => (
+        <button
+          type="button"
+          className="secondary assembly-tool-labelled"
+          onClick={overview}
+        >
+          <House aria-hidden="true" />
+          Overview
+        </button>
+        <button
+          type="button"
+          className="secondary assembly-tool-labelled"
+          aria-pressed={isolated}
+          onClick={() => setIsolated((value) => !value)}
+        >
+          <Eye aria-hidden="true" />
+          {isolated ? "Show all" : "Isolate"}
+        </button>
+        {(
+          [
+            ["left", "Orbit left", ArrowLeft],
+            ["right", "Orbit right", ArrowRight],
+            ["up", "Pan up", ArrowUp],
+            ["down", "Pan down", ArrowDown],
+            ["in", "Zoom in", MagnifyingGlassPlus],
+            ["out", "Zoom out", MagnifyingGlassMinus],
+          ] as const
+        ).map(([kind, label, Icon]) => (
           <button
             type="button"
-            className="secondary"
+            className="secondary assembly-tool-icon"
             key={kind}
+            aria-label={label}
+            title={label}
             onClick={() => adjust(kind)}
           >
-            {kind === "in" || kind === "out"
-              ? "Zoom"
-              : kind === "up" || kind === "down"
-                ? "Pan"
-                : "Orbit"}{" "}
-            {kind}
+            <Icon aria-hidden="true" />
           </button>
         ))}
       </div>

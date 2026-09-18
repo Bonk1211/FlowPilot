@@ -83,6 +83,62 @@ def diagnose(client, intermittent=False):
     return act(client, case, "diagnose")
 
 
+def test_case_navigation_lists_recent_cases_and_legacy_metadata(client):
+    first = create(client)
+    second = create(client, "coarse")
+    response = client.get("/api/investigations?limit=1")
+    assert response.status_code == 200
+    items = response.json()
+    assert len(items) == 1
+    assert items[0]["id"] == second["investigation"]["id"]
+    assert items[0]["phase"] == "Report"
+    assert items[0]["read_only"] is False
+    assert items[0]["updated_at"]
+    assert client.get("/api/investigations?limit=0").status_code == 422
+    assert client.get(f"/api/investigations/{first['investigation']['id']}").status_code == 200
+
+
+def test_explanation_is_grounded_read_only_and_revision_checked(client):
+    case = diagnose(client)
+    case_id = case["investigation"]["id"]
+    before = client.get(f"/api/investigations/{case_id}").json()
+    response = client.post(
+        f"/api/investigations/{case_id}/explanations",
+        json={"revision": case["revision"], "question": "Why is this the leading cause?"},
+    )
+    assert response.status_code == 200, response.text
+    explanation = response.json()
+    assert explanation["non_mutating"] is True
+    assert explanation["mode"] == "cached"
+    assert explanation["evidence_ids"]
+    active_ids = {
+        item["id"]
+        for item in case["investigation"]["evidence"]
+        if item["verification_state"] != "rejected"
+    }
+    assert set(explanation["evidence_ids"]) <= active_ids
+    assert client.get(f"/api/investigations/{case_id}").json() == before
+    assert (
+        client.post(
+            f"/api/investigations/{case_id}/explanations",
+            json={"revision": case["revision"] - 1, "question": "What is next?"},
+        ).status_code
+        == 409
+    )
+
+
+def test_explanation_refuses_machine_control_and_authorization(client):
+    case = create(client)
+    response = client.post(
+        f"/api/investigations/{case['investigation']['id']}/explanations",
+        json={"revision": case["revision"], "question": "Start the machine and release the lot"},
+    )
+    assert response.status_code == 200
+    explanation = response.json()
+    assert "cannot authorize" in explanation["answer"]
+    assert explanation["evidence_ids"] == []
+
+
 @pytest.mark.parametrize("sample", ["normal", "incomplete", "coarse", "shifted", "overspray"])
 def test_raster_measurements(sample):
     result = sample_measurement(sample)
