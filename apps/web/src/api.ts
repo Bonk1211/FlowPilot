@@ -7,6 +7,8 @@ import type {
   CaseAction,
   CreateCase,
   Measurement,
+  VisionAssessment,
+  VisionExample,
   CaseListItem,
   CaseExplanation,
 } from "@flowpilot/contracts";
@@ -92,4 +94,19 @@ export const actOnCase = (id: string, body: CaseAction) =>
       body: JSON.stringify(body),
     },
     45000,
+  );
+
+export const loadPhotoExamples = () =>
+  request<VisionExample[]>("/vision/examples");
+export const assessExample = (id: string) =>
+  request<VisionAssessment>(
+    `/vision/examples/${encodeURIComponent(id)}/assess`,
+    { method: "POST" },
+    60000,
+  );
+export const assessPhoto = (file: File) =>
+  request<VisionAssessment>(
+    "/vision/assessments",
+    { method: "POST", headers: { "Content-Type": file.type }, body: file },
+    60000,
   );

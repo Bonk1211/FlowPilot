@@ -215,6 +215,9 @@
               },
               {
                 "$ref": "#/components/schemas/LegacyMeasurement"
+              },
+              {
+                "$ref": "#/components/schemas/VisionAssessment"
               }
             ],
             "title": "Measurement"
@@ -340,6 +343,9 @@
               },
               {
                 "$ref": "#/components/schemas/LegacyMeasurement"
+              },
+              {
+                "$ref": "#/components/schemas/VisionAssessment"
               },
               {
                 "type": "null"
@@ -711,6 +717,19 @@
       "CreateCase": {
         "additionalProperties": false,
         "properties": {
+          "assessment_id": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessment Id"
+          },
           "report": {
             "maxLength": 2000,
             "minLength": 1,
@@ -718,16 +737,22 @@
             "type": "string"
           },
           "sample_id": {
-            "default": "incomplete",
-            "enum": [
-              "normal",
-              "incomplete",
-              "coarse",
-              "shifted",
-              "overspray"
+            "anyOf": [
+              {
+                "enum": [
+                  "normal",
+                  "incomplete",
+                  "coarse",
+                  "shifted",
+                  "overspray"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Sample Id",
-            "type": "string"
+            "title": "Sample Id"
           }
         },
         "required": [
@@ -999,7 +1024,8 @@
               "synthetic_image_measurement",
               "machine_log",
               "technician_input",
-              "heuristic_inference"
+              "heuristic_inference",
+              "model_inference"
             ],
             "title": "Source Type",
             "type": "string"
@@ -2788,6 +2814,19 @@
             "title": "Action",
             "type": "string"
           },
+          "assessment_id": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assessment Id"
+          },
           "checks": {
             "$ref": "#/components/schemas/RecoveryChecks"
           },
@@ -2797,23 +2836,139 @@
             "type": "integer"
           },
           "sample_id": {
-            "enum": [
-              "normal",
-              "incomplete",
-              "coarse",
-              "shifted",
-              "overspray"
+            "anyOf": [
+              {
+                "enum": [
+                  "normal",
+                  "incomplete",
+                  "coarse",
+                  "shifted",
+                  "overspray"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Sample Id",
-            "type": "string"
+            "title": "Sample Id"
           }
         },
         "required": [
           "revision",
-          "action",
-          "sample_id"
+          "action"
         ],
         "title": "Verify",
+        "type": "object"
+      },
+      "VisionAssessment": {
+        "additionalProperties": false,
+        "properties": {
+          "assessment_id": {
+            "title": "Assessment Id",
+            "type": "string"
+          },
+          "heatmap_url": {
+            "title": "Heatmap Url",
+            "type": "string"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "image_url": {
+            "title": "Image Url",
+            "type": "string"
+          },
+          "kind": {
+            "const": "vision",
+            "default": "vision",
+            "title": "Kind",
+            "type": "string"
+          },
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "boolean"
+          },
+          "preprocessing_id": {
+            "title": "Preprocessing Id",
+            "type": "string"
+          },
+          "raw_score": {
+            "minimum": 0,
+            "title": "Raw Score",
+            "type": "number"
+          },
+          "result": {
+            "enum": [
+              "anomaly",
+              "within_reference"
+            ],
+            "title": "Result",
+            "type": "string"
+          },
+          "threshold": {
+            "exclusiveMinimum": 0,
+            "title": "Threshold",
+            "type": "number"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "assessment_id",
+          "image_url",
+          "heatmap_url",
+          "width",
+          "height",
+          "model_id",
+          "preprocessing_id",
+          "raw_score",
+          "threshold",
+          "result",
+          "passed",
+          "timestamp"
+        ],
+        "title": "VisionAssessment",
+        "type": "object"
+      },
+      "VisionExample": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "enum": [
+              "incomplete",
+              "coarse",
+              "normal"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "image_url": {
+            "title": "Image Url",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "image_url"
+        ],
+        "title": "VisionExample",
         "type": "object"
       }
     }
@@ -3319,6 +3474,183 @@
         "summary": "Preview Log",
         "tags": [
           "ingestion"
+        ]
+      }
+    },
+    "/api/vision/assessments": {
+      "post": {
+        "operationId": "upload_assessment_api_vision_assessments_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VisionAssessment"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Upload Assessment",
+        "tags": [
+          "vision"
+        ]
+      }
+    },
+    "/api/vision/assessments/{assessment_id}/{asset}": {
+      "get": {
+        "operationId": "assessment_image_api_vision_assessments__assessment_id___asset__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "assessment_id",
+            "required": true,
+            "schema": {
+              "title": "Assessment Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "asset",
+            "required": true,
+            "schema": {
+              "title": "Asset",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assessment Image",
+        "tags": [
+          "vision"
+        ]
+      }
+    },
+    "/api/vision/examples": {
+      "get": {
+        "operationId": "examples_api_vision_examples_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VisionExample"
+                  },
+                  "title": "Response Examples Api Vision Examples Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Examples",
+        "tags": [
+          "vision"
+        ]
+      }
+    },
+    "/api/vision/examples/{example_id}/assess": {
+      "post": {
+        "operationId": "assess_example_api_vision_examples__example_id__assess_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "example_id",
+            "required": true,
+            "schema": {
+              "title": "Example Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VisionAssessment"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Assess Example",
+        "tags": [
+          "vision"
+        ]
+      }
+    },
+    "/api/vision/examples/{example_id}/image": {
+      "get": {
+        "operationId": "example_image_api_vision_examples__example_id__image_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "example_id",
+            "required": true,
+            "schema": {
+              "title": "Example Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Example Image",
+        "tags": [
+          "vision"
         ]
       }
     }

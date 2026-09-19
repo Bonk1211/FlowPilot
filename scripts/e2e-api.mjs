@@ -7,6 +7,7 @@ mkdirSync(".cache", { recursive: true });
 const directory = mkdtempSync(resolve(".cache/e2e-"));
 const env = {
   ...process.env,
+  FLOWPILOT_VISION_STORAGE_DIR: resolve(directory, "vision"),
   FLOWPILOT_REASONING_ENABLED: process.argv.includes("--live") ? "true" : "false",
   FLOWPILOT_DATABASE_URL: `sqlite:///${resolve(directory, "cases.db").replaceAll("\\", "/")}`,
 };

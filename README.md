@@ -15,7 +15,7 @@ Existing epoxy cases are read-only. New investigations use the S-932 / DJ-2200 f
 - [Agent issue-tracker rules](docs/agents/issue-tracker.md)
 - [Agent domain-documentation rules](docs/agents/domain.md)
 
-The current baseline assumes two developers and three build days. Synthetic images, mocked logs, illustrative 3D content, and AI-generated output must remain visibly labelled in the prototype.
+The photo workflow focuses on incomplete coating, coarse deposits, and recovery comparison. Example photos are AI-generated inspection illustrations; the model is a small PatchCore-style prototype, and the 3D guide remains illustrative. Data provenance and limits are documented in [Photo inspection](docs/PHOTO_INSPECTION.md) and the presentation rather than repeated across the main page.
 
 ## Run locally
 
@@ -24,17 +24,20 @@ Requires Node.js 22.12+, npm 10+, Python 3.12, and uv. From the repository root:
 ```sh
 npm ci
 uv sync --locked
+npm run vision:setup
 npm run db:migrate
 npm run dev
 ```
 
 Open http://127.0.0.1:5173. On Windows, use `npm.cmd` if the PowerShell npm launcher
-is broken. The main workspace provides the M2 API-backed investigation journey:
-synthetic spray-mask measurements, log attachment, adaptive questions, deterministic
-ranking, confirmed inspection outcomes, simulated corrective action, verification,
+is broken. `vision:setup` downloads and verifies the approximately 45 MB pretrained
+backbone once; photo inference runs locally on CPU with no network request. The
+main workspace provides photo upload, anomaly heatmaps, log attachment, adaptive
+questions, deterministic ranking, confirmed inspection outcomes, corrective action, verification,
 and a persisted summary. Case URLs survive refresh. Run migrations when updating
 an existing checkout. `/prototype` provides the version 2 offline storyboard, and
-`/log-preview` retains the standalone log viewer. M2 adds reviewed Gemini findings,
+`/log-preview` retains the standalone log viewer. `/?samples=raster` retains the
+older controlled-raster intake for regression and existing demonstrations. M2 adds reviewed Gemini findings,
 audited evidence corrections, and an interactive 3D guide with 2D/text fallback.
 Copy `.env.example` to the ignored `.env` and set `GEMINI_API_KEY` for live reasoning;
 without a key, the journey uses clearly labelled deterministic findings. See the

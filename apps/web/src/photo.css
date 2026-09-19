@@ -1,0 +1,246 @@
+.photo-intake {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.2fr);
+  gap: 28px;
+  padding: 26px;
+  border: 1px solid #d8e2e4;
+  border-radius: 16px;
+  background: #fff;
+}
+.photo-intake-controls h2 {
+  margin: 3px 0 10px;
+  font-size: 23px;
+}
+.photo-intake-controls > p {
+  color: #53666d;
+  line-height: 1.55;
+}
+.photo-intake .photo-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 16px;
+  border: 1px dashed #73949a;
+  border-radius: 10px;
+  background: #f3f8f8;
+  cursor: pointer;
+}
+.photo-upload span {
+  font-weight: 650;
+  color: #164e58;
+}
+.photo-upload small {
+  font-weight: 400;
+  color: #53666d;
+}
+.photo-intake input[type="file"] {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  font-size: 12px;
+  margin-top: 8px;
+}
+.photo-filename {
+  overflow-wrap: anywhere;
+}
+.photo-example-label {
+  font-size: 12px;
+  font-weight: 600;
+  margin: 20px 0 9px;
+}
+.photo-examples {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.photo-example {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 7px;
+  padding: 5px 5px 9px;
+  border: 1px solid #d4dfe1;
+  border-radius: 9px;
+  background: #fff;
+  color: #2f4750;
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.photo-example[aria-pressed="true"] {
+  border-color: #147b80;
+  background: #edf7f6;
+  box-shadow: 0 0 0 1px #147b80;
+}
+.photo-example img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 5px;
+}
+.photo-example:focus-visible,
+.photo-upload:focus-within {
+  outline: 3px solid #68bdc2;
+  outline-offset: 3px;
+}
+.photo-example:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+.photo-preview,
+.photo-result {
+  margin: 0;
+  min-width: 0;
+}
+.photo-preview > img {
+  width: 100%;
+  max-height: 440px;
+  object-fit: contain;
+  background: #17212a;
+  border-radius: 12px;
+}
+.photo-preview figcaption {
+  margin-top: 10px;
+  color: #60727a;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.photo-result {
+  padding: 18px;
+  border-radius: 12px;
+  background: #f5f8f9;
+  border: 1px solid #dee7e9;
+}
+.photo-result > figcaption {
+  font-weight: 650;
+  margin-bottom: 14px;
+}
+.photo-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.photo-pair img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #151e25;
+}
+.photo-pair span {
+  display: block;
+  margin-top: 7px;
+  color: #5c717a;
+  font-size: 12px;
+}
+.photo-outcome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 650;
+  margin: 22px 0 7px;
+}
+.photo-normal {
+  color: #146755;
+}
+.photo-anomaly {
+  color: #945713;
+}
+.photo-caption {
+  font-size: 13px;
+  color: #556b74;
+  line-height: 1.6;
+}
+.photo-analysis-details {
+  margin-top: 18px;
+  border-top: 1px solid #dce5e7;
+  padding-top: 12px;
+  font-size: 12px;
+  color: #536970;
+}
+.photo-analysis-details summary {
+  cursor: pointer;
+}
+.photo-analysis-details dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  margin-top: 8px;
+}
+.photo-analysis-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.photo-placeholder {
+  display: grid;
+  place-items: center;
+  min-height: 280px;
+  border-radius: 12px;
+  background: #edf2f3;
+  color: #63747b;
+}
+.photo-error {
+  margin-top: 15px;
+  padding: 10px 14px;
+  color: #8d2531;
+  background: #fff2f3;
+  border-radius: 8px;
+}
+.photo-report {
+  margin-top: 24px;
+}
+.photo-report textarea {
+  min-height: 90px;
+}
+.photo-report-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  margin-top: 12px;
+}
+.photo-report-footer p {
+  color: #5b7078;
+  font-size: 13px;
+}
+.photo-verification {
+  margin-bottom: 24px;
+}
+.photo-verification .photo-intake {
+  padding: 18px;
+}
+@media (max-width: 1000px) {
+  .photo-intake {
+    grid-template-columns: 1fr;
+  }
+  .photo-intake-controls {
+    min-width: 0;
+  }
+  .photo-examples {
+    max-width: 420px;
+  }
+  .photo-preview > img {
+    max-height: 340px;
+  }
+}
+@media (max-width: 500px) {
+  .photo-intake {
+    padding: 16px;
+    gap: 18px;
+  }
+  .photo-report-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .photo-result {
+    padding: 12px;
+  }
+  .photo-pair {
+    gap: 7px;
+  }
+  .photo-analysis-details dl > div {
+    display: block;
+  }
+}

@@ -25,7 +25,11 @@ class Evidence(Contract):
     value: JsonValue
     unit: str | dict[str, str] | None = None
     source_type: Literal[
-        "synthetic_image_measurement", "machine_log", "technician_input", "heuristic_inference"
+        "synthetic_image_measurement",
+        "machine_log",
+        "technician_input",
+        "heuristic_inference",
+        "model_inference",
     ]
     source_ref: str
     quality: Literal["high", "medium", "low"]

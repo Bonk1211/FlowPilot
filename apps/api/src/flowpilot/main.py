@@ -8,6 +8,7 @@ from flowpilot.golden import GoldenScenario, load_golden_scenario
 from flowpilot.ingestion.industry_event_log import parse_industry_event_log
 from flowpilot.ingestion.models import IngestionResult, LogPreviewRequest
 from flowpilot.investigations.models import Contract
+from flowpilot.vision import router as vision_router
 
 
 class Health(Contract):
@@ -58,6 +59,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="FlowPilot API", version="0.1.0")
     app.include_router(router)
     app.include_router(case_router)
+    app.include_router(vision_router)
     return app
 
 

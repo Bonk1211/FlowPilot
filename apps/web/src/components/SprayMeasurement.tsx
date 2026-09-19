@@ -1,3 +1,4 @@
+import { PhotoResult } from "./PhotoAnalysis";
 import { sampleNames } from "../fluxModel";
 import type { Case } from "@flowpilot/contracts";
 
@@ -8,6 +9,8 @@ export function SprayMeasurement({
   value: Case["measurement"];
   title: string;
 }) {
+  if ("assessment_id" in value)
+    return <PhotoResult value={value} title={title} />;
   if (!("coverage_pct" in value))
     return (
       <figure className="prototype-image">

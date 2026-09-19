@@ -199,6 +199,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/vision/assessments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload Assessment */
+        post: operations["upload_assessment_api_vision_assessments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/vision/assessments/{assessment_id}/{asset}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Assessment Image */
+        get: operations["assessment_image_api_vision_assessments__assessment_id___asset__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/vision/examples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Examples */
+        get: operations["examples_api_vision_examples_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/vision/examples/{example_id}/assess": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Assess Example */
+        post: operations["assess_example_api_vision_examples__example_id__assess_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/vision/examples/{example_id}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Example Image */
+        get: operations["example_image_api_vision_examples__example_id__image_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -291,7 +376,7 @@ export interface components {
             investigation: components["schemas"]["Investigation"];
             log: components["schemas"]["IngestionResult"] | null;
             /** Measurement */
-            measurement: components["schemas"]["Measurement"] | components["schemas"]["LegacyMeasurement"];
+            measurement: components["schemas"]["Measurement"] | components["schemas"]["LegacyMeasurement"] | components["schemas"]["VisionAssessment"];
             next_question: components["schemas"]["DiscoveryQuestion"] | null;
             /** Pending Outcome */
             pending_outcome: ("obstruction_found" | "no_obstruction_found") | null;
@@ -328,7 +413,7 @@ export interface components {
             /** Timeline */
             timeline: components["schemas"]["TimelineEntry"][];
             /** Verification */
-            verification: components["schemas"]["Measurement"] | components["schemas"]["LegacyMeasurement"] | null;
+            verification: components["schemas"]["Measurement"] | components["schemas"]["LegacyMeasurement"] | components["schemas"]["VisionAssessment"] | null;
         };
         /** CaseExplanation */
         CaseExplanation: {
@@ -477,14 +562,12 @@ export interface components {
         };
         /** CreateCase */
         CreateCase: {
+            /** Assessment Id */
+            assessment_id?: string | null;
             /** Report */
             report: string;
-            /**
-             * Sample Id
-             * @default incomplete
-             * @enum {string}
-             */
-            sample_id: "normal" | "incomplete" | "coarse" | "shifted" | "overspray";
+            /** Sample Id */
+            sample_id?: ("normal" | "incomplete" | "coarse" | "shifted" | "overspray") | null;
         };
         /** CriticResult */
         CriticResult: {
@@ -596,7 +679,7 @@ export interface components {
              * Source Type
              * @enum {string}
              */
-            source_type: "synthetic_image_measurement" | "machine_log" | "technician_input" | "heuristic_inference";
+            source_type: "synthetic_image_measurement" | "machine_log" | "technician_input" | "heuristic_inference" | "model_inference";
             /** Timestamp */
             timestamp: string;
             /** Unit */
@@ -1295,14 +1378,61 @@ export interface components {
              * @enum {string}
              */
             action: "verify";
+            /** Assessment Id */
+            assessment_id?: string | null;
             checks?: components["schemas"]["RecoveryChecks"];
             /** Revision */
             revision: number;
+            /** Sample Id */
+            sample_id?: ("normal" | "incomplete" | "coarse" | "shifted" | "overspray") | null;
+        };
+        /** VisionAssessment */
+        VisionAssessment: {
+            /** Assessment Id */
+            assessment_id: string;
+            /** Heatmap Url */
+            heatmap_url: string;
+            /** Height */
+            height: number;
+            /** Image Url */
+            image_url: string;
             /**
-             * Sample Id
+             * Kind
+             * @default vision
+             * @constant
+             */
+            kind: "vision";
+            /** Model Id */
+            model_id: string;
+            /** Passed */
+            passed: boolean;
+            /** Preprocessing Id */
+            preprocessing_id: string;
+            /** Raw Score */
+            raw_score: number;
+            /**
+             * Result
              * @enum {string}
              */
-            sample_id: "normal" | "incomplete" | "coarse" | "shifted" | "overspray";
+            result: "anomaly" | "within_reference";
+            /** Threshold */
+            threshold: number;
+            /** Timestamp */
+            timestamp: string;
+            /** Width */
+            width: number;
+        };
+        /** VisionExample */
+        VisionExample: {
+            /**
+             * Id
+             * @enum {string}
+             */
+            id: "incomplete" | "coarse" | "normal";
+            /** Image Url */
+            image_url: string;
+            /** Label */
+            label: string;
         };
     };
     responses: never;
@@ -1642,6 +1772,140 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IngestionResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upload_assessment_api_vision_assessments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VisionAssessment"];
+                };
+            };
+        };
+    };
+    assessment_image_api_vision_assessments__assessment_id___asset__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assessment_id: string;
+                asset: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    examples_api_vision_examples_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VisionExample"][];
+                };
+            };
+        };
+    };
+    assess_example_api_vision_examples__example_id__assess_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                example_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VisionAssessment"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    example_image_api_vision_examples__example_id__image_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                example_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
             /** @description Validation Error */

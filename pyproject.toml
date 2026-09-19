@@ -11,6 +11,10 @@ dependencies = [
   "sqlalchemy>=2.0,<3",
   "alembic>=1.14,<2",
   "google-genai>=2.23.0",
+  "numpy==2.5.3",
+  "pillow==12.3.0",
+  "torch==2.14.0",
+  "torchvision==0.29.0",
 ]
 
 [dependency-groups]

@@ -1,7 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 
 export async function start(page: Page) {
-  await page.goto("/");
+  await page.goto("/?samples=raster");
   await page
     .getByRole("button", { name: "Start investigation", exact: true })
     .click();
