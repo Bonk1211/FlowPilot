@@ -1157,10 +1157,15 @@ export function CaseApp() {
                         </button>
                       </section>
                     )}
-                    {phase === "Inspect" && (
+                    {/* The diagnosis briefing carries Past experience. It has to
+                        stay reachable after the observation is confirmed, or the
+                        reviewed experience can no longer be cited on this case. */}
+                    {["Inspect", "Correct", "Verify"].includes(phase) && (
                       <details className="case-section">
                         <summary>
-                          Review or correct evidence before confirming
+                          {phase === "Inspect"
+                            ? "Review or correct evidence before confirming"
+                            : "Diagnosis, evidence and past experience"}
                         </summary>
                         <Diagnosis value={value} onCorrect={command} />
                       </details>
