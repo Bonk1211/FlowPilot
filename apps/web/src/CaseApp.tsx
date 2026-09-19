@@ -322,6 +322,8 @@ function Diagnosis({
           </details>
         </section>
         <aside>
+          <p className="eyebrow">02 / Procedure</p>
+          <h2>Why this check</h2>
           <details open={!value.diagnosis_supported || undefined}>
             <summary>Inspection rationale and procedure details</summary>
             <p className="eyebrow">Next check</p>
