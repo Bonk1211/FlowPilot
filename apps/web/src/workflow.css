@@ -433,7 +433,8 @@
     height: auto;
   }
   .workflow-shell .investigation-scroll {
-    padding-inline: 24px;
+    --scroll-inline-inset: 24px;
+    padding-inline: var(--scroll-inline-inset);
   }
   .inspection-stage-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -496,7 +497,8 @@
 }
 @media (max-width: 767px) {
   .workflow-shell .investigation-scroll {
-    padding-inline: 16px;
+    --scroll-inline-inset: 16px;
+    padding-inline: var(--scroll-inline-inset);
   }
   .workflow-shell .case-navigator {
     padding-inline: 16px;
