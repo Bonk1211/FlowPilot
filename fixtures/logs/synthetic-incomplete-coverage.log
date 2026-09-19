@@ -1,0 +1,47 @@
+2026-09-19,09:00:00.000,Run Started,Board #101:
+2026-09-19,09:00:00.100,Fiducial Find Begin
+2026-09-19,09:00:00.300,Fid Found,jedec:Fid 1,13.520,9.385,inch,Fid Score = 88
+2026-09-19,09:00:00.400,Fid Found,jedec:Fid 2,2.935,7.629,inch,Fid Score = 91
+2026-09-19,09:00:00.500,Frame Location-Corr Local,(0.012 inch,-0.014 inch,-0.01 deg)
+2026-09-19,09:00:00.600,Frame Location-Rel to Base,(13.512 inch,9.406 inch,0.15 deg)
+2026-09-19,09:00:00.700,Fiducial Find End
+2026-09-19,09:00:00.800,Height Sense Begin
+2026-09-19,09:00:01.000,Height Sense End
+2026-09-19,09:00:01.100,Height Sense Results,Z-1.2622 at -5.1868,-2.0172 (inch rel to Wkpc)
+2026-09-19,09:00:08.000,Fluid Pressure Results,Board #101,Recipe = FLUX-A,Setpoint = 1.500 bar,Actual = 1.500
+2026-09-19,09:00:10.000,Flux Weight Results,Board #101,Recipe = FLUX-A,Measured = 20.000 mg,Target = 20.000,Lower Limit = 19.000,Upper Limit = 21.000
+2026-09-19,09:00:25.000,Run Finished,Board #101, Status: PASS
+2026-09-19,09:00:25.100,Begin of Timer Between Boards,Conveyor 1 Timer Between Boards Started...
+2026-09-19,09:00:59.993,End of Timer Between Boards,Conveyor 1 Timer Between Boards Stopped, Duration = 34.893 sec.
+2026-09-19,09:00:59.994,TIME_BETWEEN_BOARDS Results,Instruction: TIME_BETWEEN_BOARDS_LANE1 <= 120.000; Run Time:
+TIME_BETWEEN_BOARDS_LANE1 = 34.893
+2026-09-19,09:01:00.000,Run Started,Board #102:
+2026-09-19,09:01:00.100,Fiducial Find Begin
+2026-09-19,09:01:00.300,Fid Found,jedec:Fid 1,13.520,9.385,inch,Fid Score = 88
+2026-09-19,09:01:00.400,Fid Found,jedec:Fid 2,2.935,7.629,inch,Fid Score = 91
+2026-09-19,09:01:00.500,Frame Location-Corr Local,(0.012 inch,-0.014 inch,-0.01 deg)
+2026-09-19,09:01:00.600,Frame Location-Rel to Base,(13.512 inch,9.406 inch,0.15 deg)
+2026-09-19,09:01:00.700,Fiducial Find End
+2026-09-19,09:01:00.800,Height Sense Begin
+2026-09-19,09:01:01.000,Height Sense End
+2026-09-19,09:01:01.100,Height Sense Results,Z-1.2622 at -5.1868,-2.0172 (inch rel to Wkpc)
+2026-09-19,09:01:08.000,Fluid Pressure Results,Board #102,Recipe = FLUX-A,Setpoint = 1.500 bar,Actual = 1.490
+2026-09-19,09:01:10.000,Flux Weight Results,Board #102,Recipe = FLUX-A,Measured = 18.000 mg,Target = 20.000,Lower Limit = 19.000,Upper Limit = 21.000
+2026-09-19,09:01:25.000,Run Finished,Board #102, Status: PASS
+2026-09-19,09:01:25.100,Begin of Timer Between Boards,Conveyor 1 Timer Between Boards Started...
+2026-09-19,09:01:59.993,End of Timer Between Boards,Conveyor 1 Timer Between Boards Stopped, Duration = 34.893 sec.
+2026-09-19,09:01:59.994,TIME_BETWEEN_BOARDS Results,Instruction: TIME_BETWEEN_BOARDS_LANE1 <= 120.000; Run Time:
+TIME_BETWEEN_BOARDS_LANE1 = 34.893
+2026-09-19,09:02:00.000,Run Started,Board #103:
+2026-09-19,09:02:00.100,Fiducial Find Begin
+2026-09-19,09:02:00.300,Fid Found,jedec:Fid 1,13.520,9.385,inch,Fid Score = 88
+2026-09-19,09:02:00.400,Fid Found,jedec:Fid 2,2.935,7.629,inch,Fid Score = 91
+2026-09-19,09:02:00.500,Frame Location-Corr Local,(0.012 inch,-0.014 inch,-0.01 deg)
+2026-09-19,09:02:00.600,Frame Location-Rel to Base,(13.512 inch,9.406 inch,0.15 deg)
+2026-09-19,09:02:00.700,Fiducial Find End
+2026-09-19,09:02:00.800,Height Sense Begin
+2026-09-19,09:02:01.000,Height Sense End
+2026-09-19,09:02:01.100,Height Sense Results,Z-1.2622 at -5.1868,-2.0172 (inch rel to Wkpc)
+2026-09-19,09:02:08.000,Fluid Pressure Results,Board #103,Recipe = FLUX-A,Setpoint = 1.500 bar,Actual = 1.500
+2026-09-19,09:02:10.000,Flux Weight Results,Board #103,Recipe = FLUX-A,Measured = 16.000 mg,Target = 20.000,Lower Limit = 19.000,Upper Limit = 21.000
+2026-09-19,09:02:25.000,Run Finished,Board #103, Status: PASS

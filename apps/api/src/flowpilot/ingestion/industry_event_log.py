@@ -17,6 +17,35 @@ def _match(pattern, text, flags=re.I):
 
 
 def _classify(payload):
+    match = _match(
+        rf"^Flux Weight Results,\s*Board #([^,]+),\s*Recipe = ([^,]+),"
+        rf"\s*Measured = ({NUMBER}) ([A-Za-z]+),\s*Target = ({NUMBER}),"
+        rf"\s*Lower Limit = ({NUMBER}),\s*Upper Limit = ({NUMBER})$",
+        payload,
+    )
+    if match:
+        return "flux_weight_result", {
+            "boardId": match[1].strip(),
+            "recipe": match[2].strip(),
+            "measured": float(match[3]),
+            "unit": match[4],
+            "target": float(match[5]),
+            "lower": float(match[6]),
+            "upper": float(match[7]),
+        }
+    match = _match(
+        rf"^Fluid Pressure Results,\s*Board #([^,]+),\s*Recipe = ([^,]+),"
+        rf"\s*Setpoint = ({NUMBER}) ([A-Za-z]+),\s*Actual = ({NUMBER})$",
+        payload,
+    )
+    if match:
+        return "fluid_pressure_result", {
+            "boardId": match[1].strip(),
+            "recipe": match[2].strip(),
+            "setpoint": float(match[3]),
+            "unit": match[4],
+            "actual": float(match[5]),
+        }
     match = _match(r"^Run Started,\s*Board #([^,:]+):?\s*$", payload)
     if match:
         return "run_started", {"boardId": match[1].strip()}
@@ -249,6 +278,8 @@ def _evidence(event):
     def fact(key, value, unit=None, context=None):
         return {**base, "key": key, "value": value, "unit": unit, "context": context}
 
+    if kind in ("flux_weight_result", "fluid_pressure_result"):
+        return [fact(kind, fields, fields["unit"], {"boardId": fields["boardId"]})]
     if kind == "run_finished":
         return [
             fact("machine_run_status", fields["status"], context={"boardId": fields["boardId"]})

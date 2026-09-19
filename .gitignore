@@ -18,3 +18,17 @@ playwright-report/
 test-results/
 coverage/
 artifacts/demo/
+
+# macOS metadata
+.DS_Store
+._*
+
+# Local runtime/build output; demo logs are source fixtures.
+*.log
+!fixtures/**/*.log
+*.tsbuildinfo
+*.db-journal
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*

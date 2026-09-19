@@ -31,3 +31,7 @@ export type RecoveryChecks = components["schemas"]["RecoveryChecks"];
 
 export type VisionAssessment = components["schemas"]["VisionAssessment"];
 export type VisionExample = components["schemas"]["VisionExample"];
+
+export type IntakeContext = components["schemas"]["IntakeContext"];
+export type LogContext = components["schemas"]["LogContext"];
+export type ObservationChoice = components["schemas"]["ObservationChoice"];

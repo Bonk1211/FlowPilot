@@ -216,3 +216,131 @@ def test_unknown_symptom_does_not_invent_defect_evidence(client, edit_existing):
         case = act(client, case, "answer", question_id="frequency", value="unknown")
     active = [e for e in case["investigation"]["evidence"] if e["verification_state"] != "rejected"]
     assert not any(e["key"] in ("coarse_deposits", "incomplete_coverage") for e in active)
+
+
+def intake_payload(coarse=False, with_log=True):
+    slug = "coarse-deposits" if coarse else "incomplete-coverage"
+    branch = "intermittent" if coarse else "continuous"
+    observations = {
+        "frequency": {"value": branch},
+        branch: {"value": "yes"},
+        "change": {"value": "no"},
+        "temperature": {"value": "unknown"},
+        "service": {"value": "unknown"},
+    }
+    context = {"observations": observations, "notes": "Visible spray defect after this board."}
+    if with_log:
+        context.update(
+            {
+                "log": {
+                    "text": (ROOT / f"fixtures/logs/synthetic-{slug}.log").read_text(),
+                    "sourceName": f"synthetic-{slug}.log",
+                },
+                "board_id": "203" if coarse else "103",
+                "log_confirmed": True,
+            }
+        )
+        observations[branch]["source"] = "machine_log"
+        observations["change"]["source"] = "machine_log"
+    return {
+        "report": "Visible spray defect",
+        "assessment_id": "coarse" if coarse else "incomplete",
+        "context": context,
+    }
+
+
+@pytest.mark.parametrize("coarse", [False, True])
+def test_combined_intake_saves_ranked_case_and_provenance_once(client, coarse):
+    payload = intake_payload(coarse)
+    response = client.post("/api/investigations", json=payload)
+    assert response.status_code == 201, response.text
+    case = response.json()
+    assert case["questions_complete"] and case["next_question"] is None
+    assert case["ranking"][0]["hypothesis_id"] == (
+        "atomization_fault" if coarse else "fluid_path_restriction"
+    )
+    assert not any(cause["confirmed"] for cause in case["ranking"])
+    branch = "intermittent" if coarse else "continuous"
+    evidence = [e for e in case["investigation"]["evidence"] if e["key"] == branch]
+    assert len(evidence) == 1 and evidence[0]["source_type"] == "machine_log"
+    assert "#L" in evidence[0]["source_ref"]
+    assert case["revision"] > 0
+    saved = client.get(f"/api/investigations/{case['investigation']['id']}").json()
+    assert saved == case
+    # Optimistic locking still works after the batched creation.
+    inspected = act(client, case, "inspect", outcome="obstruction_found")
+    assert inspected["pending_outcome"] == "obstruction_found"
+
+
+def test_combined_intake_without_log_and_unknown_observations(client):
+    payload = intake_payload(with_log=False)
+    for choice in payload["context"]["observations"].values():
+        choice["value"] = "unknown"
+    response = client.post("/api/investigations", json=payload)
+    assert response.status_code == 201, response.text
+    assert response.json()["log"] is None
+    assert not any(
+        e["key"] == "coarse_deposits" for e in response.json()["investigation"]["evidence"]
+    )
+
+
+@pytest.mark.parametrize(
+    "problem", ["unconfirmed", "wrong_board", "invented", "missing", "conflict", "extra"]
+)
+def test_invalid_intake_is_atomic_and_cannot_trust_client_suggestions(client, problem):
+    payload = intake_payload()
+    context = payload["context"]
+    if problem == "unconfirmed":
+        context["log_confirmed"] = False
+    if problem == "wrong_board":
+        context["board_id"] = "101"
+    if problem == "invented":
+        context["observations"]["change"]["value"] = "unstable"
+    if problem == "missing":
+        del context["observations"]["service"]
+    if problem == "extra":
+        context["observations"]["intermittent"] = {"value": "yes"}
+    if problem == "conflict":
+        context["observations"]["continuous"] = {"value": "no", "source": "technician_input"}
+    response = client.post("/api/investigations", json=payload)
+    assert response.status_code == 422, response.text
+    assert client.get("/api/investigations").json() == []
+
+
+def test_conflict_resolution_keeps_both_sources_but_only_selected_answer_scores(client):
+    payload = intake_payload()
+    payload["context"]["observations"]["continuous"] = {
+        "value": "no",
+        "source": "technician_input",
+        "reason": "Independent reweighing was stable.",
+    }
+    response = client.post("/api/investigations", json=payload)
+    assert response.status_code == 201, response.text
+    case = response.json()
+    assert case["answers"]["continuous"] == "no"
+    assert case["intake"]["signals"]["continuous"]["answer"] == "yes"
+    assert any(e["key"] == "evidence_resolution" for e in case["investigation"]["evidence"])
+    assert not any(c["weight"] == 25 for cause in case["ranking"] for c in cause["contributions"])
+
+
+def test_rejecting_raw_weight_retires_derived_log_answer(client):
+    result = client.post("/api/investigations", json=intake_payload())
+    case = result.json()
+    raw = next(e for e in case["investigation"]["evidence"] if e["key"] == "flux_weight_result")
+    revised = act(
+        client,
+        case,
+        "correct_evidence",
+        evidence_id=raw["id"],
+        operation="reject",
+        reason="Scale measurement invalid",
+        confirmed=True,
+    )
+    assert revised["next_question"]["id"] == "continuous"
+    assert "continuous" not in revised["answers"]
+    assert revised["ranking"] == []
+    assert all(
+        e["verification_state"] == "rejected"
+        for e in revised["investigation"]["evidence"]
+        if e["key"] == "continuous"
+    )

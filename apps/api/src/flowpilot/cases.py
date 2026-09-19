@@ -27,6 +27,7 @@ from flowpilot.golden import (
 from flowpilot.imaging import Measurement, SampleId, generate_raster, png, sample_measurement
 from flowpilot.ingestion.industry_event_log import parse_industry_event_log
 from flowpilot.ingestion.models import IngestionResult, LogPreviewRequest
+from flowpilot.intake import IntakeContext, IntakeRecord, LogContextRequest, log_context
 from flowpilot.investigations.models import Contract, Evidence, Investigation
 from flowpilot.legacy_imaging import LegacyMeasurement
 from flowpilot.persistence.database import Base, make_engine
@@ -73,6 +74,7 @@ class Case(Contract):
     measurement: Measurement | LegacyMeasurement | VisionAssessment
     verification: Measurement | LegacyMeasurement | VisionAssessment | None = None
     log: IngestionResult | None = None
+    intake: IntakeRecord | None = None
     answers: dict[str, str] = Field(default_factory=dict)
     next_question: DiscoveryQuestion | None = None
     questions_complete: bool = False
@@ -101,6 +103,7 @@ class Case(Contract):
 
 
 class CreateCase(Contract):
+    context: IntakeContext | None = None
     report: str = Field(min_length=1, max_length=2000)
     sample_id: SampleId | None = None
     assessment_id: str | None = Field(default=None, min_length=1, max_length=100)
@@ -487,9 +490,28 @@ def correct_evidence(case: Case, action: CorrectEvidence):
     before = item.model_dump(mode="json")
     item.verification_state = "rejected"
     invalidated = []
-    if item.key in questions:
+    question_key = item.key if item.key in questions else None
+    if item.source_type == "machine_log" and question_key is None:
+        # Rejecting a measurement also retires answers derived from that source row.
+        question_key = next(
+            (
+                key
+                for key in case.answers
+                if any(
+                    e.key == key
+                    and e.source_type == "machine_log"
+                    and e.verification_state != "rejected"
+                    and case.intake is not None
+                    and key in case.intake.signals
+                    and item.source_ref in case.intake.signals[key].source_refs
+                    for e in items
+                )
+            ),
+            None,
+        )
+    if question_key is not None:
         # Follow the previously answered path, retiring all dependent answers.
-        cursor = item.key
+        cursor = question_key
         while cursor and cursor in case.answers:
             previous = case.answers.pop(cursor)
             for dependent in items:
@@ -500,7 +522,7 @@ def correct_evidence(case: Case, action: CorrectEvidence):
                     dependent.verification_state = "rejected"
             option = next(o for o in questions[cursor].options if o.value == previous)
             cursor = option.next_question_id
-        case.next_question = question(item.key)
+        case.next_question = question(question_key)
         if action.operation == "edit":
             case.answers[item.key] = action.value
             option = next(o for o in questions[item.key].options if o.value == action.value)
@@ -869,13 +891,93 @@ def database_operation(operation):
         engine.dispose()
 
 
+def apply_intake(case: Case, context: IntakeContext):
+    if not isinstance(case.measurement, VisionAssessment):
+        raise HTTPException(422, "Combined intake requires a photo assessment.")
+    signals = {}
+    if context.log is not None:
+        parsed = log_context(LogContextRequest(log=context.log, board_id=context.board_id))
+        if not context.log_confirmed or (parsed.boards and context.board_id is None):
+            raise HTTPException(422, "Confirm the log and its matching Board before submitting.")
+        signals = parsed.signals
+        apply_action(case, AttachLog(action="attach_log", revision=case.revision, log=context.log))
+    elif context.board_id is not None or context.log_confirmed:
+        raise HTTPException(422, "A Board selection requires a log.")
+    used = set()
+    while case.next_question is not None:
+        q = case.next_question
+        choice = context.observations.get(q.id)
+        if choice is None:
+            raise HTTPException(422, f"Answer: {q.prompt}")
+        used.add(q.id)
+        option_values = {option.value for option in q.options}
+        if choice.observed_value is not None and choice.observed_value not in option_values:
+            raise HTTPException(422, "Unknown observation option.")
+        signal = signals.get(q.id)
+        conflict = signal is not None and (
+            (choice.source == "technician_input" and choice.value not in (signal.answer, "unknown"))
+            or (
+                choice.observed_value is not None
+                and choice.observed_value not in (signal.answer, "unknown")
+            )
+        )
+        if conflict and not choice.reason.strip():
+            raise HTTPException(
+                422, "Explain which evidence to use when the log and observation differ."
+            )
+        if choice.source == "machine_log" and (signal is None or choice.value != signal.answer):
+            raise HTTPException(422, "This answer is not supported by the selected log window.")
+        apply_action(
+            case,
+            Answer(action="answer", revision=case.revision, question_id=q.id, value=choice.value),
+        )
+        recorded = next(e for e in reversed(case.investigation.evidence) if e.key == q.id)
+        if choice.source == "machine_log":
+            recorded.source_type = "machine_log"
+            recorded.source_ref = "; ".join(signal.source_refs)
+            referenced = next(e for e in case.log.events if e.sourceRef == signal.source_refs[-1])
+            recorded.timestamp = referenced.occurredAt or "unknown"
+        if choice.reason.strip():
+            evidence(
+                case,
+                "evidence_resolution",
+                {
+                    "question": q.id,
+                    "selected_source": choice.source,
+                    "selected_value": choice.value,
+                    "observed_value": choice.observed_value,
+                    "log_value": signal.answer if signal else None,
+                    "reason": choice.reason.strip(),
+                },
+                source_ref=f"intake:{q.id}",
+                verified=True,
+            )
+    if set(context.observations) != used:
+        raise HTTPException(422, "Submit only observations from the selected symptom branch.")
+    case.intake = IntakeRecord(
+        board_id=context.board_id,
+        observations=context.observations,
+        notes=context.notes.strip(),
+        signals=signals,
+    )
+    apply_action(case, Diagnose(action="diagnose", revision=case.revision))
+    asyncio.run(enrich(case))
+    capture_diagnosis(case, "diagnose")
+
+
 @router.post("/investigations", response_model=Case, status_code=201)
 def new_case(request: CreateCase):
     case = create_case(request)
+    if request.context is not None:
+        apply_intake(case, request.context)
 
     def save(session):
         session.add(
-            CaseRecord(id=case.investigation.id, revision=0, payload=case.model_dump(mode="json"))
+            CaseRecord(
+                id=case.investigation.id,
+                revision=case.revision,
+                payload=case.model_dump(mode="json"),
+            )
         )
         return case
 

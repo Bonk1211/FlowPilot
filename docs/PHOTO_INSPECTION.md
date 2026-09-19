@@ -6,11 +6,15 @@ From the repository root, run `uv sync --locked`, `npm run vision:setup`, `npm r
 
 ## Three presentation images
 
-1. **Incomplete coverage:** analyze the default photo; start an investigation; choose incomplete coverage, falling measured weight, stable pressure, and unknown material/setup context. Review the diagnosis, follow the existing 3D guide and record an obstruction. Record the completed corrective action, then follow the recovery flow below.
-2. **Coarse deposits:** choose the coarse example and analyze it. In discovery choose blobs/droplets and weight passing despite the visible issue. Record a clear nozzle after the inspection. The case hands off for air-cap/coaxial-air and pressure checks; it does not invent an implemented repair branch.
-3. **Recovery:** analyze the uniform-coating example or upload a matching post-action inspection photo. Confirm the equipment recovery observations, then verify and resolve. A still-abnormal photo or incomplete recovery observations leave the case open. The saved summary retains the before/after photos and heatmaps.
+The page accepts uploads only. For the presentation, use the three files already in `fixtures/vision/`; there is no example picker in the operator interface.
 
-“Analyze photo” performs model inference for both examples and uploads. Subsequent requests for identical normalized pixels and the same frozen model reuse their persisted result. File names and example IDs do not determine the diagnosis or visual result. The older raster flow remains accessible at `/?samples=raster`; existing cases retain their renderer and recovery contract.
+1. **Incomplete coverage:** upload `fixtures/vision/incomplete-coverage.png`, analyze it, then **Continue to context**. Upload `fixtures/logs/synthetic-incomplete-coverage.log`, confirm Board 103, select incomplete coverage, and adopt the weight/pressure log evidence. Select **Not recorded** for material/setup context, then **Generate diagnosis**. Follow the 3D guide and record an obstruction. Record the corrective action, then verify recovery.
+2. **Coarse deposits:** upload `fixtures/vision/coarse-deposits.png`. In **Add context**, upload `fixtures/logs/synthetic-coarse-deposits.log`, confirm Board 203, select blobs/droplets and adopt the weight/pressure log evidence. Leave unobserved material/setup context as **Not recorded**. Generate the diagnosis, then record a clear nozzle after inspection. The case hands off for air-cap/coaxial-air and pressure checks; it does not invent an implemented repair branch.
+3. **Recovery:** upload `fixtures/vision/normal.png` or a matching post-action inspection photo, then analyze it. Confirm the equipment recovery observations, then verify and resolve. A still-abnormal photo or incomplete recovery observations leave the case open. The saved summary retains the before/after photos and heatmaps.
+
+See `fixtures/logs/README.md` for exact sample mappings, synthetic measurement definitions, limits and provenance. Log upload and additional notes are optional; observations have no prefilled factual answers. The initial five discovery questions are collected together on Add context. Adopted log answers show source lines and require confirmation that the Board matches the photo. Conflicts require an explicit source choice and reason. Generate diagnosis submits one validated report; the server reparses the log, validates the selected evidence and saves the ranked case together. Existing saved cases and the raster discovery flow retain their original workflow.
+
+“Analyze photo” submits the uploaded image to the local model. The workbench shows a pending state while the request is active, allows cancellation of the wait, and supports reduced motion. It uses no artificial progress percentages or delays. Results expose the real anomaly score and threshold with original/heatmap toggles; a separate context step follows analysis. Going back preserves the draft; changing a photo, log or selected Board invalidates the relevant log confirmation and derived answers. Cancellation stops waiting in the browser; a server request already started may finish and retain its deduplicated result. Subsequent requests for identical normalized pixels and the same frozen model reuse their persisted result. File names and example IDs do not determine the diagnosis or visual result. The older raster flow remains accessible at `/?samples=raster`; existing cases retain their renderer and recovery contract.
 
 ## What the model does
 
@@ -33,6 +37,7 @@ Photo cases require a photo assessment at verification. Both assessments must ha
 ## Files and reproducibility
 
 - `fixtures/vision/`: three presentation images, compact normal memory bank, model manifest and provenance.
+- `fixtures/logs/`: two synthetic logs matching the photo cases, with presentation instructions and documented extension events.
 - `.cache/vision/model/`: downloaded backbone weights, ignored by Git.
 - `.cache/vision/assessments/`: normalized photos, heatmaps and immutable JSON results, ignored by Git. Repeated identical inputs reuse the same directory. Retain these while saved cases reference them.
 - `FLOWPILOT_VISION_STORAGE_DIR` / `FLOWPILOT_VISION_MODEL_DIR`: optional absolute-path overrides.

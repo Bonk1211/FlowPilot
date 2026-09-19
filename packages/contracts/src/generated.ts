@@ -179,6 +179,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/logs/context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Preview Context */
+        post: operations["preview_context_api_logs_context_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/logs/preview": {
         parameters: {
             query?: never;
@@ -373,6 +390,7 @@ export interface components {
              * @enum {string}
              */
             findings_mode: "cached_templates" | "live";
+            intake: components["schemas"]["IntakeRecord"] | null;
             investigation: components["schemas"]["Investigation"];
             log: components["schemas"]["IngestionResult"] | null;
             /** Measurement */
@@ -564,6 +582,7 @@ export interface components {
         CreateCase: {
             /** Assessment Id */
             assessment_id?: string | null;
+            context?: components["schemas"]["IntakeContext"] | null;
             /** Report */
             report: string;
             /** Sample Id */
@@ -943,6 +962,44 @@ export interface components {
              */
             outcome: "obstruction_found" | "no_obstruction_found";
         };
+        /** IntakeContext */
+        IntakeContext: {
+            /** Board Id */
+            board_id?: string | null;
+            log?: components["schemas"]["LogPreviewRequest"] | null;
+            /**
+             * Log Confirmed
+             * @default false
+             */
+            log_confirmed: boolean;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Observations */
+            observations: {
+                [key: string]: components["schemas"]["ObservationChoice"];
+            };
+        };
+        /** IntakeRecord */
+        IntakeRecord: {
+            /** Board Id */
+            board_id?: string | null;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Observations */
+            observations: {
+                [key: string]: components["schemas"]["ObservationChoice"];
+            };
+            /** Signals */
+            signals: {
+                [key: string]: components["schemas"]["LogSignal"];
+            };
+        };
         /** Investigation */
         Investigation: {
             /** Evidence */
@@ -1035,6 +1092,24 @@ export interface components {
              */
             width: number;
         };
+        /** LogContext */
+        LogContext: {
+            /** Board Id */
+            board_id: string | null;
+            /** Boards */
+            boards: string[];
+            parsed: components["schemas"]["IngestionResult"];
+            /** Signals */
+            signals: {
+                [key: string]: components["schemas"]["LogSignal"];
+            };
+        };
+        /** LogContextRequest */
+        LogContextRequest: {
+            /** Board Id */
+            board_id?: string | null;
+            log: components["schemas"]["LogPreviewRequest"];
+        };
         /** LogPreviewRequest */
         LogPreviewRequest: {
             /**
@@ -1046,6 +1121,17 @@ export interface components {
             text: string;
             /** Timezoneoffset */
             timezoneOffset?: string | null;
+        };
+        /** LogSignal */
+        LogSignal: {
+            /** Answer */
+            answer: string;
+            /** Question Id */
+            question_id: string;
+            /** Source Refs */
+            source_refs: string[];
+            /** Summary */
+            summary: string;
         };
         /** MachineEvent */
         MachineEvent: {
@@ -1150,6 +1236,24 @@ export interface components {
              * @default 360
              */
             width: number;
+        };
+        /** ObservationChoice */
+        ObservationChoice: {
+            /** Observed Value */
+            observed_value?: string | null;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /**
+             * Source
+             * @default technician_input
+             * @enum {string}
+             */
+            source: "technician_input" | "machine_log";
+            /** Value */
+            value: string;
         };
         /** ProcedureStep */
         ProcedureStep: {
@@ -1739,6 +1843,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CaseExplanation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_context_api_logs_context_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogContextRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogContext"];
                 };
             };
             /** @description Validation Error */

@@ -195,6 +195,16 @@
             "title": "Findings Mode",
             "type": "string"
           },
+          "intake": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IntakeRecord"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "investigation": {
             "$ref": "#/components/schemas/Investigation"
           },
@@ -367,6 +377,7 @@
           "measurement",
           "verification",
           "log",
+          "intake",
           "answers",
           "next_question",
           "questions_complete",
@@ -729,6 +740,16 @@
               }
             ],
             "title": "Assessment Id"
+          },
+          "context": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/IntakeContext"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "report": {
             "maxLength": 2000,
@@ -1726,6 +1747,96 @@
         "title": "InspectionOutcome",
         "type": "object"
       },
+      "IntakeContext": {
+        "additionalProperties": false,
+        "properties": {
+          "board_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Board Id"
+          },
+          "log": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LogPreviewRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "log_confirmed": {
+            "default": false,
+            "title": "Log Confirmed",
+            "type": "boolean"
+          },
+          "notes": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Notes",
+            "type": "string"
+          },
+          "observations": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ObservationChoice"
+            },
+            "title": "Observations",
+            "type": "object"
+          }
+        },
+        "required": [
+          "observations"
+        ],
+        "title": "IntakeContext",
+        "type": "object"
+      },
+      "IntakeRecord": {
+        "additionalProperties": false,
+        "properties": {
+          "board_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Board Id"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "observations": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ObservationChoice"
+            },
+            "title": "Observations",
+            "type": "object"
+          },
+          "signals": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/LogSignal"
+            },
+            "title": "Signals",
+            "type": "object"
+          }
+        },
+        "required": [
+          "observations",
+          "signals"
+        ],
+        "title": "IntakeRecord",
+        "type": "object"
+      },
       "Investigation": {
         "additionalProperties": false,
         "properties": {
@@ -1917,6 +2028,71 @@
         "title": "LegacyMeasurement",
         "type": "object"
       },
+      "LogContext": {
+        "additionalProperties": false,
+        "properties": {
+          "board_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Board Id"
+          },
+          "boards": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Boards",
+            "type": "array"
+          },
+          "parsed": {
+            "$ref": "#/components/schemas/IngestionResult"
+          },
+          "signals": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/LogSignal"
+            },
+            "title": "Signals",
+            "type": "object"
+          }
+        },
+        "required": [
+          "parsed",
+          "boards",
+          "board_id",
+          "signals"
+        ],
+        "title": "LogContext",
+        "type": "object"
+      },
+      "LogContextRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "board_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Board Id"
+          },
+          "log": {
+            "$ref": "#/components/schemas/LogPreviewRequest"
+          }
+        },
+        "required": [
+          "log"
+        ],
+        "title": "LogContextRequest",
+        "type": "object"
+      },
       "LogPreviewRequest": {
         "additionalProperties": false,
         "properties": {
@@ -1949,6 +2125,38 @@
           "text"
         ],
         "title": "LogPreviewRequest",
+        "type": "object"
+      },
+      "LogSignal": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "question_id": {
+            "title": "Question Id",
+            "type": "string"
+          },
+          "source_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Refs",
+            "type": "array"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "answer",
+          "summary",
+          "source_refs"
+        ],
+        "title": "LogSignal",
         "type": "object"
       },
       "MachineEvent": {
@@ -2240,6 +2448,46 @@
           "passed"
         ],
         "title": "Measurement",
+        "type": "object"
+      },
+      "ObservationChoice": {
+        "additionalProperties": false,
+        "properties": {
+          "observed_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed Value"
+          },
+          "reason": {
+            "default": "",
+            "maxLength": 500,
+            "title": "Reason",
+            "type": "string"
+          },
+          "source": {
+            "default": "technician_input",
+            "enum": [
+              "technician_input",
+              "machine_log"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "ObservationChoice",
         "type": "object"
       },
       "ProcedureStep": {
@@ -3432,6 +3680,47 @@
         "summary": "Explain",
         "tags": [
           "cases"
+        ]
+      }
+    },
+    "/api/logs/context": {
+      "post": {
+        "operationId": "preview_context_api_logs_context_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LogContextRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogContext"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Context",
+        "tags": [
+          "ingestion"
         ]
       }
     },

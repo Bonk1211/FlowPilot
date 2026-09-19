@@ -7,6 +7,7 @@ from flowpilot.demo import DemoScenario, load_scenario
 from flowpilot.golden import GoldenScenario, load_golden_scenario
 from flowpilot.ingestion.industry_event_log import parse_industry_event_log
 from flowpilot.ingestion.models import IngestionResult, LogPreviewRequest
+from flowpilot.intake import LogContext, LogContextRequest, log_context
 from flowpilot.investigations.models import Contract
 from flowpilot.vision import router as vision_router
 
@@ -53,6 +54,11 @@ def preview_log(request: LogPreviewRequest):
     return parse_industry_event_log(
         request.text, source_name=request.sourceName, timezone_offset=request.timezoneOffset
     )
+
+
+@router.post("/logs/context", response_model=LogContext, tags=["ingestion"])
+def preview_context(request: LogContextRequest):
+    return log_context(request)
 
 
 def create_app() -> FastAPI:

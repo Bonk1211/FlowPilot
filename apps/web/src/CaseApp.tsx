@@ -40,6 +40,7 @@ import { InspectionGuide } from "./components/InspectionGuide";
 import { WorkflowStatus } from "./components/WorkflowStatus";
 import "./workflow.css";
 import { PhotoInput } from "./components/PhotoAnalysis";
+import { ReportIntake, IntakeEvidenceSummary } from "./components/ReportIntake";
 
 type WithoutRevision<T> = T extends unknown ? Omit<T, "revision"> : never;
 type Command = WithoutRevision<CaseAction>;
@@ -87,249 +88,257 @@ function Diagnosis({
     (e) => e.key === "inspection" && e.verification_state === "verified",
   );
   return (
-    <div className="prototype-diagnosis">
-      <section aria-label="Evidence ledger">
-        <p className="eyebrow">01 / Evidence</p>
-        <h2>What we know</h2>
-        <details className="diagnosis-disclosure">
-          <summary>
-            Review {value.investigation.evidence?.length ?? 0} recorded
-            observations
-          </summary>
-          <div className="evidence-filters">
-            <label>
-              Evidence source
-              <select
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-              >
-                <option value="all">All sources</option>
-                {[
-                  ...new Set(
-                    (value.investigation.evidence ?? []).map(
-                      (e) => e.source_type,
+    <>
+      <IntakeEvidenceSummary value={value} />
+      <div className="prototype-diagnosis">
+        <section aria-label="Evidence ledger">
+          <p className="eyebrow">01 / Evidence</p>
+          <h2>What we know</h2>
+          <details className="diagnosis-disclosure">
+            <summary>
+              Review {value.investigation.evidence?.length ?? 0} recorded
+              observations
+            </summary>
+            <div className="evidence-filters">
+              <label>
+                Evidence source
+                <select
+                  value={source}
+                  onChange={(e) => setSource(e.target.value)}
+                >
+                  <option value="all">All sources</option>
+                  {[
+                    ...new Set(
+                      (value.investigation.evidence ?? []).map(
+                        (e) => e.source_type,
+                      ),
                     ),
-                  ),
-                ].map((s) => (
-                  <option key={s} value={s}>
-                    {humanize(s)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Evidence status
-              <select
-                value={verification}
-                onChange={(e) => setVerification(e.target.value)}
-              >
-                <option value="all">All statuses</option>
-                {["verified", "provisional", "rejected"].map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          {locked && (
-            <p>
-              Evidence is locked after confirmed inspection. Start another case
-              for later corrections.
-            </p>
-          )}
-          {value.investigation.evidence
-            ?.filter(
-              (e) =>
-                (source === "all" || e.source_type === source) &&
-                (verification === "all" ||
-                  e.verification_state === verification),
-            )
-            .map((e) => (
-              <article
-                className="prototype-ledger-row"
-                key={e.id}
-                id={e.id}
-                tabIndex={-1}
-              >
-                <span className="status">{humanize(e.verification_state)}</span>
-                <h3>{humanize(e.key)}</h3>
-                <p>{candidateValue(e)}</p>
-                <small>
-                  {e.id} · {humanize(e.source_type)}
-                </small>
-                <details>
-                  <summary>Source reference</summary>
-                  <p>{e.source_ref}</p>
-                  <time>{e.timestamp}</time>
-                </details>
-                {!locked && e.verification_state !== "rejected" && (
-                  <EvidenceCorrection evidence={e} onCorrect={onCorrect} />
-                )}
-              </article>
-            ))}
-          <p>
-            Missing telemetry stays unknown. Machine PASS is a run-status fact,
-            not a product-quality result.
-          </p>
-        </details>
-      </section>
-      <section>
-        <p className="eyebrow">Possible causes</p>
-        <h2>Ranked causes</h2>
-        <p>
-          Diagnostic points, not probabilities. Rules v{value.rules_version}.
-        </p>
-        <p className="diagnosis-intro">
-          These are working hypotheses. An inspection is needed to confirm a
-          cause. Expand a cause to see its evidence.
-        </p>
-        {value.ranking.map((cause, index) => (
-          <article className="prototype-cause" key={cause.hypothesis_id}>
-            <details>
-              <summary className="cause-summary">
-                <h3>
-                  {index + 1}. {cause.label}
-                </h3>
-                <span>
-                  <strong>{cause.score} points</strong> ·{" "}
-                  {cause.confirmed ? "Confirmed" : "Unconfirmed"}
-                </span>
-              </summary>
-              <ul>
-                {cause.contributions.map((c, i) => (
-                  <li key={i}>
-                    <a
-                      href={`#${c.evidence_id}`}
-                      onClick={(event) => revealEvidence(event, c.evidence_id)}
-                    >
-                      {c.evidence_id}
-                    </a>{" "}
-                    {c.weight > 0 ? "+" : ""}
-                    {c.weight}: {c.explanation}
-                  </li>
-                ))}
-              </ul>
-              <p>
-                Missing: {cause.missing_evidence.join(", ") || "None listed"}
-              </p>
-            </details>
-          </article>
-        ))}
-        <details className="reasoning-disclosure">
-          <summary>How this diagnosis was generated</summary>
-          <h3>
-            {value.findings_mode === "live"
-              ? "Live specialist and critic findings"
-              : "Cached specialist and critic findings"}
-          </h3>
-          <p>
-            {value.reasoning?.mode === "live"
-              ? `Gemini ${value.reasoning.model} · reviewed by the diagnostic critic.`
-              : `Deterministic templates. ${value.reasoning?.fallback_reason ?? "Live reasoning has not run."}`}
-          </p>
-          {value.reasoning && (
-            <details>
-              <summary>Reasoning run</summary>
-              <p>
-                Evidence revision {value.reasoning.evidence_revision} · prompt{" "}
-                {value.reasoning.prompt_version} · {value.reasoning.timestamp}
-              </p>
-              {value.reasoning.critic && (
-                <p>
-                  Critic:{" "}
-                  {value.reasoning.critic.accepted ? "Accepted" : "Rejected"}.{" "}
-                  {value.reasoning.critic.reasons.join(" ")}
-                </p>
-              )}
-            </details>
-          )}
-          {value.findings.map((finding, i) => (
-            <details key={i}>
-              <summary>
-                {humanize(finding.agent)} · {humanize(finding.hypothesis_id)}
-              </summary>
-              <p>{finding.summary}</p>
-              <p>
-                Supporting:{" "}
-                {finding.supporting_evidence_ids.map((id) => (
-                  <a
-                    key={id}
-                    href={`#${id}`}
-                    onClick={(event) => revealEvidence(event, id)}
-                  >
-                    {id}{" "}
-                  </a>
-                ))}
-              </p>
-              <p>
-                Conflicting:{" "}
-                {finding.conflicting_evidence_ids.map((id) => (
-                  <a
-                    key={id}
-                    href={`#${id}`}
-                    onClick={(event) => revealEvidence(event, id)}
-                  >
-                    {id}{" "}
-                  </a>
-                ))}
-              </p>
-              <p>
-                Missing: {finding.missing_evidence.join(", ") || "None listed"}
-              </p>
-            </details>
-          ))}
-        </details>
-      </section>
-      <aside>
-        <details open={!value.diagnosis_supported || undefined}>
-          <summary>Inspection rationale and procedure details</summary>
-          <p className="eyebrow">Next check</p>
-          <h2>
-            {!value.diagnosis_supported
-              ? "Image evidence rejected"
-              : (value.recommendation?.name ??
-                (inspection
-                  ? "Inspection recorded"
-                  : "No diagnostic check available"))}
-          </h2>
-          {!value.diagnosis_supported && (
-            <div role="status">
-              <p>
-                The image evidence and its derived measurements have been
-                rejected. This case cannot proceed to inspection from that
-                image.
-              </p>
-              <a href="/">Start a new case with a valid image sample</a>
+                  ].map((s) => (
+                    <option key={s} value={s}>
+                      {humanize(s)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Evidence status
+                <select
+                  value={verification}
+                  onChange={(e) => setVerification(e.target.value)}
+                >
+                  <option value="all">All statuses</option>
+                  {["verified", "provisional", "rejected"].map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </select>
+              </label>
             </div>
-          )}
-          {value.recommendation && (
-            <>
-              <p>{value.recommendation.rationale}</p>
-              <p>{value.recommendation.instructions}</p>
+            {locked && (
               <p>
-                {value.recommendation.duration_minutes} minutes · Parts:{" "}
-                {value.recommendation.required_parts.join(", ") || "None"}
-              </p>
-              <ul>
-                {value.recommendation.expected_outcomes.map((o) => (
-                  <li key={o}>{o}</li>
-                ))}
-              </ul>
-              <p className="prototype-caution">
-                {value.recommendation.safety_note}
-              </p>
-            </>
-          )}
-          {inspection?.value === "no_obstruction_found" &&
-            value.recommendation?.id === "air_supply" && (
-              <p role="status">
-                Case remains open. Air-cap and pressure-supply review is the
-                next handoff; further repair workflows require additional
-                reviewed procedures.
+                Evidence is locked after confirmed inspection. Start another
+                case for later corrections.
               </p>
             )}
-        </details>
-      </aside>
-    </div>
+            {value.investigation.evidence
+              ?.filter(
+                (e) =>
+                  (source === "all" || e.source_type === source) &&
+                  (verification === "all" ||
+                    e.verification_state === verification),
+              )
+              .map((e) => (
+                <article
+                  className="prototype-ledger-row"
+                  key={e.id}
+                  id={e.id}
+                  tabIndex={-1}
+                >
+                  <span className="status">
+                    {humanize(e.verification_state)}
+                  </span>
+                  <h3>{humanize(e.key)}</h3>
+                  <p>{candidateValue(e)}</p>
+                  <small>
+                    {e.id} · {humanize(e.source_type)}
+                  </small>
+                  <details>
+                    <summary>Source reference</summary>
+                    <p>{e.source_ref}</p>
+                    <time>{e.timestamp}</time>
+                  </details>
+                  {!locked && e.verification_state !== "rejected" && (
+                    <EvidenceCorrection evidence={e} onCorrect={onCorrect} />
+                  )}
+                </article>
+              ))}
+            <p>
+              Missing telemetry stays unknown. Machine PASS is a run-status
+              fact, not a product-quality result.
+            </p>
+          </details>
+        </section>
+        <section>
+          <p className="eyebrow">Possible causes</p>
+          <h2>Ranked causes</h2>
+          <p>
+            Diagnostic points, not probabilities. Rules v{value.rules_version}.
+          </p>
+          <p className="diagnosis-intro">
+            These are working hypotheses. An inspection is needed to confirm a
+            cause. Expand a cause to see its evidence.
+          </p>
+          {value.ranking.map((cause, index) => (
+            <article className="prototype-cause" key={cause.hypothesis_id}>
+              <details>
+                <summary className="cause-summary">
+                  <h3>
+                    {index + 1}. {cause.label}
+                  </h3>
+                  <span>
+                    <strong>{cause.score} points</strong> ·{" "}
+                    {cause.confirmed ? "Confirmed" : "Unconfirmed"}
+                  </span>
+                </summary>
+                <ul>
+                  {cause.contributions.map((c, i) => (
+                    <li key={i}>
+                      <a
+                        href={`#${c.evidence_id}`}
+                        onClick={(event) =>
+                          revealEvidence(event, c.evidence_id)
+                        }
+                      >
+                        {c.evidence_id}
+                      </a>{" "}
+                      {c.weight > 0 ? "+" : ""}
+                      {c.weight}: {c.explanation}
+                    </li>
+                  ))}
+                </ul>
+                <p>
+                  Missing: {cause.missing_evidence.join(", ") || "None listed"}
+                </p>
+              </details>
+            </article>
+          ))}
+          <details className="reasoning-disclosure">
+            <summary>How this diagnosis was generated</summary>
+            <h3>
+              {value.findings_mode === "live"
+                ? "Live specialist and critic findings"
+                : "Cached specialist and critic findings"}
+            </h3>
+            <p>
+              {value.reasoning?.mode === "live"
+                ? `Gemini ${value.reasoning.model} · reviewed by the diagnostic critic.`
+                : `Deterministic templates. ${value.reasoning?.fallback_reason ?? "Live reasoning has not run."}`}
+            </p>
+            {value.reasoning && (
+              <details>
+                <summary>Reasoning run</summary>
+                <p>
+                  Evidence revision {value.reasoning.evidence_revision} · prompt{" "}
+                  {value.reasoning.prompt_version} · {value.reasoning.timestamp}
+                </p>
+                {value.reasoning.critic && (
+                  <p>
+                    Critic:{" "}
+                    {value.reasoning.critic.accepted ? "Accepted" : "Rejected"}.{" "}
+                    {value.reasoning.critic.reasons.join(" ")}
+                  </p>
+                )}
+              </details>
+            )}
+            {value.findings.map((finding, i) => (
+              <details key={i}>
+                <summary>
+                  {humanize(finding.agent)} · {humanize(finding.hypothesis_id)}
+                </summary>
+                <p>{finding.summary}</p>
+                <p>
+                  Supporting:{" "}
+                  {finding.supporting_evidence_ids.map((id) => (
+                    <a
+                      key={id}
+                      href={`#${id}`}
+                      onClick={(event) => revealEvidence(event, id)}
+                    >
+                      {id}{" "}
+                    </a>
+                  ))}
+                </p>
+                <p>
+                  Conflicting:{" "}
+                  {finding.conflicting_evidence_ids.map((id) => (
+                    <a
+                      key={id}
+                      href={`#${id}`}
+                      onClick={(event) => revealEvidence(event, id)}
+                    >
+                      {id}{" "}
+                    </a>
+                  ))}
+                </p>
+                <p>
+                  Missing:{" "}
+                  {finding.missing_evidence.join(", ") || "None listed"}
+                </p>
+              </details>
+            ))}
+          </details>
+        </section>
+        <aside>
+          <details open={!value.diagnosis_supported || undefined}>
+            <summary>Inspection rationale and procedure details</summary>
+            <p className="eyebrow">Next check</p>
+            <h2>
+              {!value.diagnosis_supported
+                ? "Image evidence rejected"
+                : (value.recommendation?.name ??
+                  (inspection
+                    ? "Inspection recorded"
+                    : "No diagnostic check available"))}
+            </h2>
+            {!value.diagnosis_supported && (
+              <div role="status">
+                <p>
+                  The image evidence and its derived measurements have been
+                  rejected. This case cannot proceed to inspection from that
+                  image.
+                </p>
+                <a href="/">Start a new case with a valid image sample</a>
+              </div>
+            )}
+            {value.recommendation && (
+              <>
+                <p>{value.recommendation.rationale}</p>
+                <p>{value.recommendation.instructions}</p>
+                <p>
+                  {value.recommendation.duration_minutes} minutes · Parts:{" "}
+                  {value.recommendation.required_parts.join(", ") || "None"}
+                </p>
+                <ul>
+                  {value.recommendation.expected_outcomes.map((o) => (
+                    <li key={o}>{o}</li>
+                  ))}
+                </ul>
+                <p className="prototype-caution">
+                  {value.recommendation.safety_note}
+                </p>
+              </>
+            )}
+            {inspection?.value === "no_obstruction_found" &&
+              value.recommendation?.id === "air_supply" && (
+                <p role="status">
+                  Case remains open. Air-cap and pressure-supply review is the
+                  next handoff; further repair workflows require additional
+                  reviewed procedures.
+                </p>
+              )}
+          </details>
+        </aside>
+      </div>
+    </>
   );
 }
 
@@ -339,7 +348,6 @@ export function CaseApp() {
     () =>
       new URLSearchParams(window.location.search).get("samples") === "raster",
   );
-  const [photo, setPhoto] = useState<VisionAssessment | null>(null);
   const [postPhoto, setPostPhoto] = useState<VisionAssessment | null>(null);
   const [photoBusy, setPhotoBusy] = useState(false);
   const [images, setImages] = useState<Measurement[]>([]);
@@ -661,7 +669,7 @@ export function CaseApp() {
                       ? `Saved revision ${value.revision}${photoCase ? "" : ` · ${value.investigation.simulated ? "Simulated case" : "Recorded case"}`}`
                       : rasterMode
                         ? "Start with the observed defect and controlled sample."
-                        : "Analyze a photo, describe the symptom, then investigate the cause."}
+                        : "Inspect the photo, add machine context, then choose the next check."}
                   </p>
                 </div>
                 {value && (
@@ -679,7 +687,7 @@ export function CaseApp() {
                   </div>
                 )}
               </section>
-              {!loading && (
+              {!loading && (value || rasterMode) && (
                 <WorkflowStatus
                   value={value}
                   phase={phase}
@@ -729,53 +737,12 @@ export function CaseApp() {
               >
                 <legend className="sr-only">Investigation controls</legend>
                 {!value && !rasterMode && (
-                  <section>
-                    <PhotoInput
-                      value={photo}
-                      onChange={setPhoto}
-                      onBusy={setPhotoBusy}
-                    />
-                    <form
-                      className="photo-report"
-                      onSubmit={(event) => {
-                        event.preventDefault();
-                        if (!photo || photoBusy) return;
-                        void run(async () =>
-                          accept(
-                            await createCase({
-                              report,
-                              assessment_id: photo.assessment_id,
-                            }),
-                          ),
-                        );
-                      }}
-                    >
-                      <label htmlFor="photo-report">
-                        What did you observe?
-                      </label>
-                      <textarea
-                        id="photo-report"
-                        required
-                        maxLength={2000}
-                        value={report}
-                        onChange={(e) => setReport(e.target.value)}
-                      />
-                      <div className="photo-report-footer">
-                        <p>
-                          {photo
-                            ? "Next: five questions to narrow down the cause."
-                            : "Analyze a photo before starting the investigation."}
-                        </p>
-                        <button
-                          className="primary"
-                          type="submit"
-                          disabled={!photo || photoBusy || !report.trim()}
-                        >
-                          Start investigation
-                        </button>
-                      </div>
-                    </form>
-                  </section>
+                  <ReportIntake
+                    busy={busy}
+                    onSubmit={(request) => {
+                      void run(async () => accept(await createCase(request)));
+                    }}
+                  />
                 )}
                 {!value && rasterMode && selected && (
                   <div className="prototype-two">
@@ -1299,7 +1266,6 @@ export function CaseApp() {
                                   onChange={setPostPhoto}
                                   onBusy={setPhotoBusy}
                                   title="Post-action photo"
-                                  initialExample="normal"
                                 />
                               </div>
                             ) : (

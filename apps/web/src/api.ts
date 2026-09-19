@@ -2,13 +2,13 @@ import type {
   DemoScenario,
   IngestionResult,
   LogPreviewRequest,
+  LogContext,
   GoldenScenario,
   Case,
   CaseAction,
   CreateCase,
   Measurement,
   VisionAssessment,
-  VisionExample,
   CaseListItem,
   CaseExplanation,
 } from "@flowpilot/contracts";
@@ -21,7 +21,9 @@ async function request<T>(
   try {
     const response = await fetch(`/api${path}`, {
       ...init,
-      signal: AbortSignal.timeout(timeout),
+      signal: init?.signal
+        ? AbortSignal.any([init.signal, AbortSignal.timeout(timeout)])
+        : AbortSignal.timeout(timeout),
     });
     if (!response.ok) {
       const problem = await response.json().catch(() => null);
@@ -63,11 +65,15 @@ export const loadImages = () => request<Measurement[]>("/demo/images");
 export const loadCase = (id: string) =>
   request<Case>(`/investigations/${encodeURIComponent(id)}`);
 export const createCase = (body: CreateCase) =>
-  request<Case>("/investigations", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  request<Case>(
+    "/investigations",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    },
+    45000,
+  );
 export const listCases = (limit = 20) =>
   request<CaseListItem[]>(`/investigations?limit=${limit}`);
 export const explainCase = (id: string, revision: number, question: string) =>
@@ -96,17 +102,21 @@ export const actOnCase = (id: string, body: CaseAction) =>
     45000,
   );
 
-export const loadPhotoExamples = () =>
-  request<VisionExample[]>("/vision/examples");
-export const assessExample = (id: string) =>
-  request<VisionAssessment>(
-    `/vision/examples/${encodeURIComponent(id)}/assess`,
-    { method: "POST" },
-    60000,
-  );
-export const assessPhoto = (file: File) =>
+export const assessPhoto = (file: File, signal?: AbortSignal) =>
   request<VisionAssessment>(
     "/vision/assessments",
-    { method: "POST", headers: { "Content-Type": file.type }, body: file },
+    {
+      method: "POST",
+      headers: { "Content-Type": file.type },
+      body: file,
+      signal,
+    },
     60000,
   );
+
+export const previewLogContext = (log: LogPreviewRequest, board_id?: string) =>
+  request<LogContext>("/logs/context", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ log, board_id }),
+  });
