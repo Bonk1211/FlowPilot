@@ -6,7 +6,7 @@ from datetime import UTC, datetime
 from typing import Annotated, Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import ConfigDict, Field, model_serializer, model_validator
 from sqlalchemy import JSON, Integer, String, select, update
@@ -29,6 +29,14 @@ from flowpilot.ingestion.industry_event_log import parse_industry_event_log
 from flowpilot.ingestion.models import IngestionResult, LogPreviewRequest
 from flowpilot.intake import IntakeContext, IntakeRecord, LogContextRequest, log_context
 from flowpilot.investigations.models import Contract, Evidence, Investigation
+from flowpilot.knowledge.models import RetrievalSnapshot
+from flowpilot.knowledge.service import (
+    ensure_library_unchanged,
+    invalidate_source,
+    prepare_case_experience,
+    retrieve,
+)
+from flowpilot.knowledge.summarizer import summarize_pending
 from flowpilot.legacy_imaging import LegacyMeasurement
 from flowpilot.persistence.database import Base, make_engine
 from flowpilot.procedures.models import ProcedureStep
@@ -45,9 +53,16 @@ class CaseRecord(Base):
 
 
 class DiagnosticSnapshot(Contract):
+    past_experience: RetrievalSnapshot = Field(default_factory=RetrievalSnapshot)
     revision: int
     timestamp: str
-    trigger: Literal["retained_baseline", "diagnose", "confirm_observation", "correct_evidence"]
+    trigger: Literal[
+        "retained_baseline",
+        "diagnose",
+        "confirm_observation",
+        "correct_evidence",
+        "refresh_knowledge",
+    ]
     state: str
     ranking: list[RankedCause]
     findings: list[AgentFinding]
@@ -82,6 +97,7 @@ class Case(Contract):
     findings: list[AgentFinding] = Field(default_factory=list)
     findings_mode: Literal["cached_templates", "live"] = "cached_templates"
     reasoning: ReasoningRun | None = None
+    past_experience: RetrievalSnapshot = Field(default_factory=RetrievalSnapshot)
     diagnostic_history: list[DiagnosticSnapshot] = Field(default_factory=list)
     recommendation: TestRecommendation | None = None
     procedure: list[ProcedureStep] = Field(default_factory=list)
@@ -95,6 +111,8 @@ class Case(Contract):
         payload = handler(self)
         if self.scenario_version == "1.0":
             # Preserve the original nested v1 wire payload, not just stored bytes.
+            for finding in payload["findings"]:
+                finding.pop("knowledge_refs", None)
             for entry in payload["timeline"]:
                 entry.pop("diagnostic_revision", None)
             if payload["summary"] is not None:
@@ -135,6 +153,7 @@ class CaseExplanation(Contract):
     answer: str
     evidence_ids: list[str]
     source_refs: list[str]
+    knowledge_refs: list[str] = Field(default_factory=list)
     mode: Literal["cached"] = "cached"
     timestamp: str
     non_mutating: Literal[True] = True
@@ -157,6 +176,10 @@ class Answer(ActionBase):
 
 class Diagnose(ActionBase):
     action: Literal["diagnose"]
+
+
+class RefreshKnowledge(ActionBase):
+    action: Literal["refresh_knowledge"]
 
 
 class Inspect(ActionBase):
@@ -207,6 +230,7 @@ CaseAction = Annotated[
     AttachLog
     | Answer
     | Diagnose
+    | RefreshKnowledge
     | Inspect
     | Confirm
     | Resolve
@@ -264,6 +288,7 @@ def capture_diagnosis(case: Case, trigger):
             findings_mode=case.findings_mode,
             reasoning=case.reasoning.model_copy(deep=True) if case.reasoning else None,
             evidence=[item.model_copy(deep=True) for item in case.investigation.evidence],
+            past_experience=case.past_experience.model_copy(deep=True),
         )
     )
     if trigger == "retained_baseline":
@@ -394,6 +419,7 @@ def normalize_case(case: Case) -> Case:
 def rank(case: Case):
     case.findings_mode = "cached_templates"
     case.reasoning = None
+    case.past_experience = RetrievalSnapshot()
     rules = json.loads(fixture_path("v2/scoring-rules.json").read_text(encoding="utf-8"))
     causes = []
     confirmed = any(
@@ -549,6 +575,7 @@ def correct_evidence(case: Case, action: CorrectEvidence):
     case.findings = []
     case.findings_mode = "cached_templates"
     case.reasoning = None
+    case.past_experience = RetrievalSnapshot()
     state = "diagnosing"
     if had_ranking and case.questions_complete:
         rank(case)
@@ -599,6 +626,7 @@ def apply_action(case: Case, action: CaseAction) -> Case:
             raise HTTPException(409, message)
 
     if action.action == "correct_evidence":
+        case.past_experience = RetrievalSnapshot()
         correct_evidence(case, action)
     elif action.action == "attach_log":
         require(state in ("reported", "diagnosing") and not case.ranking and case.log is None)
@@ -643,6 +671,10 @@ def apply_action(case: Case, action: CaseAction) -> Case:
         transition(
             case, "inspection_recommended", "Ranked five causes; inspect to test restriction."
         )
+    elif action.action == "refresh_knowledge":
+        require(bool(case.ranking) and case.diagnosis_supported)
+        rank(case)
+        transition(case, state, "Refreshed published experience; prior diagnosis retained.")
     elif action.action == "inspect":
         require(state == "inspection_recommended" and case.pending_outcome is None)
         case.pending_outcome = action.outcome
@@ -858,8 +890,15 @@ def explain_case(case: Case, question_text: str) -> CaseExplanation:
             "available machine evidence before requesting a ranked diagnosis."
         )
 
+    historical = case.past_experience
+    if historical.matches:
+        answer += " Saved historical context: " + historical.explanation
+        if historical.suggested_check:
+            answer += " " + historical.suggested_check
+        answer += " Check reference status in Past experience before reuse."
     return CaseExplanation(
         answer=answer,
+        knowledge_refs=[m.citation for m in historical.matches],
         evidence_ids=evidence_ids,
         source_refs=[by_id[item_id].source_ref for item_id in evidence_ids],
         timestamp=now(),
@@ -961,8 +1000,6 @@ def apply_intake(case: Case, context: IntakeContext):
         signals=signals,
     )
     apply_action(case, Diagnose(action="diagnose", revision=case.revision))
-    asyncio.run(enrich(case))
-    capture_diagnosis(case, "diagnose")
 
 
 @router.post("/investigations", response_model=Case, status_code=201)
@@ -970,6 +1007,9 @@ def new_case(request: CreateCase):
     case = create_case(request)
     if request.context is not None:
         apply_intake(case, request.context)
+        case.past_experience = database_operation(lambda session: retrieve(session, case))
+        asyncio.run(enrich(case))
+        capture_diagnosis(case, "diagnose")
 
     def save(session):
         session.add(
@@ -979,6 +1019,8 @@ def new_case(request: CreateCase):
                 payload=case.model_dump(mode="json"),
             )
         )
+        session.flush()
+        ensure_library_unchanged(session, case.past_experience)
         return case
 
     return database_operation(save)
@@ -1026,17 +1068,28 @@ def explain(case_id: str, request: CaseExplanationRequest):
 
 
 @router.post("/investigations/{case_id}/actions", response_model=Case)
-def act(case_id: str, action: CaseAction):
+def act(case_id: str, action: CaseAction, background_tasks: BackgroundTasks):
     case = get_case(case_id)
     if case.revision != action.revision:
         raise HTTPException(409, "Case changed. Reload the saved case before trying again.")
     if case.scenario_version == "2.0" and case.ranking and not case.diagnostic_history:
         capture_diagnosis(case, "retained_baseline")
     case = apply_action(case, action)
-    if case.ranking and action.action in ("diagnose", "confirm_observation", "correct_evidence"):
+    if case.ranking and action.action in (
+        "diagnose",
+        "confirm_observation",
+        "correct_evidence",
+        "refresh_knowledge",
+    ):
+        case.past_experience = database_operation(lambda session: retrieve(session, case))
         # The read transaction has closed. Never hold SQLite locks across network I/O.
         asyncio.run(enrich(case))
-    if action.action in ("diagnose", "confirm_observation", "correct_evidence"):
+    if action.action in (
+        "diagnose",
+        "confirm_observation",
+        "correct_evidence",
+        "refresh_knowledge",
+    ):
         capture_diagnosis(case, action.action)
 
     def change(session):
@@ -1050,6 +1103,18 @@ def act(case_id: str, action: CaseAction):
         )
         if result.rowcount != 1:
             raise HTTPException(409, "Case changed. Reload the saved case before trying again.")
+        if action.action in (
+            "diagnose",
+            "confirm_observation",
+            "correct_evidence",
+            "refresh_knowledge",
+        ):
+            ensure_library_unchanged(session, case.past_experience)
+        invalidate_source(session, case_id)
+        if action.action in ("confirm_observation", "complete_action", "verify", "resolve"):
+            prepare_case_experience(session, case)
         return case
 
-    return database_operation(change)
+    saved = database_operation(change)
+    background_tasks.add_task(summarize_pending, case_id)
+    return saved

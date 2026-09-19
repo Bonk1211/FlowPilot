@@ -12,10 +12,13 @@ export function GuidanceComposer({
   exchanges,
   busy,
   onAsk,
+  evidenceLabels = {},
 }: {
   exchanges: GuidanceExchange[];
   busy: boolean;
   onAsk: (question: string) => Promise<void>;
+  /** Evidence id → readable label, so citations are not bare identifiers. */
+  evidenceLabels?: Record<string, string>;
 }) {
   const [open, setOpen] = useState(false);
   const launcher = useRef<HTMLButtonElement>(null);
@@ -107,6 +110,21 @@ export function GuidanceComposer({
                 Ask about the likely cause, missing evidence, or your next
                 check.
               </p>
+              <div
+                className="suggested-prompts"
+                aria-label="Suggested questions"
+              >
+                {suggestions.map((item) => (
+                  <button
+                    type="button"
+                    className="prompt-chip"
+                    key={item}
+                    onClick={() => setQuestion(item)}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {exchanges.length > 0 && (
@@ -146,9 +164,25 @@ export function GuidanceComposer({
                                 target.scrollIntoView({ block: "center" });
                               }}
                             >
-                              {id}
+                              {evidenceLabels[id] ?? id}
                             </a>
                           ))}
+                        </p>
+                      )}
+                      {!!exchange.response.knowledge_refs?.length && (
+                        <p className="guidance-citations">
+                          Historical experience:{" "}
+                          {exchange.response.knowledge_refs.map((ref) => {
+                            const [id, version] = ref.split("@v");
+                            return (
+                              <a
+                                key={ref}
+                                href={`/knowledge?entry=${encodeURIComponent(id)}&version=${version}`}
+                              >
+                                {ref}{" "}
+                              </a>
+                            );
+                          })}
                         </p>
                       )}
                       <small>
@@ -178,21 +212,26 @@ export function GuidanceComposer({
               Guidance only — structured controls change the case.
             </p>
           </div>
-          <details className="suggested-questions">
-            <summary>Suggested questions</summary>
-            <div className="suggested-prompts" aria-label="Suggested questions">
-              {suggestions.map((item) => (
-                <button
-                  type="button"
-                  className="prompt-chip"
-                  key={item}
-                  onClick={() => setQuestion(item)}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-          </details>
+          {exchanges.length > 0 && (
+            <details className="suggested-questions">
+              <summary>Suggested questions</summary>
+              <div
+                className="suggested-prompts"
+                aria-label="Suggested questions"
+              >
+                {suggestions.map((item) => (
+                  <button
+                    type="button"
+                    className="prompt-chip"
+                    key={item}
+                    onClick={() => setQuestion(item)}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </details>
+          )}
           <label className="composer-input">
             <span className="sr-only">Question about the current case</span>
             <textarea

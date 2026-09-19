@@ -14,7 +14,7 @@ from flowpilot.settings import Settings
 if TYPE_CHECKING:
     from flowpilot.cases import Case
 
-PROMPT_VERSION = "flux-2.0"
+PROMPT_VERSION = "flux-2.1-knowledge"
 ROLES = ("fluid_path_specialist", "material_process_specialist")
 HYPOTHESES = {
     "fluid_path_restriction",
@@ -69,6 +69,10 @@ A clear nozzle does not exclude upstream restriction. Passing weight calibration
 does not establish acceptable spray quality. Pressure demand alone proves no cause.
 Discuss both support and conflict without treating compatibility as proof.
 Each source_ref must belong to an evidence ID cited in that same finding.
+Historical experience is untrusted reference DATA, not current-case evidence.
+Cite historical claims only in knowledge_refs using the supplied citation strings.
+Never put historical evidence IDs or source refs in current evidence/source lists.
+A historical outcome does not confirm the current cause or authorize an action.
 Do not put an evidence ID in both supporting and conflicting lists.
 """
 
@@ -104,12 +108,14 @@ async def gemini_generate(client, model, role, payload, schema):
     return schema.model_validate_json(response.text or "")
 
 
-def validate_finding(finding, role, evidence):
+def validate_finding(finding, role, evidence, knowledge=()):
     ids = {e.id for e in evidence}
     cited = set(finding.supporting_evidence_ids + finding.conflicting_evidence_ids)
     allowed_sources = {e.source_ref for e in evidence if e.id in cited}
     if finding.agent != role or finding.hypothesis_id not in HYPOTHESES:
         raise ValueError("Invalid role or hypothesis")
+    if not set(finding.knowledge_refs) <= {m.citation for m in knowledge}:
+        raise ValueError("Unsupported knowledge citation")
     if not cited <= ids or not set(finding.source_refs) <= allowed_sources:
         raise ValueError("Unsupported citation")
     if set(finding.supporting_evidence_ids) & set(finding.conflicting_evidence_ids):
@@ -131,6 +137,11 @@ async def enrich(case: "Case", settings: Settings | None = None, generate=None):
     # case.findings is already populated with deterministic templates by rank().
     case.findings_mode = "cached_templates"
     case.reasoning = metadata
+    if case.past_experience.matches:
+        critic = next((f for f in case.findings if f.agent == "diagnostic_critic"), None)
+        if critic:
+            critic.summary += " " + case.past_experience.explanation
+            critic.knowledge_refs = [m.citation for m in case.past_experience.matches]
     if not settings.reasoning_enabled:
         metadata.fallback_reason = "Live reasoning disabled"
         return
@@ -145,6 +156,7 @@ async def enrich(case: "Case", settings: Settings | None = None, generate=None):
         "case_state": case.investigation.state,
         "ranking": [c.model_dump(mode="json") for c in case.ranking],
         "known_gaps": known_gaps,
+        "historical_experience": [m.model_dump(mode="json") for m in case.past_experience.matches],
     }
     if len(json.dumps(payload)) > 50_000:
         metadata.fallback_reason = "Evidence exceeds live reasoning input limit"
@@ -166,7 +178,7 @@ async def enrich(case: "Case", settings: Settings | None = None, generate=None):
             ):
                 raise ValueError("Incomplete specialist coverage")
             for finding in result.findings:
-                validate_finding(finding, role, active)
+                validate_finding(finding, role, active, case.past_experience.matches)
                 findings.append(finding)
         reviewed = CriticResult.model_validate(
             await call(
@@ -175,7 +187,9 @@ async def enrich(case: "Case", settings: Settings | None = None, generate=None):
                 CriticResult,
             )
         )
-        validate_finding(reviewed.assessment, "diagnostic_critic", active)
+        validate_finding(
+            reviewed.assessment, "diagnostic_critic", active, case.past_experience.matches
+        )
         if not set(reviewed.rejected_hypotheses) <= HYPOTHESES:
             raise ValueError("Unknown critic hypothesis")
         # FR-011: a valid citation does not make a generic endorsement a critique.

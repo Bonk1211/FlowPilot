@@ -714,6 +714,44 @@ captions, and submission with signed-out playback verification. GitHub authentic
 was refreshed successfully outside the sandbox; the repository currently has no
 GitHub issues or milestones. No issue publication, commit or push performed.
 
+#### 2026-09-19 — Reviewed Learning Database and visible case reuse
+
+**Status:** Added the user-approved case-learning increment. Existing acceptance,
+expert procedure approval and presentation/submission checkpoints remain unchanged.
+
+**Delivered:** A graph-first `/knowledge` workspace with real counts, structured
+filters, source evidence, technician publication, disputes, revision history and
+keyboard alternatives. One case retains its growing evidence; supported workflow
+updates prepare drafts. Gemini optionally summarizes them and receives published
+historical experience during diagnosis; missing/invalid provider output retains
+explicit deterministic fallback. Historical citations preserve knowledge versions
+and show changes without rewriting old diagnoses. Current assessment, past
+experience and next check are visible together on the desktop diagnosis screen.
+
+**Decisions:** SQLite migration 0003 adds independent knowledge aggregates with
+immutable versions and review events. Compare-and-swap, source signatures and a
+library revision guard protect publication and case writes. Structured retrieval
+returns at most three compatible experiences; unknown conditions do not score,
+and equivalent simulated runs are grouped. Fixed scoring, field confirmation and
+recovery gates remain unchanged. See [implementation and validation](DATABASE_LEARNING_PLAN.md).
+
+**Verification:** The full check passed with 9 reference-parser and 205 API tests,
+contract consistency and build. Final frontend lint/build and all 54 browser tests
+passed. Browser acceptance includes A draft excluded → A published → B cites → A
+corrected → C uses the new version while B retains the old snapshot. Desktop,
+375px mobile, keyboard graph navigation and all existing photo/log/inspection/
+recovery flows were checked. Source/knowledge rollback and invalid model citations
+are tested. The local schema was migrated; all 9 existing cases and snapshot
+payloads were hash-checked unchanged, with zero fabricated knowledge inserted.
+
+**Remaining:** Live Gemini round-trip verification requires a configured key;
+controlled-response tests cover generation, validation, fallback and race cases.
+The current in-memory structured scan and bounded graph are designed for the
+single-user demo, not a large enterprise corpus. Reviewer names are self-reported.
+
+**Issue/PR/commit:** Work is on `feat/database-learning`; no commit, push, PR or
+external publication. Existing `handoff.md` preserved.
+
 ## Session entry template
 
 Copy this under the relevant milestone's **Development history** heading:

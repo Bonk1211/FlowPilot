@@ -24,7 +24,7 @@ import { ApplicationFrame } from "./components/ApplicationFrame";
 import { EvidencePreview } from "./components/EvidencePreview";
 import { EventViewer } from "./components/EventViewer";
 import { EvidenceCorrection } from "./components/EvidenceCorrection";
-import { candidateValue, humanize } from "./presentation";
+import { candidateValue, humanize, sentenceCase } from "./presentation";
 import "./prototype/prototype.css";
 import "./case.css";
 import { sampleNames, emptyRecovery } from "./fluxModel";
@@ -41,6 +41,10 @@ import { WorkflowStatus } from "./components/WorkflowStatus";
 import "./workflow.css";
 import { PhotoInput } from "./components/PhotoAnalysis";
 import { ReportIntake, IntakeEvidenceSummary } from "./components/ReportIntake";
+import {
+  PastExperiencePanel,
+  KnowledgeCapture,
+} from "./components/PastExperience";
 
 type WithoutRevision<T> = T extends unknown ? Omit<T, "revision"> : never;
 type Command = WithoutRevision<CaseAction>;
@@ -89,6 +93,36 @@ function Diagnosis({
   );
   return (
     <>
+      <div className="diagnosis-briefing">
+        <section
+          className="diagnosis-key-evidence"
+          aria-label="Current assessment"
+        >
+          <p className="eyebrow">Current assessment</p>
+          <h2>{value.ranking[0]?.label ?? "Awaiting evidence"}</h2>
+          <p>
+            {value.ranking[0]?.confirmed
+              ? "Inspection finding confirmed. Recovery still requires verification."
+              : inspection?.value === "no_obstruction_found"
+                ? "No nozzle obstruction found. Other causes remain unconfirmed."
+                : "Working hypothesis · current-case evidence still requires inspection."}
+          </p>
+          <ul>
+            {value.ranking[0]?.contributions
+              .filter((c) => c.weight > 0)
+              .slice(0, 2)
+              .map((c) => (
+                <li key={c.evidence_id}>{c.explanation}</li>
+              ))}
+          </ul>
+        </section>
+        <PastExperiencePanel
+          value={value}
+          onRefresh={() => {
+            void onCorrect({ action: "refresh_knowledge" });
+          }}
+        />
+      </div>
       <IntakeEvidenceSummary value={value} />
       <div className="prototype-diagnosis">
         <section aria-label="Evidence ledger">
@@ -288,6 +322,8 @@ function Diagnosis({
           </details>
         </section>
         <aside>
+          <p className="eyebrow">02 / Procedure</p>
+          <h2>Why this check</h2>
           <details open={!value.diagnosis_supported || undefined}>
             <summary>Inspection rationale and procedure details</summary>
             <p className="eyebrow">Next check</p>
@@ -383,12 +419,20 @@ export function CaseApp() {
   const heading = useRef<HTMLHeadingElement>(null);
   const errorPanel = useRef<HTMLElement>(null);
   const retainedLog = useRef<HTMLDetailsElement>(null);
+  const pendingOutcome = useRef<HTMLElement>(null);
   const lock = useRef(false);
   const returnTarget = useRef("open-events");
 
   useEffect(() => {
     if (error) errorPanel.current?.focus();
   }, [error]);
+
+  // Recording an outcome re-renders the page from the top; bring the
+  // confirmation the technician still has to give back into view.
+  useEffect(() => {
+    if (value?.pending_outcome)
+      pendingOutcome.current?.scrollIntoView({ block: "center" });
+  }, [value?.pending_outcome]);
 
   useEffect(() => {
     let active = true;
@@ -664,13 +708,13 @@ export function CaseApp() {
                   <h1 ref={heading} tabIndex={-1}>
                     {title}
                   </h1>
-                  <p className="workspace-status">
-                    {value
-                      ? `Saved revision ${value.revision}${photoCase ? "" : ` · ${value.investigation.simulated ? "Simulated case" : "Recorded case"}`}`
-                      : rasterMode
-                        ? "Start with the observed defect and controlled sample."
-                        : "Inspect the photo, add machine context, then choose the next check."}
-                  </p>
+                  {(value || rasterMode) && (
+                    <p className="workspace-status">
+                      {value
+                        ? `Saved to database · revision ${value.revision}${photoCase ? "" : ` · ${value.investigation.simulated ? "Simulated case" : "Recorded case"}`}`
+                        : "Start with the observed defect and controlled sample."}
+                    </p>
+                  )}
                 </div>
                 {value && (
                   <div className="case-restart">
@@ -1093,8 +1137,12 @@ export function CaseApp() {
                       </section>
                     )}
                     {value.pending_outcome && (
-                      <section className="prototype-question">
-                        <h2>{humanize(value.pending_outcome)}</h2>
+                      <section
+                        className="prototype-question"
+                        ref={pendingOutcome}
+                      >
+                        <p className="eyebrow">Inspection result</p>
+                        <h2>{sentenceCase(value.pending_outcome)}</h2>
                         <p>
                           This observation has not yet changed the diagnosis.
                         </p>
@@ -1123,10 +1171,15 @@ export function CaseApp() {
                         </button>
                       </section>
                     )}
-                    {phase === "Inspect" && (
+                    {/* The diagnosis briefing carries Past experience. It has to
+                        stay reachable after the observation is confirmed, or the
+                        reviewed experience can no longer be cited on this case. */}
+                    {["Inspect", "Correct", "Verify"].includes(phase) && (
                       <details className="case-section">
                         <summary>
-                          Review or correct evidence before confirming
+                          {phase === "Inspect"
+                            ? "Review or correct evidence before confirming"
+                            : "Diagnosis, evidence and past experience"}
                         </summary>
                         <Diagnosis value={value} onCorrect={command} />
                       </details>
@@ -1434,6 +1487,7 @@ export function CaseApp() {
                   </section>
                 )}
               </fieldset>
+              {value && <KnowledgeCapture value={value} />}
               {busy && <p role="status">Saving or loading…</p>}
               {value &&
                 (!!value.diagnostic_history?.length ||
@@ -1489,6 +1543,12 @@ export function CaseApp() {
                 exchanges={guidance}
                 busy={guidanceBusy}
                 onAsk={askGuidance}
+                evidenceLabels={Object.fromEntries(
+                  (value.investigation.evidence ?? []).map((item) => [
+                    item.id,
+                    `${humanize(item.key)} · ${humanize(item.source_type)}`,
+                  ]),
+                )}
               />
             )}
           </div>

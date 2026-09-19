@@ -110,6 +110,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/intake/question-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Question Plan */
+        post: operations["question_plan_api_intake_question_plan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/investigations": {
         parameters: {
             query?: never;
@@ -173,6 +190,159 @@ export interface paths {
         put?: never;
         /** Explain */
         post: operations["explain_api_investigations__case_id__explanations_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/investigations/{case_id}/knowledge-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Reference Status */
+        get: operations["reference_status_api_investigations__case_id__knowledge_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Entries */
+        get: operations["entries_api_knowledge_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/by-source/{case_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** By Source */
+        get: operations["by_source_api_knowledge_by_source__case_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/from-case/{case_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Draft */
+        post: operations["draft_api_knowledge_from_case__case_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/graph": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Library Graph */
+        get: operations["library_graph_api_knowledge_graph_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/{entry_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Detail */
+        get: operations["detail_api_knowledge__entry_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/{entry_id}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Command */
+        post: operations["command_api_knowledge__entry_id__actions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/{entry_id}/graph": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Graph */
+        get: operations["graph_api_knowledge__entry_id__graph_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/knowledge/{entry_id}/prepare": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retry Preparation */
+        post: operations["retry_preparation_api_knowledge__entry_id__prepare_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -321,6 +491,8 @@ export interface components {
             conflicting_evidence_ids: string[];
             /** Hypothesis Id */
             hypothesis_id: string;
+            /** Knowledge Refs */
+            knowledge_refs?: string[];
             /** Missing Evidence */
             missing_evidence: string[];
             /** Source Refs */
@@ -343,6 +515,20 @@ export interface components {
             revision: number;
             /** Value */
             value: string;
+        };
+        /** AnswerClarification */
+        AnswerClarification: {
+            /** Prompt */
+            prompt: string;
+            /** Proposed Value */
+            proposed_value: string;
+            /**
+             * Question Id
+             * @enum {string}
+             */
+            question_id: "frequency" | "continuous" | "intermittent" | "change" | "temperature" | "service";
+            /** Source Ref */
+            source_ref: string;
         };
         /** AttachLog */
         AttachLog: {
@@ -396,6 +582,7 @@ export interface components {
             /** Measurement */
             measurement: components["schemas"]["Measurement"] | components["schemas"]["LegacyMeasurement"] | components["schemas"]["VisionAssessment"];
             next_question: components["schemas"]["DiscoveryQuestion"] | null;
+            past_experience: components["schemas"]["RetrievalSnapshot"];
             /** Pending Outcome */
             pending_outcome: ("obstruction_found" | "no_obstruction_found") | null;
             /** Procedure */
@@ -439,6 +626,8 @@ export interface components {
             answer: string;
             /** Evidence Ids */
             evidence_ids: string[];
+            /** Knowledge Refs */
+            knowledge_refs?: string[];
             /**
              * Mode
              * @default cached
@@ -497,6 +686,17 @@ export interface components {
             problem: string;
             /** Verification */
             verification: string;
+        };
+        /** CitationStatus */
+        CitationStatus: {
+            /** Citation */
+            citation: string;
+            /** Current */
+            current: boolean;
+            /** Latest Version */
+            latest_version: number | null;
+            /** Status */
+            status: string;
         };
         /** CompleteAction */
         CompleteAction: {
@@ -655,6 +855,7 @@ export interface components {
              * @enum {string}
              */
             findings_mode: "cached_templates" | "live";
+            past_experience?: components["schemas"]["RetrievalSnapshot"];
             /** Ranking */
             ranking: components["schemas"]["RankedCause"][];
             reasoning: components["schemas"]["ReasoningRun"] | null;
@@ -668,7 +869,7 @@ export interface components {
              * Trigger
              * @enum {string}
              */
-            trigger: "retained_baseline" | "diagnose" | "confirm_observation" | "correct_evidence";
+            trigger: "retained_baseline" | "diagnose" | "confirm_observation" | "correct_evidence" | "refresh_knowledge";
         };
         /** DiscoveryQuestion */
         DiscoveryQuestion: {
@@ -680,6 +881,21 @@ export interface components {
             prompt: string;
             /** Rationale */
             rationale: string;
+        };
+        /** DraftGeneration */
+        DraftGeneration: {
+            /**
+             * Mode
+             * @default cached
+             * @enum {string}
+             */
+            mode: "pending" | "live" | "cached" | "manual";
+            /** Model */
+            model?: string | null;
+            /** Reason */
+            reason?: string | null;
+            /** Timestamp */
+            timestamp?: string | null;
         };
         /** Evidence */
         Evidence: {
@@ -1027,6 +1243,193 @@ export interface components {
             title: string;
         };
         JsonValue: unknown;
+        /** KnowledgeCommand */
+        KnowledgeCommand: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "revise" | "publish" | "dispute" | "archive";
+            /** Actor */
+            actor: string;
+            /**
+             * Confirmed
+             * @constant
+             */
+            confirmed: true;
+            content?: components["schemas"]["KnowledgeContent"] | null;
+            /** Reason */
+            reason: string;
+            /** Revision */
+            revision: number;
+        };
+        /** KnowledgeContent */
+        KnowledgeContent: {
+            /**
+             * Check Focus
+             * @enum {string}
+             */
+            check_focus: "nozzle_inspection" | "air_supply_review" | "material_review";
+            /**
+             * Finding
+             * @enum {string}
+             */
+            finding: "obstruction_found" | "no_obstruction_found" | "uncertain";
+            /** Lesson */
+            lesson: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "recovered" | "not_recovered" | "unresolved";
+            /** Supporting Evidence Ids */
+            supporting_evidence_ids: string[];
+            /** Title */
+            title: string;
+        };
+        /** KnowledgeCreate */
+        KnowledgeCreate: {
+            /** Actor */
+            actor: string;
+            /** Source Revision */
+            source_revision: number;
+        };
+        /** KnowledgeEdge */
+        KnowledgeEdge: {
+            /** Case Id */
+            case_id: string;
+            /** Citation */
+            citation: string;
+            /** Evidence Ids */
+            evidence_ids: string[];
+            /** Id */
+            id: string;
+            /** Relation */
+            relation: string;
+            /** Source */
+            source: string;
+            /** Status */
+            status: string;
+            /** Target */
+            target: string;
+        };
+        /** KnowledgeEntry */
+        KnowledgeEntry: {
+            /** Events */
+            events: components["schemas"]["KnowledgeEvent"][];
+            generation?: components["schemas"]["DraftGeneration"];
+            /** Id */
+            id: string;
+            /** Revision */
+            revision: number;
+            /** Source Case Id */
+            source_case_id: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "draft" | "published" | "disputed" | "archived";
+            /** Versions */
+            versions: components["schemas"]["KnowledgeVersion"][];
+        };
+        /** KnowledgeEvent */
+        KnowledgeEvent: {
+            /** Actor */
+            actor: string;
+            /** Reason */
+            reason: string;
+            /** Revision */
+            revision: number;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "draft" | "published" | "disputed" | "archived";
+            /** Timestamp */
+            timestamp: string;
+            /** Version */
+            version: number;
+        };
+        /** KnowledgeGraph */
+        KnowledgeGraph: {
+            /** Edges */
+            edges: components["schemas"]["KnowledgeEdge"][];
+            /** Nodes */
+            nodes: components["schemas"]["KnowledgeNode"][];
+        };
+        /** KnowledgeNode */
+        KnowledgeNode: {
+            /** Case Ids */
+            case_ids?: string[];
+            /** Detail */
+            detail: string;
+            /** Href */
+            href?: string | null;
+            /** Id */
+            id: string;
+            /** Kind */
+            kind: string;
+            /** Label */
+            label: string;
+        };
+        /** KnowledgeSource */
+        KnowledgeSource: {
+            /** Action */
+            action: string | null;
+            /**
+             * Actual Finding
+             * @enum {string}
+             */
+            actual_finding: "obstruction_found" | "no_obstruction_found" | "uncertain";
+            /**
+             * Actual Outcome
+             * @enum {string}
+             */
+            actual_outcome: "recovered" | "not_recovered" | "unresolved";
+            /** Case Id */
+            case_id: string;
+            /** Conditions */
+            conditions: {
+                [key: string]: string;
+            };
+            /** Evidence */
+            evidence: components["schemas"]["Evidence"][];
+            /** Fingerprint */
+            fingerprint: string;
+            /** Image Url */
+            image_url: string;
+            /** Log Digest */
+            log_digest: string | null;
+            /** Possible Causes */
+            possible_causes: string[];
+            /** Problem */
+            problem: string;
+            /** Process */
+            process: string;
+            /** Recorded At */
+            recorded_at: string;
+            /** Revision */
+            revision: number;
+            /** Signature */
+            signature: string;
+            /** Simulated */
+            simulated: boolean;
+            /** Verification Image Url */
+            verification_image_url: string | null;
+        };
+        /** KnowledgeVersion */
+        KnowledgeVersion: {
+            /** Actor */
+            actor: string;
+            content: components["schemas"]["KnowledgeContent"];
+            /** Created At */
+            created_at: string;
+            /** Reason */
+            reason: string;
+            source: components["schemas"]["KnowledgeSource"];
+            /** Version */
+            version: number;
+        };
         /** LaneCheck */
         LaneCheck: {
             /**
@@ -1037,6 +1440,36 @@ export interface components {
             all_units_accepted: "pass" | "fail" | "unknown";
             /** Lane */
             lane: string;
+        };
+        /** LearningCase */
+        LearningCase: {
+            /** Group Case Ids */
+            group_case_ids?: string[];
+            /**
+             * Group Size
+             * @default 1
+             */
+            group_size: number;
+            /** Id */
+            id: string;
+            /** Knowledge Id */
+            knowledge_id: string | null;
+            /** Knowledge Status */
+            knowledge_status: string;
+            /** Process */
+            process: string;
+            /** Simulated */
+            simulated: boolean;
+            /** State */
+            state: string;
+            /** Symptoms */
+            symptoms: string[];
+            /** Title */
+            title: string;
+            /** Updated At */
+            updated_at: string;
+            /** Version */
+            version: number | null;
         };
         /** LegacyMeasurement */
         LegacyMeasurement: {
@@ -1091,6 +1524,24 @@ export interface components {
              * @default 360
              */
             width: number;
+        };
+        /** LibraryOverview */
+        LibraryOverview: {
+            /** Cases */
+            cases: components["schemas"]["LearningCase"][];
+            graph: components["schemas"]["KnowledgeGraph"];
+            /** Pending Review */
+            pending_review: number;
+            /** Processes */
+            processes: string[];
+            /** Reusable Experiences */
+            reusable_experiences: number;
+            /** Saved Cases */
+            saved_cases: number;
+            /** Total Matching */
+            total_matching: number;
+            /** Truncated */
+            truncated: boolean;
         };
         /** LogContext */
         LogContext: {
@@ -1255,6 +1706,44 @@ export interface components {
             /** Value */
             value: string;
         };
+        /** PastExperience */
+        PastExperience: {
+            /** Citation */
+            citation: string;
+            content: components["schemas"]["KnowledgeContent"];
+            /** Historical Action */
+            historical_action: string | null;
+            /** Knowledge Id */
+            knowledge_id: string;
+            /** Matched Conditions */
+            matched_conditions: string[];
+            /** Simulated */
+            simulated: boolean;
+            /** Source Case Id */
+            source_case_id: string;
+            /** Source Refs */
+            source_refs: string[];
+            /** Source Revision */
+            source_revision: number;
+            /** Unknown Conditions */
+            unknown_conditions: string[];
+            /** Version */
+            version: number;
+        };
+        /** PlannedQuestion */
+        PlannedQuestion: {
+            /** Prompt */
+            prompt: string;
+            /**
+             * Question Id
+             * @enum {string}
+             */
+            question_id: "frequency" | "continuous" | "intermittent" | "change" | "temperature" | "service";
+            /** Rationale */
+            rationale: string;
+            /** Source Refs */
+            source_refs: string[];
+        };
         /** ProcedureStep */
         ProcedureStep: {
             /** Camera Preset */
@@ -1287,6 +1776,58 @@ export interface components {
             /** Value */
             value: string;
         };
+        /** QuestionPlan */
+        QuestionPlan: {
+            clarification?: components["schemas"]["AnswerClarification"] | null;
+            /** Elapsed Ms */
+            elapsed_ms: number;
+            /** Fallback Reason */
+            fallback_reason?: string | null;
+            /**
+             * Mode
+             * @enum {string}
+             */
+            mode: "live" | "fallback";
+            /** Model */
+            model?: string | null;
+            /** Questions */
+            questions: components["schemas"]["PlannedQuestion"][];
+            /** Ready */
+            ready: boolean;
+            /** Replan When */
+            replan_when?: components["schemas"]["ReplanTrigger"][];
+            /** Source Refs */
+            source_refs: string[];
+            /** State Id */
+            state_id: string;
+            /** Summary */
+            summary: string;
+        };
+        /** QuestionPlanRequest */
+        QuestionPlanRequest: {
+            /** Assessment Id */
+            assessment_id: string;
+            /** Board Id */
+            board_id?: string | null;
+            /** Clarified */
+            clarified?: ("frequency" | "continuous" | "intermittent" | "change" | "temperature" | "service")[];
+            log?: components["schemas"]["LogPreviewRequest"] | null;
+            /**
+             * Log Confirmed
+             * @default false
+             */
+            log_confirmed: boolean;
+            /** Observations */
+            observations?: {
+                [key: string]: components["schemas"]["ObservationChoice"];
+            };
+            /** State Id */
+            state_id: string;
+            /** Supplements */
+            supplements?: {
+                [key: string]: string;
+            };
+        };
         /** RankedCause */
         RankedCause: {
             /** Confirmed */
@@ -1318,7 +1859,7 @@ export interface components {
             model: string | null;
             /**
              * Prompt Version
-             * @default flux-2.0
+             * @default flux-2.1-knowledge
              */
             prompt_version: string;
             /** Timestamp */
@@ -1382,6 +1923,26 @@ export interface components {
              */
             weight_within_limits: "pass" | "fail" | "unknown";
         };
+        /** RefreshKnowledge */
+        RefreshKnowledge: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "refresh_knowledge";
+            /** Revision */
+            revision: number;
+        };
+        /** ReplanTrigger */
+        ReplanTrigger: {
+            /** Answer */
+            answer: string;
+            /**
+             * Question Id
+             * @enum {string}
+             */
+            question_id: "frequency" | "continuous" | "intermittent" | "change" | "temperature" | "service";
+        };
         /** Resolve */
         Resolve: {
             /**
@@ -1401,6 +1962,25 @@ export interface components {
             notes: string;
             /** Revision */
             revision: number;
+        };
+        /** RetrievalSnapshot */
+        RetrievalSnapshot: {
+            /**
+             * Explanation
+             * @default Past experience has not been retrieved.
+             */
+            explanation: string;
+            /**
+             * Library Revision
+             * @default 0
+             */
+            library_revision: number;
+            /** Matches */
+            matches?: components["schemas"]["PastExperience"][];
+            /** Retrieved At */
+            retrieved_at?: string | null;
+            /** Suggested Check */
+            suggested_check?: string | null;
         };
         /** ScoreContribution */
         ScoreContribution: {
@@ -1691,6 +2271,39 @@ export interface operations {
             };
         };
     };
+    question_plan_api_intake_question_plan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuestionPlanRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionPlan"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_cases_api_investigations_get: {
         parameters: {
             query?: {
@@ -1797,7 +2410,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["AttachLog"] | components["schemas"]["Answer"] | components["schemas"]["Diagnose"] | components["schemas"]["Inspect"] | components["schemas"]["Confirm"] | components["schemas"]["Resolve"] | components["schemas"]["CompleteAction"] | components["schemas"]["Verify"] | components["schemas"]["CorrectEvidence"];
+                "application/json": components["schemas"]["AttachLog"] | components["schemas"]["Answer"] | components["schemas"]["Diagnose"] | components["schemas"]["RefreshKnowledge"] | components["schemas"]["Inspect"] | components["schemas"]["Confirm"] | components["schemas"]["Resolve"] | components["schemas"]["CompleteAction"] | components["schemas"]["Verify"] | components["schemas"]["CorrectEvidence"];
             };
         };
         responses: {
@@ -1843,6 +2456,304 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CaseExplanation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reference_status_api_investigations__case_id__knowledge_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CitationStatus"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    entries_api_knowledge_get: {
+        parameters: {
+            query?: {
+                q?: string;
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeEntry"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    by_source_api_knowledge_by_source__case_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeEntry"] | null;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    draft_api_knowledge_from_case__case_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                case_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeEntry"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    library_graph_api_knowledge_graph_get: {
+        parameters: {
+            query?: {
+                q?: string;
+                status?: string;
+                process?: string;
+                symptom?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LibraryOverview"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    detail_api_knowledge__entry_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeEntry"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    command_api_knowledge__entry_id__actions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeEntry"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    graph_api_knowledge__entry_id__graph_get: {
+        parameters: {
+            query?: {
+                version?: number | null;
+            };
+            header?: never;
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeGraph"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retry_preparation_api_knowledge__entry_id__prepare_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                entry_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeEntry"];
                 };
             };
             /** @description Validation Error */

@@ -1,6 +1,6 @@
 # FlowPilot - Hackathon MVP requirements
 
-**Version:** 0.5 / 17 September 2026
+**Version:** 0.6 / 19 September 2026
 
 **Status:** Flux-spray development baseline; revised procedure approval pending.
 
@@ -47,7 +47,7 @@ Regenerate the contract-review candidate after covered changes. Passing tests do
 
 ## Unchanged cross-cutting requirements
 
-The process change does not remove evidence auditing, case retention, optional exports, or the deferred knowledge-library requirements below. P1 remains frozen until the complete P0 journey works; P2 remains post-hackathon.
+Evidence auditing and case retention remain required. The user has promoted reviewed case learning and its graph workspace into current scope; document ingestion and enterprise knowledge administration remain future work.
 
 ### 10.2 Evidence ledger
 
@@ -59,9 +59,20 @@ The process change does not remove evidence auditing, case retention, optional e
 **FR-009:** Agent conclusions shall cite evidence IDs rather than rely only on prose.
 
 
-### 10.6 Knowledge retrieval and legacy documents — post-hackathon
+### 10.6 Case Learning Database — current scope
 
-The three-day MVP shall not implement document ingestion, vector retrieval, or knowledge administration. The following requirements are retained as future product direction only.
+**FR-LB-01:** Each saved investigation is one database record. Confirmed inspection/action/verification outcomes automatically prepare experience drafts, optionally summarized by Gemini. Only explicit technician review publishes reusable knowledge.
+**FR-LB-02:** The graph-first Learning Database provides search/status/process/symptom filters, source evidence, versions and review controls. Counts derive from saved data; unreviewed and unresolved cases remain visible.
+**FR-LB-03:** New diagnoses retrieve at most three compatible published experiences, with source/version, matching conditions and unknown applicability. History affects explanations/check focus, not fixed score rules or current workflow confirmations.
+**FR-LB-04:** Disputes, archives and revisions remove old advice from effective retrieval. Factual source changes require new review. Old diagnostic snapshots retain original citations and indicate changed references.
+**FR-LB-05:** Case evidence and historical references use distinct namespaces. Model failure retains truthful deterministic behavior. No-match/unknown conditions never fabricate cases, measurements or successful repairs.
+**FR-LB-06:** Exclude self/future/incompatible sources; group equivalent simulated experience. Preserve source locks, legacy payloads, optimistic concurrency and atomic publication/rollback.
+
+Implementation, API contracts, research and limits: [Database Learning](DATABASE_LEARNING_PLAN.md).
+
+#### 10.6.1 Legacy document retrieval — future direction
+
+Document ingestion and vector retrieval are outside this case-learning increment. The following document requirements remain future direction only.
 
 **FR-027:** For the MVP, administrators shall preprocess a small, curated document set before the demo.  
 **FR-028:** The ingestion pipeline should accept text-bearing PDF, DOCX, PPTX, and Markdown files. Scanned documents are not guaranteed.  
@@ -70,11 +81,11 @@ The three-day MVP shall not implement document ingestion, vector retrieval, or k
 **FR-031:** Retrieved passages shall be displayed with document and location citations.  
 **FR-032:** A retrieved passage may support an explanation but shall not directly alter a diagnostic score unless a maintained rule links it to evidence.
 
-#### 10.6.1 Authorized Knowledge Library — post-hackathon
+#### 10.6.2 Authorized document library — future direction
 
-This interface would make the solution maintainable by domain experts after the hackathon, but it is outside the three-day build.
+Enterprise roles and uploaded-document administration are separate from the implemented single-user case-experience review workflow.
 
-**FR-KB-01:** The MVP shall support two knowledge permissions: **Viewer** and **Knowledge Admin**.  
+**FR-KB-01:** A future deployment shall support two knowledge permissions: **Viewer** and **Knowledge Admin**.
 **FR-KB-02:** A Knowledge Admin shall be able to upload a text-bearing PDF, DOCX, PPTX, or Markdown file.  
 **FR-KB-03:** New content shall enter a **Draft** state and shall not be used for retrieval until an authorized user reviews and publishes it.  
 **FR-KB-04:** Before publishing, the interface shall show extraction status, extracted text preview, detected sections/pages/slides, and any warnings.  
@@ -87,10 +98,10 @@ This interface would make the solution maintainable by domain experts after the 
 
 ### 10.7 Knowledge graph and Obsidian
 
-Obsidian is treated as an optional knowledge-authoring surface, not the runtime reasoning engine.
+The current graph is a Cytoscape.js view of stored case and knowledge relationships, with typed edges, sources, click-through details and keyboard equivalents. Obsidian informs global/local graph interaction; it is not a runtime dependency.
 
 **FR-033:** Post-MVP knowledge records may be represented as Markdown with YAML frontmatter and links between processes, symptoms, causes, tests, parts, and actions.  
-**FR-034:** A graph view may be generated from these links after the hackathon.  
+**FR-034:** The current database shall provide a graph of cases, symptoms, components, possible causes, findings, actions and outcomes. Connections do not establish causality; each link exposes source and status.
 **FR-035:** The core demo shall not depend on Obsidian being installed or available.
 
 ### 10.8 Case completion and optional export

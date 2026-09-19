@@ -13,11 +13,13 @@
     "@fontsource/ibm-plex-mono": "^5.2.0",
     "@fontsource/ibm-plex-sans": "^5.2.0",
     "@phosphor-icons/react": "^2.1.10",
+    "cytoscape": "^3.34.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "three": "^0.186.0"
   },
   "devDependencies": {
+    "@types/cytoscape": "^3.21.9",
     "@types/node": "^22.0.0",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

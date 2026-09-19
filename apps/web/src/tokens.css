@@ -27,6 +27,18 @@
   --green-100: #ddf3e8;
   --red-700: #b33a3a;
   --red-300: #ff8585;
+  /* Categorical graph colors: type, never approval or repair status. */
+  --blue-600: #3269c9;
+  --violet-600: #8857bd;
+  --orange-600: #c66832;
+  --rose-600: #b44d82;
+  --graph-case: var(--blue-600);
+  --graph-symptom: var(--amber-800);
+  --graph-component: var(--slate-600);
+  --graph-hypothesis: var(--violet-600);
+  --graph-finding: var(--green-700);
+  --graph-action: var(--orange-600);
+  --graph-outcome: var(--rose-600);
   --surface-shell: var(--graphite-950);
   --surface-workspace: var(--paper-50);
   --surface-document: var(--white);

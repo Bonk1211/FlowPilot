@@ -4,9 +4,12 @@ FlowPilot is an evidence-led investigation assistant for industrial fluid-dispen
 
 Existing epoxy cases are read-only. New investigations use the S-932 / DJ-2200 flux-spray scenario with separate visual and recovery gates. Expert feedback received; revised procedure approval pending.
 
+The **Learning Database** at `/knowledge` connects saved cases, symptoms, findings and outcomes in an interactive graph. Gemini can prepare experience drafts; technician publication makes them available to future diagnoses, with versioned citations and correction history.
+
 ## Project documents
 
 - [Milestone development log](docs/MILESTONES.md) — M0–M3 progress, developer ownership, session history, validation, and handoffs.
+- [Database Learning](docs/DATABASE_LEARNING_PLAN.md) — research, reviewed experience lifecycle, graph workspace and demo walkthrough.
 - [Development guide](docs/DEVELOPMENT.md) — setup, commands, API contracts, module boundaries, and verification.
 - [Product requirements](docs/PRODUCT_REQUIREMENTS.md) — development baseline, scope, contracts, delivery plan, tests, and video script.
 - [Industry event-log ingestion profile](docs/LOG_INGESTION.md) — observed legacy format, parser contract, safe evidence, warnings, and production follow-ups.
@@ -46,3 +49,5 @@ for configuration, acceptance checks, and backup recordings.
 
 Run `npm run check` for build, lint, types, contracts, and unit/integration tests.
 Run `npx playwright install chromium`, then `npm run test:e2e` for browser checks.
+
+Adaptive Context intake: [implementation and live timing evidence](docs/ADAPTIVE_INTAKE.md), [five-minute demo rehearsal](docs/MANUAL_SYSTEM_TEST_ZH.md).

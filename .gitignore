@@ -16,6 +16,7 @@ __pycache__/
 *.db-wal
 playwright-report/
 test-results/
+.playwright-mcp/
 coverage/
 artifacts/demo/
 

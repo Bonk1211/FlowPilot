@@ -31,10 +31,13 @@ test("case navigator and grounded guidance keep the case read-only", async ({
     await request.get(`/api/investigations/${caseId}`)
   ).json();
   await page.locator(".guidance-toggle").click();
-  await page.getByText("Suggested questions", { exact: true }).click();
+  // The empty chat offers its suggestions directly: one click fills the ask.
   await page
     .getByRole("button", { name: "Why is this the leading cause?" })
     .click();
+  await expect(page.locator(".composer-input textarea")).toHaveValue(
+    "Why is this the leading cause?",
+  );
   await page.getByRole("button", { name: "Ask FlowPilot" }).click();
   await expect(
     page.getByText("FlowPilot guidance", { exact: true }),

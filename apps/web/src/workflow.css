@@ -71,11 +71,12 @@
   background: var(--surface-measurement);
 }
 .workflow-shell .investigation-scroll {
-  padding: 0 clamp(20px, 4vw, 64px) 32px;
+  --scroll-inline-inset: clamp(20px, 4vw, 64px);
+  padding: 0 var(--scroll-inline-inset) 32px;
   scroll-padding-block: 24px;
 }
 .workflow-shell .workspace-masthead {
-  padding-block: 28px;
+  padding-block: 20px 14px;
   min-height: auto;
 }
 .workflow-shell .workspace-masthead h1 {
@@ -144,6 +145,19 @@
 }
 .workflow-shell .primary:hover {
   background: var(--teal-600);
+}
+/* A faded teal fill still reads as an available action. Unavailable primary
+   actions get their own surface, not just lower opacity. */
+.workflow-shell .primary:disabled {
+  background: var(--surface-muted);
+  border-color: var(--border-strong);
+  color: var(--text-muted);
+  opacity: 1;
+}
+.workflow-shell .procedure-viewer .assembly-step-nav .primary:disabled {
+  background: transparent;
+  border-color: var(--border-on-instrument);
+  color: var(--text-muted-on-instrument);
 }
 .workflow-shell .case-primary-task {
   margin-top: 0;
@@ -269,16 +283,13 @@
 }
 .inspection-stage-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 16px;
-}
-.inspection-stage-header h2 {
-  margin: 4px 0 0;
+  margin-bottom: 10px;
 }
 .step-count {
   font-family: "IBM Plex Mono", monospace;
-  font-size: 20px;
+  font-size: 18px;
   color: var(--text-selection);
 }
 .inspection-stage-grid {
@@ -422,7 +433,8 @@
     height: auto;
   }
   .workflow-shell .investigation-scroll {
-    padding-inline: 24px;
+    --scroll-inline-inset: 24px;
+    padding-inline: var(--scroll-inline-inset);
   }
   .inspection-stage-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -485,7 +497,8 @@
 }
 @media (max-width: 767px) {
   .workflow-shell .investigation-scroll {
-    padding-inline: 16px;
+    --scroll-inline-inset: 16px;
+    padding-inline: var(--scroll-inline-inset);
   }
   .workflow-shell .case-navigator {
     padding-inline: 16px;
@@ -642,9 +655,22 @@
   padding: 20px 16px;
 }
 .chat-welcome {
-  padding: 24px 12px;
+  padding: 20px 8px;
   text-align: center;
   color: var(--text-secondary);
+}
+/* Suggested questions are offered up front so the first ask is one click. */
+.chat-welcome .suggested-prompts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+  text-align: left;
+}
+.chat-welcome .prompt-chip {
+  min-height: 44px;
+  width: 100%;
+  justify-content: flex-start;
 }
 .chat-welcome > svg {
   width: 36px;
@@ -693,17 +719,21 @@
   margin-bottom: 8px;
 }
 .chat-panel .composer-input textarea {
-  min-height: 72px;
+  min-height: 56px;
   max-height: 120px;
   resize: none;
   font-size: 14px;
+}
+.chat-panel .guidance-citations a {
+  overflow-wrap: anywhere;
 }
 .chat-loading {
   color: var(--text-muted);
   font-size: 14px;
 }
 .workflow-shell .investigation-scroll {
-  padding-bottom: 104px;
+  --scroll-bottom-inset: 104px;
+  padding-bottom: var(--scroll-bottom-inset);
 }
 @media (max-width: 600px) {
   .guidance-widget {

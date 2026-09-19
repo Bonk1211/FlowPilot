@@ -21,6 +21,7 @@ export type CaseAction =
   | components["schemas"]["AttachLog"]
   | components["schemas"]["Answer"]
   | components["schemas"]["Diagnose"]
+  | components["schemas"]["RefreshKnowledge"]
   | components["schemas"]["Inspect"]
   | components["schemas"]["Confirm"]
   | components["schemas"]["Resolve"]
@@ -35,3 +36,15 @@ export type VisionExample = components["schemas"]["VisionExample"];
 export type IntakeContext = components["schemas"]["IntakeContext"];
 export type LogContext = components["schemas"]["LogContext"];
 export type ObservationChoice = components["schemas"]["ObservationChoice"];
+
+export type KnowledgeEntry = components["schemas"]["KnowledgeEntry"];
+export type KnowledgeContent = components["schemas"]["KnowledgeContent"];
+export type KnowledgeCommand = components["schemas"]["KnowledgeCommand"];
+export type KnowledgeGraph = components["schemas"]["KnowledgeGraph"];
+export type PastExperience = components["schemas"]["PastExperience"];
+export type CitationStatus = components["schemas"]["CitationStatus"];
+export type LibraryOverview = components["schemas"]["LibraryOverview"];
+export type LearningCase = components["schemas"]["LearningCase"];
+
+export type QuestionPlan = components["schemas"]["QuestionPlan"];
+export type QuestionPlanRequest = components["schemas"]["QuestionPlanRequest"];

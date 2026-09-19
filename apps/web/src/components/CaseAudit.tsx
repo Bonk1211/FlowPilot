@@ -1,4 +1,5 @@
 import type { Case } from "@flowpilot/contracts";
+import { ExperienceList } from "./PastExperience";
 import { candidateValue, humanize } from "../presentation";
 
 type Evidence = NonNullable<Case["investigation"]["evidence"]>[number];
@@ -80,7 +81,10 @@ export function SummaryEvidence({ value }: { value: Case }) {
 
 export function DiagnosticHistory({ value }: { value: Case }) {
   return (
-    <section className="case-section case-audit" aria-label="Diagnostic history">
+    <section
+      className="case-section case-audit"
+      aria-label="Diagnostic history"
+    >
       <h2>Diagnostic history</h2>
       <p>
         Saved results at each diagnostic revision. Earlier results keep the
@@ -123,6 +127,12 @@ export function DiagnosticHistory({ value }: { value: Case }) {
               Diagnosis invalidated by evidence correction. Complete discovery
               before diagnosing again.
             </p>
+          )}
+          {!!snapshot.past_experience?.matches?.length && (
+            <details>
+              <summary>Historical experience cited at this revision</summary>
+              <ExperienceList matches={snapshot.past_experience.matches} />
+            </details>
           )}
           <ol>
             {snapshot.ranking.map((cause) => (

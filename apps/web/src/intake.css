@@ -8,7 +8,7 @@
   display: flex;
   gap: 32px;
   list-style: none;
-  padding: 16px 0 24px;
+  padding: 12px 0 14px;
   margin: 0;
   border-bottom: 1px solid var(--border-default);
 }
@@ -37,18 +37,18 @@
 }
 .report-intake .intake-section-title {
   font-size: 20px;
-  margin: 24px 0 16px;
+  margin: 20px 0 12px;
 }
 .intake-title {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
   gap: 24px;
-  padding: 28px 0;
+  padding: 18px 0 14px;
 }
 .intake-title h2 {
-  font-size: 28px;
-  margin: 4px 0 8px;
+  font-size: 22px;
+  margin: 0 0 2px;
 }
 .intake-title p {
   margin: 0;
@@ -65,17 +65,17 @@
 }
 .intake-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 290px;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) 264px;
+  gap: 20px;
   align-items: start;
 }
 .intake-main {
   display: grid;
-  gap: 24px;
+  gap: 16px;
   min-width: 0;
 }
 .report-intake .intake-card {
-  padding: 28px;
+  padding: 20px 24px;
   border: 1px solid var(--border-default);
   border-radius: 12px;
   background: var(--surface-document);
@@ -109,7 +109,7 @@
 .intake-upload-label {
   display: block;
   margin-bottom: 8px;
-  font-weight: 500;
+  font-weight: 600;
 }
 .intake-card input[type="file"] {
   display: block;
@@ -266,6 +266,10 @@
   flex: 1 1 230px;
   min-width: 0;
 }
+/* On the tinted evidence panel a transparent button reads as disabled. */
+.intake-suggestion button {
+  background: var(--surface-document);
+}
 .intake-suggestion p {
   font-size: 14px;
   margin: 4px 0 8px;
@@ -380,12 +384,23 @@
   color: var(--text-selection);
   flex-shrink: 0;
 }
+/* One primary action per report step, pinned to the bottom edge of the task
+   column. The negative offset cancels the scroll container's bottom inset so
+   the bar reaches the edge instead of floating over the card, and that inset
+   is the room reserved below the content so it never hides the last row. */
 .intake-footer {
+  position: sticky;
+  bottom: calc(-1 * var(--scroll-bottom-inset, 0px));
+  z-index: 2;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 20px;
-  padding: 24px 0;
+  margin: 8px calc(-1 * var(--scroll-inline-inset, 0px)) 0;
+  padding: 14px var(--scroll-inline-inset, 0px);
+  background: var(--surface-measurement);
+  box-shadow: 0 -12px 16px -12px rgb(19 35 49 / 0.28);
+  border-top: 1px solid var(--border-default);
 }
 .intake-footer p {
   font-size: 14px;
@@ -477,4 +492,228 @@
   .intake-options label {
     width: 100%;
   }
+}
+
+/* Guided intake: one decision at a time, with an editable evidence summary. */
+.intake-log-disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.intake-log-disclosure[open] > summary {
+  margin-bottom: 16px;
+}
+/* Once the log is confirmed it becomes a one-line receipt, not a full card. */
+.report-intake .intake-log-disclosure:not([open]) {
+  padding: 4px 24px;
+}
+/* Source line references stay available but do not compete with the answer. */
+.intake-source-lines > summary {
+  min-height: 32px;
+  display: list-item;
+  list-style-position: inside;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.intake-source-lines > small {
+  display: block;
+  padding-bottom: 4px;
+}
+.intake-planner-status {
+  padding: 16px;
+  margin-bottom: 20px;
+  background: var(--surface-document);
+  border-left: 3px solid var(--text-selection);
+  border-radius: 4px;
+}
+.intake-planner-status p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+.intake-planner-status span,
+.intake-answer-summary small {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.intake-question h4 {
+  font-size: 24px;
+  line-height: 1.3;
+  margin: 0 0 12px;
+}
+.intake-question-navigation {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 20px;
+}
+.intake-question-navigation button,
+.intake-clarification button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.intake-supplement {
+  display: grid;
+  gap: 8px;
+  margin-top: 24px;
+  font-weight: 500;
+}
+.intake-supplement span {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+}
+.intake-supplement textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  font: inherit;
+}
+.intake-answer-summary {
+  margin-bottom: 24px;
+}
+.intake-answer-summary > div {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-default);
+}
+.intake-answer-summary strong {
+  font-size: 14px;
+  line-height: 1.45;
+  display: block;
+}
+.intake-answer-summary p {
+  margin: 6px 0;
+}
+.intake-answer-summary button {
+  min-height: 44px;
+  margin: 8px 0 0;
+  display: block;
+}
+.intake-clarification {
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  margin-bottom: 16px;
+}
+.intake-clarification button {
+  margin: 4px 8px 4px 0;
+}
+.intake-plan-sources {
+  margin-bottom: 16px;
+  overflow-wrap: anywhere;
+}
+.intake-plan-sources summary {
+  cursor: pointer;
+  min-height: 44px;
+}
+@media (max-width: 700px) {
+  .intake-question h4 {
+    font-size: 21px;
+  }
+  .intake-supplement textarea {
+    font-size: 16px;
+  }
+}
+
+.intake-card {
+  scroll-margin-top: 80px;
+}
+/* Confirmed answers are a compact receipt: label, value, source, one Edit. */
+.intake-answer-summary > div {
+  position: relative;
+  padding: 10px 54px 10px 0;
+}
+.intake-answer-summary p {
+  margin: 2px 0;
+}
+.intake-answer-summary small {
+  display: block;
+  margin-top: 1px;
+}
+.intake-answer-summary button {
+  position: absolute;
+  right: 0;
+  top: 4px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px;
+}
+.intake-photo-summary img {
+  max-height: 170px;
+  object-fit: contain;
+}
+.intake-remaining {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.report-intake .intake-guided-card {
+  padding: 20px;
+}
+.intake-guided-card .intake-card-heading {
+  margin-bottom: 12px;
+}
+.intake-guided-card .intake-planner-status {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 16px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.intake-guided-card .intake-planner-status p {
+  grid-column: 1 / -1;
+}
+.intake-guided-card .intake-planner-status > span {
+  justify-self: end;
+  white-space: nowrap;
+}
+.intake-guided-card .intake-planner-status p {
+  margin: 4px 0;
+  font-size: 14px;
+}
+.intake-guided-card .intake-plan-sources {
+  margin-bottom: 8px;
+}
+.intake-guided-card .intake-plan-sources summary {
+  padding: 8px 0;
+}
+.report-intake .intake-guided-card .intake-question {
+  padding: 14px 0 0;
+}
+.intake-guided-card .intake-help {
+  margin-bottom: 14px;
+}
+.intake-guided-card .intake-supplement {
+  margin-top: 16px;
+  gap: 6px;
+}
+.intake-guided-card textarea {
+  min-height: 58px;
+}
+.intake-guided-card .intake-card-heading {
+  margin-bottom: 10px;
+}
+.intake-guided-card .intake-card-heading p {
+  display: none;
+}
+.intake-guided-card .intake-card-heading {
+  margin-bottom: 10px;
+}
+.intake-guided-card .intake-card-heading p {
+  display: none;
+}
+/* The answer controls stay in flow. A sticky bar used to cover the last radio
+   option and the supplementary note field at common scroll positions. */
+.intake-guided-card .intake-question-navigation {
+  margin-top: 16px;
+  padding-top: 14px;
+  background: var(--surface-document);
+  border-top: 1px solid var(--border-default);
 }

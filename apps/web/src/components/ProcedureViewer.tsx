@@ -79,38 +79,6 @@ export function ProcedureViewer({
       className="procedure-viewer"
       aria-label="Illustrative procedure viewer"
     >
-      <p>
-        Generic illustrative fluid-dispenser model — not the exact installed
-        machine and not OEM-certified guidance.
-      </p>
-      <div className="assembly-tools">
-        <button
-          className="secondary"
-          onClick={() => {
-            setTwoD(!twoD);
-            setPlaying(false);
-          }}
-        >
-          {twoD ? "Use 3D view" : "Use 2D view"}
-        </button>
-        <button
-          className="secondary"
-          disabled={reduced || index === steps.length - 1}
-          onClick={() => setPlaying(!playing)}
-        >
-          {playing ? "Pause guide" : "Play guide"}
-        </button>
-        <button
-          className="secondary"
-          onClick={() => {
-            setReset(reset + 1);
-            setPlaying(false);
-          }}
-        >
-          Reset view
-        </button>
-      </div>
-      {reduced && <p>Reduced motion: use the step buttons to advance.</p>}
       {failed || !mapped ? (
         <p role="status">
           3D unavailable. The 2D and text guides remain available.
@@ -161,7 +129,7 @@ export function ProcedureViewer({
           )}
         </div>
       )}
-      <div className="assembly-tools">
+      <div className="assembly-step-nav">
         <button
           className="secondary"
           disabled={index === 0}
@@ -173,7 +141,7 @@ export function ProcedureViewer({
           Previous step
         </button>
         <button
-          className="secondary"
+          className="primary"
           disabled={index === steps.length - 1}
           onClick={() => {
             setPlaying(false);
@@ -183,6 +151,34 @@ export function ProcedureViewer({
           Next step
         </button>
       </div>
+      <div className="assembly-tools assembly-view-tools">
+        <button
+          className="secondary"
+          onClick={() => {
+            setTwoD(!twoD);
+            setPlaying(false);
+          }}
+        >
+          {twoD ? "Use 3D view" : "Use 2D view"}
+        </button>
+        <button
+          className="secondary"
+          disabled={reduced || index === steps.length - 1}
+          onClick={() => setPlaying(!playing)}
+        >
+          {playing ? "Pause guide" : "Play guide"}
+        </button>
+        <button
+          className="secondary"
+          onClick={() => {
+            setReset(reset + 1);
+            setPlaying(false);
+          }}
+        >
+          Reset view
+        </button>
+      </div>
+      {reduced && <p>Reduced motion: use the step buttons to advance.</p>}
       <details open={failed || !mapped || undefined}>
         <summary>Text alternative</summary>
         <ol>
@@ -204,10 +200,11 @@ export function ProcedureViewer({
           ))}
         </ol>
       </details>
-      <p>
-        Drag to orbit; right-drag to pan; scroll to zoom. Camera buttons also
-        work with a keyboard. Playback highlights parts only and never records
-        an observation.
+      <p className="viewer-note">
+        Generic illustrative fluid-dispenser model — not the exact installed
+        machine and not OEM-certified guidance. Drag to orbit; right-drag to
+        pan; scroll to zoom. Camera buttons also work with a keyboard. Playback
+        highlights parts only and never records an observation.
       </p>
     </section>
   );

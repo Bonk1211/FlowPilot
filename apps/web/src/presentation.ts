@@ -8,6 +8,12 @@ export const humanize = (value: string) =>
     .replace(/([a-z])([A-Z])/g, "$1 $2")
     .toLowerCase();
 
+/** Humanized value for headings, where a bare lowercase token reads as a typo. */
+export const sentenceCase = (value: string) => {
+  const text = humanize(value);
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
+
 // Preserve the logged local time and supplied offset, without browser-timezone conversion.
 export function displayTimestamp(value: string | null | undefined) {
   return value ? value.replace("T", " · ") : "Not recorded";
@@ -72,3 +78,12 @@ export function eventFlags(
     ),
   };
 }
+
+export const knowledgeState = (state: string) =>
+  ({
+    published: "Available to AI",
+    draft: "Pending review",
+    disputed: "Disputed",
+    archived: "Archived",
+    recorded: "Saved to database",
+  })[state] ?? humanize(state);

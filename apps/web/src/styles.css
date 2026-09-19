@@ -139,7 +139,8 @@ pre {
   top: 0;
   z-index: 3;
   min-height: var(--command-bar-height);
-  padding: var(--space-3) var(--workspace-gutter);
+  padding: calc((var(--command-bar-height) - var(--control-height)) / 2)
+    var(--workspace-gutter);
   display: flex;
   align-items: center;
   gap: var(--space-6);

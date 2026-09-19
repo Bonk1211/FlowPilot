@@ -373,7 +373,10 @@ export default function AssemblyScene({
         data-model-loaded={loaded}
       />
       {!loaded && <p role="status">Loading detailed assembly…</p>}
-      <div className="assembly-tools" aria-label="Camera controls">
+      <div
+        className="assembly-tools assembly-camera-tools"
+        aria-label="Camera controls"
+      >
         <button
           type="button"
           className="secondary assembly-tool-labelled"

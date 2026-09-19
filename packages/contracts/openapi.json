@@ -33,6 +33,13 @@
             "title": "Hypothesis Id",
             "type": "string"
           },
+          "knowledge_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Knowledge Refs",
+            "type": "array"
+          },
           "missing_evidence": {
             "items": {
               "type": "string"
@@ -101,6 +108,47 @@
           "value"
         ],
         "title": "Answer",
+        "type": "object"
+      },
+      "AnswerClarification": {
+        "additionalProperties": false,
+        "properties": {
+          "prompt": {
+            "maxLength": 180,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "proposed_value": {
+            "maxLength": 30,
+            "title": "Proposed Value",
+            "type": "string"
+          },
+          "question_id": {
+            "enum": [
+              "frequency",
+              "continuous",
+              "intermittent",
+              "change",
+              "temperature",
+              "service"
+            ],
+            "title": "Question Id",
+            "type": "string"
+          },
+          "source_ref": {
+            "maxLength": 80,
+            "title": "Source Ref",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "prompt",
+          "proposed_value",
+          "source_ref"
+        ],
+        "title": "AnswerClarification",
         "type": "object"
       },
       "AttachLog": {
@@ -241,6 +289,9 @@
                 "type": "null"
               }
             ]
+          },
+          "past_experience": {
+            "$ref": "#/components/schemas/RetrievalSnapshot"
           },
           "pending_outcome": {
             "anyOf": [
@@ -385,6 +436,7 @@
           "findings",
           "findings_mode",
           "reasoning",
+          "past_experience",
           "diagnostic_history",
           "recommendation",
           "procedure",
@@ -408,6 +460,13 @@
               "type": "string"
             },
             "title": "Evidence Ids",
+            "type": "array"
+          },
+          "knowledge_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Knowledge Refs",
             "type": "array"
           },
           "mode": {
@@ -557,6 +616,42 @@
           "evidence_ids"
         ],
         "title": "CaseSummary",
+        "type": "object"
+      },
+      "CitationStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "citation": {
+            "title": "Citation",
+            "type": "string"
+          },
+          "current": {
+            "title": "Current",
+            "type": "boolean"
+          },
+          "latest_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Version"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "citation",
+          "current",
+          "status",
+          "latest_version"
+        ],
+        "title": "CitationStatus",
         "type": "object"
       },
       "CompleteAction": {
@@ -930,6 +1025,9 @@
             "title": "Findings Mode",
             "type": "string"
           },
+          "past_experience": {
+            "$ref": "#/components/schemas/RetrievalSnapshot"
+          },
           "ranking": {
             "items": {
               "$ref": "#/components/schemas/RankedCause"
@@ -964,7 +1062,8 @@
               "retained_baseline",
               "diagnose",
               "confirm_observation",
-              "correct_evidence"
+              "correct_evidence",
+              "refresh_knowledge"
             ],
             "title": "Trigger",
             "type": "string"
@@ -1014,6 +1113,57 @@
           "options"
         ],
         "title": "DiscoveryQuestion",
+        "type": "object"
+      },
+      "DraftGeneration": {
+        "additionalProperties": false,
+        "properties": {
+          "mode": {
+            "default": "cached",
+            "enum": [
+              "pending",
+              "live",
+              "cached",
+              "manual"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "timestamp": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestamp"
+          }
+        },
+        "title": "DraftGeneration",
         "type": "object"
       },
       "Evidence": {
@@ -1903,6 +2053,541 @@
         "type": "object"
       },
       "JsonValue": {},
+      "KnowledgeCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "enum": [
+              "revise",
+              "publish",
+              "dispute",
+              "archive"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "actor": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Actor",
+            "type": "string"
+          },
+          "confirmed": {
+            "const": true,
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/KnowledgeContent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision",
+          "action",
+          "actor",
+          "reason",
+          "confirmed"
+        ],
+        "title": "KnowledgeCommand",
+        "type": "object"
+      },
+      "KnowledgeContent": {
+        "additionalProperties": false,
+        "properties": {
+          "check_focus": {
+            "enum": [
+              "nozzle_inspection",
+              "air_supply_review",
+              "material_review"
+            ],
+            "title": "Check Focus",
+            "type": "string"
+          },
+          "finding": {
+            "enum": [
+              "obstruction_found",
+              "no_obstruction_found",
+              "uncertain"
+            ],
+            "title": "Finding",
+            "type": "string"
+          },
+          "lesson": {
+            "maxLength": 1200,
+            "minLength": 1,
+            "title": "Lesson",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "recovered",
+              "not_recovered",
+              "unresolved"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "supporting_evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Supporting Evidence Ids",
+            "type": "array"
+          },
+          "title": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "lesson",
+          "finding",
+          "outcome",
+          "check_focus",
+          "supporting_evidence_ids"
+        ],
+        "title": "KnowledgeContent",
+        "type": "object"
+      },
+      "KnowledgeCreate": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Actor",
+            "type": "string"
+          },
+          "source_revision": {
+            "minimum": 0,
+            "title": "Source Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "source_revision",
+          "actor"
+        ],
+        "title": "KnowledgeCreate",
+        "type": "object"
+      },
+      "KnowledgeEdge": {
+        "additionalProperties": false,
+        "properties": {
+          "case_id": {
+            "title": "Case Id",
+            "type": "string"
+          },
+          "citation": {
+            "title": "Citation",
+            "type": "string"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "relation": {
+            "title": "Relation",
+            "type": "string"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "target": {
+            "title": "Target",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "source",
+          "target",
+          "relation",
+          "citation",
+          "evidence_ids",
+          "status",
+          "case_id"
+        ],
+        "title": "KnowledgeEdge",
+        "type": "object"
+      },
+      "KnowledgeEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeEvent"
+            },
+            "title": "Events",
+            "type": "array"
+          },
+          "generation": {
+            "$ref": "#/components/schemas/DraftGeneration"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "source_case_id": {
+            "title": "Source Case Id",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "draft",
+              "published",
+              "disputed",
+              "archived"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeVersion"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "source_case_id",
+          "revision",
+          "status",
+          "versions",
+          "events"
+        ],
+        "title": "KnowledgeEntry",
+        "type": "object"
+      },
+      "KnowledgeEvent": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "state": {
+            "enum": [
+              "draft",
+              "published",
+              "disputed",
+              "archived"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision",
+          "version",
+          "state",
+          "actor",
+          "reason",
+          "timestamp"
+        ],
+        "title": "KnowledgeEvent",
+        "type": "object"
+      },
+      "KnowledgeGraph": {
+        "additionalProperties": false,
+        "properties": {
+          "edges": {
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeEdge"
+            },
+            "title": "Edges",
+            "type": "array"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          }
+        },
+        "required": [
+          "nodes",
+          "edges"
+        ],
+        "title": "KnowledgeGraph",
+        "type": "object"
+      },
+      "KnowledgeNode": {
+        "additionalProperties": false,
+        "properties": {
+          "case_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Case Ids",
+            "type": "array"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "href": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Href"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "label",
+          "detail"
+        ],
+        "title": "KnowledgeNode",
+        "type": "object"
+      },
+      "KnowledgeSource": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action"
+          },
+          "actual_finding": {
+            "enum": [
+              "obstruction_found",
+              "no_obstruction_found",
+              "uncertain"
+            ],
+            "title": "Actual Finding",
+            "type": "string"
+          },
+          "actual_outcome": {
+            "enum": [
+              "recovered",
+              "not_recovered",
+              "unresolved"
+            ],
+            "title": "Actual Outcome",
+            "type": "string"
+          },
+          "case_id": {
+            "title": "Case Id",
+            "type": "string"
+          },
+          "conditions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Conditions",
+            "type": "object"
+          },
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/Evidence"
+            },
+            "title": "Evidence",
+            "type": "array"
+          },
+          "fingerprint": {
+            "title": "Fingerprint",
+            "type": "string"
+          },
+          "image_url": {
+            "title": "Image Url",
+            "type": "string"
+          },
+          "log_digest": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Log Digest"
+          },
+          "possible_causes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Possible Causes",
+            "type": "array"
+          },
+          "problem": {
+            "title": "Problem",
+            "type": "string"
+          },
+          "process": {
+            "title": "Process",
+            "type": "string"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "signature": {
+            "title": "Signature",
+            "type": "string"
+          },
+          "simulated": {
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "verification_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification Image Url"
+          }
+        },
+        "required": [
+          "case_id",
+          "revision",
+          "signature",
+          "process",
+          "simulated",
+          "recorded_at",
+          "conditions",
+          "problem",
+          "possible_causes",
+          "actual_finding",
+          "actual_outcome",
+          "action",
+          "evidence",
+          "image_url",
+          "verification_image_url",
+          "log_digest",
+          "fingerprint"
+        ],
+        "title": "KnowledgeSource",
+        "type": "object"
+      },
+      "KnowledgeVersion": {
+        "additionalProperties": false,
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "content": {
+            "$ref": "#/components/schemas/KnowledgeContent"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/KnowledgeSource"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "created_at",
+          "actor",
+          "reason",
+          "source",
+          "content"
+        ],
+        "title": "KnowledgeVersion",
+        "type": "object"
+      },
       "LaneCheck": {
         "additionalProperties": false,
         "properties": {
@@ -1927,6 +2612,94 @@
           "lane"
         ],
         "title": "LaneCheck",
+        "type": "object"
+      },
+      "LearningCase": {
+        "additionalProperties": false,
+        "properties": {
+          "group_case_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Group Case Ids",
+            "type": "array"
+          },
+          "group_size": {
+            "default": 1,
+            "title": "Group Size",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "knowledge_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Knowledge Id"
+          },
+          "knowledge_status": {
+            "title": "Knowledge Status",
+            "type": "string"
+          },
+          "process": {
+            "title": "Process",
+            "type": "string"
+          },
+          "simulated": {
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "symptoms": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Symptoms",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "updated_at": {
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "process",
+          "state",
+          "updated_at",
+          "symptoms",
+          "knowledge_id",
+          "knowledge_status",
+          "version",
+          "simulated"
+        ],
+        "title": "LearningCase",
         "type": "object"
       },
       "LegacyMeasurement": {
@@ -2026,6 +2799,60 @@
           "passed"
         ],
         "title": "LegacyMeasurement",
+        "type": "object"
+      },
+      "LibraryOverview": {
+        "additionalProperties": false,
+        "properties": {
+          "cases": {
+            "items": {
+              "$ref": "#/components/schemas/LearningCase"
+            },
+            "title": "Cases",
+            "type": "array"
+          },
+          "graph": {
+            "$ref": "#/components/schemas/KnowledgeGraph"
+          },
+          "pending_review": {
+            "title": "Pending Review",
+            "type": "integer"
+          },
+          "processes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Processes",
+            "type": "array"
+          },
+          "reusable_experiences": {
+            "title": "Reusable Experiences",
+            "type": "integer"
+          },
+          "saved_cases": {
+            "title": "Saved Cases",
+            "type": "integer"
+          },
+          "total_matching": {
+            "title": "Total Matching",
+            "type": "integer"
+          },
+          "truncated": {
+            "title": "Truncated",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "saved_cases",
+          "reusable_experiences",
+          "pending_review",
+          "processes",
+          "cases",
+          "graph",
+          "total_matching",
+          "truncated"
+        ],
+        "title": "LibraryOverview",
         "type": "object"
       },
       "LogContext": {
@@ -2490,6 +3317,131 @@
         "title": "ObservationChoice",
         "type": "object"
       },
+      "PastExperience": {
+        "additionalProperties": false,
+        "properties": {
+          "citation": {
+            "title": "Citation",
+            "type": "string"
+          },
+          "content": {
+            "$ref": "#/components/schemas/KnowledgeContent"
+          },
+          "historical_action": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Historical Action"
+          },
+          "knowledge_id": {
+            "title": "Knowledge Id",
+            "type": "string"
+          },
+          "matched_conditions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Matched Conditions",
+            "type": "array"
+          },
+          "simulated": {
+            "title": "Simulated",
+            "type": "boolean"
+          },
+          "source_case_id": {
+            "title": "Source Case Id",
+            "type": "string"
+          },
+          "source_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Refs",
+            "type": "array"
+          },
+          "source_revision": {
+            "title": "Source Revision",
+            "type": "integer"
+          },
+          "unknown_conditions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Unknown Conditions",
+            "type": "array"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "knowledge_id",
+          "version",
+          "citation",
+          "source_case_id",
+          "source_revision",
+          "simulated",
+          "matched_conditions",
+          "unknown_conditions",
+          "content",
+          "historical_action",
+          "source_refs"
+        ],
+        "title": "PastExperience",
+        "type": "object"
+      },
+      "PlannedQuestion": {
+        "additionalProperties": false,
+        "properties": {
+          "prompt": {
+            "maxLength": 180,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "question_id": {
+            "enum": [
+              "frequency",
+              "continuous",
+              "intermittent",
+              "change",
+              "temperature",
+              "service"
+            ],
+            "title": "Question Id",
+            "type": "string"
+          },
+          "rationale": {
+            "maxLength": 240,
+            "minLength": 1,
+            "title": "Rationale",
+            "type": "string"
+          },
+          "source_refs": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Source Refs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "question_id",
+          "prompt",
+          "rationale",
+          "source_refs"
+        ],
+        "title": "PlannedQuestion",
+        "type": "object"
+      },
       "ProcedureStep": {
         "additionalProperties": false,
         "properties": {
@@ -2587,6 +3539,184 @@
         "title": "QuestionOption",
         "type": "object"
       },
+      "QuestionPlan": {
+        "additionalProperties": false,
+        "properties": {
+          "clarification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnswerClarification"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "elapsed_ms": {
+            "title": "Elapsed Ms",
+            "type": "integer"
+          },
+          "fallback_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fallback Reason"
+          },
+          "mode": {
+            "enum": [
+              "live",
+              "fallback"
+            ],
+            "title": "Mode",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/PlannedQuestion"
+            },
+            "maxItems": 4,
+            "title": "Questions",
+            "type": "array"
+          },
+          "ready": {
+            "title": "Ready",
+            "type": "boolean"
+          },
+          "replan_when": {
+            "items": {
+              "$ref": "#/components/schemas/ReplanTrigger"
+            },
+            "maxItems": 4,
+            "title": "Replan When",
+            "type": "array"
+          },
+          "source_refs": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 8,
+            "minItems": 1,
+            "title": "Source Refs",
+            "type": "array"
+          },
+          "state_id": {
+            "title": "State Id",
+            "type": "string"
+          },
+          "summary": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "summary",
+          "source_refs",
+          "questions",
+          "state_id",
+          "mode",
+          "ready",
+          "elapsed_ms"
+        ],
+        "title": "QuestionPlan",
+        "type": "object"
+      },
+      "QuestionPlanRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "assessment_id": {
+            "title": "Assessment Id",
+            "type": "string"
+          },
+          "board_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Board Id"
+          },
+          "clarified": {
+            "items": {
+              "enum": [
+                "frequency",
+                "continuous",
+                "intermittent",
+                "change",
+                "temperature",
+                "service"
+              ],
+              "type": "string"
+            },
+            "maxItems": 5,
+            "title": "Clarified",
+            "type": "array"
+          },
+          "log": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LogPreviewRequest"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "log_confirmed": {
+            "default": false,
+            "title": "Log Confirmed",
+            "type": "boolean"
+          },
+          "observations": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ObservationChoice"
+            },
+            "maxProperties": 5,
+            "title": "Observations",
+            "type": "object"
+          },
+          "state_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "State Id",
+            "type": "string"
+          },
+          "supplements": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "maxProperties": 5,
+            "title": "Supplements",
+            "type": "object"
+          }
+        },
+        "required": [
+          "assessment_id",
+          "state_id"
+        ],
+        "title": "QuestionPlanRequest",
+        "type": "object"
+      },
       "RankedCause": {
         "additionalProperties": false,
         "properties": {
@@ -2680,7 +3810,7 @@
             "title": "Model"
           },
           "prompt_version": {
-            "default": "flux-2.0",
+            "default": "flux-2.1-knowledge",
             "title": "Prompt Version",
             "type": "string"
           },
@@ -2795,6 +3925,55 @@
         "title": "RecoveryChecks",
         "type": "object"
       },
+      "RefreshKnowledge": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "const": "refresh_knowledge",
+            "title": "Action",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision",
+          "action"
+        ],
+        "title": "RefreshKnowledge",
+        "type": "object"
+      },
+      "ReplanTrigger": {
+        "additionalProperties": false,
+        "properties": {
+          "answer": {
+            "maxLength": 30,
+            "title": "Answer",
+            "type": "string"
+          },
+          "question_id": {
+            "enum": [
+              "frequency",
+              "continuous",
+              "intermittent",
+              "change",
+              "temperature",
+              "service"
+            ],
+            "title": "Question Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question_id",
+          "answer"
+        ],
+        "title": "ReplanTrigger",
+        "type": "object"
+      },
       "Resolve": {
         "additionalProperties": false,
         "properties": {
@@ -2826,6 +4005,52 @@
           "confirmed"
         ],
         "title": "Resolve",
+        "type": "object"
+      },
+      "RetrievalSnapshot": {
+        "additionalProperties": false,
+        "properties": {
+          "explanation": {
+            "default": "Past experience has not been retrieved.",
+            "title": "Explanation",
+            "type": "string"
+          },
+          "library_revision": {
+            "default": 0,
+            "title": "Library Revision",
+            "type": "integer"
+          },
+          "matches": {
+            "items": {
+              "$ref": "#/components/schemas/PastExperience"
+            },
+            "title": "Matches",
+            "type": "array"
+          },
+          "retrieved_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Retrieved At"
+          },
+          "suggested_check": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Check"
+          }
+        },
+        "title": "RetrievalSnapshot",
         "type": "object"
       },
       "ScoreContribution": {
@@ -3406,6 +4631,47 @@
         ]
       }
     },
+    "/api/intake/question-plan": {
+      "post": {
+        "operationId": "question_plan_api_intake_question_plan_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuestionPlanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuestionPlan"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Question Plan",
+        "tags": [
+          "intake"
+        ]
+      }
+    },
     "/api/investigations": {
       "get": {
         "operationId": "list_cases_api_investigations_get",
@@ -3563,6 +4829,7 @@
                     "correct_evidence": "#/components/schemas/CorrectEvidence",
                     "diagnose": "#/components/schemas/Diagnose",
                     "inspect": "#/components/schemas/Inspect",
+                    "refresh_knowledge": "#/components/schemas/RefreshKnowledge",
                     "resolve": "#/components/schemas/Resolve",
                     "verify": "#/components/schemas/Verify"
                   },
@@ -3577,6 +4844,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/Diagnose"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RefreshKnowledge"
                   },
                   {
                     "$ref": "#/components/schemas/Inspect"
@@ -3680,6 +4950,509 @@
         "summary": "Explain",
         "tags": [
           "cases"
+        ]
+      }
+    },
+    "/api/investigations/{case_id}/knowledge-status": {
+      "get": {
+        "operationId": "reference_status_api_investigations__case_id__knowledge_status_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CitationStatus"
+                  },
+                  "title": "Response Reference Status Api Investigations  Case Id  Knowledge Status Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reference Status",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge": {
+      "get": {
+        "operationId": "entries_api_knowledge_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 200,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/KnowledgeEntry"
+                  },
+                  "title": "Response Entries Api Knowledge Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Entries",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/by-source/{case_id}": {
+      "get": {
+        "operationId": "by_source_api_knowledge_by_source__case_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/KnowledgeEntry"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response By Source Api Knowledge By Source  Case Id  Get"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "By Source",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/from-case/{case_id}": {
+      "post": {
+        "operationId": "draft_api_knowledge_from_case__case_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "title": "Case Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KnowledgeCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeEntry"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Draft",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/graph": {
+      "get": {
+        "operationId": "library_graph_api_knowledge_graph_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "maxLength": 200,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "process",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Process",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "symptom",
+            "required": false,
+            "schema": {
+              "default": "",
+              "title": "Symptom",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 40,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryOverview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Library Graph",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/{entry_id}": {
+      "get": {
+        "operationId": "detail_api_knowledge__entry_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "title": "Entry Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeEntry"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Detail",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/{entry_id}/actions": {
+      "post": {
+        "operationId": "command_api_knowledge__entry_id__actions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "title": "Entry Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KnowledgeCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeEntry"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Command",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/{entry_id}/graph": {
+      "get": {
+        "operationId": "graph_api_knowledge__entry_id__graph_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "title": "Entry Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Version"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeGraph"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Graph",
+        "tags": [
+          "knowledge"
+        ]
+      }
+    },
+    "/api/knowledge/{entry_id}/prepare": {
+      "post": {
+        "operationId": "retry_preparation_api_knowledge__entry_id__prepare_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "entry_id",
+            "required": true,
+            "schema": {
+              "title": "Entry Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KnowledgeCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/KnowledgeEntry"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Preparation",
+        "tags": [
+          "knowledge"
         ]
       }
     },

@@ -327,40 +327,44 @@ export function PhotoInput({
           <p className="vision-kicker">AI VISUAL INSPECTION</p>
           <h2>{title}</h2>
         </div>
+        <ol className="vision-steps" aria-label="Photo analysis steps">
+          {["Upload photo", "AI analysis", "Review findings"].map(
+            (step, index) => {
+              const complete =
+                index === 0 ? !!file || !!value : index === 1 && !!value;
+              const active =
+                !file && !value
+                  ? index === 0
+                  : value
+                    ? index === 2
+                    : index === 1;
+              return (
+                <li
+                  key={step}
+                  className={complete ? "is-complete" : ""}
+                  aria-current={active ? "step" : undefined}
+                >
+                  <span>
+                    {complete ? (
+                      <CheckCircle weight="fill" aria-hidden="true" />
+                    ) : (
+                      `0${index + 1}`
+                    )}
+                  </span>
+                  {step}
+                  {index < 2 && (
+                    <ArrowRight
+                      className="vision-step-arrow"
+                      aria-hidden="true"
+                    />
+                  )}
+                </li>
+              );
+            },
+          )}
+        </ol>
         <ModelBadge />
       </header>
-      <ol className="vision-steps" aria-label="Photo analysis steps">
-        {["Upload photo", "AI analysis", "Review findings"].map(
-          (step, index) => {
-            const complete =
-              index === 0 ? !!file || !!value : index === 1 && !!value;
-            const active =
-              !file && !value ? index === 0 : value ? index === 2 : index === 1;
-            return (
-              <li
-                key={step}
-                className={complete ? "is-complete" : ""}
-                aria-current={active ? "step" : undefined}
-              >
-                <span>
-                  {complete ? (
-                    <CheckCircle weight="fill" aria-hidden="true" />
-                  ) : (
-                    `0${index + 1}`
-                  )}
-                </span>
-                {step}
-                {index < 2 && (
-                  <ArrowRight
-                    className="vision-step-arrow"
-                    aria-hidden="true"
-                  />
-                )}
-              </li>
-            );
-          },
-        )}
-      </ol>
       <span id={`${id}-hint`} className="sr-only">
         PNG or JPEG photo, up to 8 MB.
       </span>
@@ -471,7 +475,33 @@ export function PhotoInput({
                 ? "Your photo is being compared with normal-reference features. The result will show the areas that need attention."
                 : "PatchCore compares the spray pattern with a normal reference and highlights unusual regions."}
             </p>
-            <ul className="vision-capabilities">
+            {file && (
+              <div className="vision-inline-action">
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={busy}
+                  onClick={() => void analyze()}
+                >
+                  {busy ? (
+                    <CircleNotch
+                      className="vision-spinner"
+                      aria-hidden="true"
+                    />
+                  ) : (
+                    <Scan aria-hidden="true" />
+                  )}
+                  {busy ? "Analyzing…" : "Analyze photo"}
+                </button>
+                {busy && (
+                  <button type="button" className="secondary" onClick={cancel}>
+                    <X aria-hidden="true" />
+                    Cancel
+                  </button>
+                )}
+              </div>
+            )}
+            <ul className="vision-capabilities" hidden={!!file}>
               <li>
                 <Crosshair aria-hidden="true" />
                 <span>
@@ -510,34 +540,18 @@ export function PhotoInput({
           </div>
         </div>
       )}
-      {file && (
+      {file && value && (
         <footer className="vision-action-bar">
-          <p>
-            {busy
-              ? "Waiting for the model result…"
-              : value
-                ? "Analysis complete. Review the findings before continuing."
-                : "Your photo is ready for model analysis."}
-          </p>
+          <p>Analysis complete. Review the findings before continuing.</p>
           <div>
-            {busy && (
-              <button type="button" className="secondary" onClick={cancel}>
-                <X aria-hidden="true" />
-                Cancel
-              </button>
-            )}
             <button
               type="button"
-              className={value ? "secondary" : "primary"}
+              className="secondary"
               disabled={busy}
               onClick={() => void analyze()}
             >
-              {busy ? (
-                <CircleNotch className="vision-spinner" aria-hidden="true" />
-              ) : (
-                <Scan aria-hidden="true" />
-              )}
-              {busy ? "Analyzing…" : value ? "Analyze again" : "Analyze photo"}
+              <Scan aria-hidden="true" />
+              Analyze again
             </button>
           </div>
         </footer>

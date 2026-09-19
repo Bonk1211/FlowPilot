@@ -45,6 +45,15 @@
   width: 44px;
   padding: 0;
 }
+/* Camera controls support the model; they must not claim a second full row. */
+.assembly-camera-tools {
+  gap: var(--space-1);
+  margin: var(--space-2) 0 0;
+}
+.assembly-camera-tools .assembly-tool-labelled {
+  font-size: var(--font-compact);
+  padding-inline: var(--space-3);
+}
 .assembly-tools svg {
   width: 18px;
   height: 18px;
@@ -55,6 +64,38 @@
 }
 .procedure-viewer .assembly-tools button:hover {
   background: var(--surface-instrument-panel);
+}
+/* Advancing the walkthrough is the main action here; camera and playback
+   controls sit below it in a quieter row. */
+.assembly-step-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 var(--space-2);
+}
+.assembly-step-nav button {
+  min-height: 44px;
+  flex: 1 1 auto;
+}
+.procedure-viewer .assembly-step-nav .secondary {
+  flex: 0 1 auto;
+  border-color: var(--border-on-instrument);
+  color: var(--text-on-instrument);
+}
+.procedure-viewer .assembly-step-nav .primary {
+  background: var(--button-primary-on-instrument-background);
+  color: var(--button-primary-on-instrument-text);
+  border-color: transparent;
+}
+.procedure-viewer .assembly-step-nav .primary:disabled {
+  opacity: 0.45;
+}
+.assembly-view-tools button {
+  font-size: var(--font-compact);
+  min-height: 40px;
+}
+.viewer-note {
+  margin-top: var(--space-3);
 }
 .current-component {
   padding: var(--space-3);
