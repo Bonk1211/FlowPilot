@@ -650,21 +650,17 @@
 .intake-guided-card .intake-card-heading p {
   display: none;
 }
-.intake-guided-card .intake-question-navigation {
-  padding-top: 12px;
-}
-
 .intake-guided-card .intake-card-heading {
   margin-bottom: 10px;
 }
 .intake-guided-card .intake-card-heading p {
   display: none;
 }
+/* The answer controls stay in flow. A sticky bar used to cover the last radio
+   option and the supplementary note field at common scroll positions. */
 .intake-guided-card .intake-question-navigation {
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
+  margin-top: 16px;
+  padding-top: 14px;
   background: var(--surface-document);
-  padding-bottom: 8px;
   border-top: 1px solid var(--border-default);
 }
