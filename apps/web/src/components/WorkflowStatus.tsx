@@ -106,6 +106,12 @@ export function WorkflowStatus({
         </div>
       </section>
     );
+  // The diagnosis briefing already shows the hypothesis boundary and next check.
+  if (
+    phase === "Diagnose" &&
+    value?.investigation.state === "inspection_recommended"
+  )
+    return null;
   const copy: Record<string, [string, string]> = {
     Report: value
       ? [

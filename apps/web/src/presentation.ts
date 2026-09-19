@@ -72,3 +72,12 @@ export function eventFlags(
     ),
   };
 }
+
+export const knowledgeState = (state: string) =>
+  ({
+    published: "Available to AI",
+    draft: "Pending review",
+    disputed: "Disputed",
+    archived: "Archived",
+    recorded: "Saved to database",
+  })[state] ?? humanize(state);

@@ -41,6 +41,10 @@ import { WorkflowStatus } from "./components/WorkflowStatus";
 import "./workflow.css";
 import { PhotoInput } from "./components/PhotoAnalysis";
 import { ReportIntake, IntakeEvidenceSummary } from "./components/ReportIntake";
+import {
+  PastExperiencePanel,
+  KnowledgeCapture,
+} from "./components/PastExperience";
 
 type WithoutRevision<T> = T extends unknown ? Omit<T, "revision"> : never;
 type Command = WithoutRevision<CaseAction>;
@@ -89,6 +93,36 @@ function Diagnosis({
   );
   return (
     <>
+      <div className="diagnosis-briefing">
+        <section
+          className="diagnosis-key-evidence"
+          aria-label="Current assessment"
+        >
+          <p className="eyebrow">Current assessment</p>
+          <h2>{value.ranking[0]?.label ?? "Awaiting evidence"}</h2>
+          <p>
+            {value.ranking[0]?.confirmed
+              ? "Inspection finding confirmed. Recovery still requires verification."
+              : inspection?.value === "no_obstruction_found"
+                ? "No nozzle obstruction found. Other causes remain unconfirmed."
+                : "Working hypothesis · current-case evidence still requires inspection."}
+          </p>
+          <ul>
+            {value.ranking[0]?.contributions
+              .filter((c) => c.weight > 0)
+              .slice(0, 2)
+              .map((c) => (
+                <li key={c.evidence_id}>{c.explanation}</li>
+              ))}
+          </ul>
+        </section>
+        <PastExperiencePanel
+          value={value}
+          onRefresh={() => {
+            void onCorrect({ action: "refresh_knowledge" });
+          }}
+        />
+      </div>
       <IntakeEvidenceSummary value={value} />
       <div className="prototype-diagnosis">
         <section aria-label="Evidence ledger">
@@ -1434,6 +1468,7 @@ export function CaseApp() {
                   </section>
                 )}
               </fieldset>
+              {value && <KnowledgeCapture value={value} />}
               {busy && <p role="status">Saving or loading…</p>}
               {value &&
                 (!!value.diagnostic_history?.length ||

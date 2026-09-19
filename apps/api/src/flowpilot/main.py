@@ -9,6 +9,8 @@ from flowpilot.ingestion.industry_event_log import parse_industry_event_log
 from flowpilot.ingestion.models import IngestionResult, LogPreviewRequest
 from flowpilot.intake import LogContext, LogContextRequest, log_context
 from flowpilot.investigations.models import Contract
+from flowpilot.knowledge.routes import router as knowledge_router
+from flowpilot.question_plan import router as question_plan_router
 from flowpilot.vision import router as vision_router
 
 
@@ -66,6 +68,8 @@ def create_app() -> FastAPI:
     app.include_router(router)
     app.include_router(case_router)
     app.include_router(vision_router)
+    app.include_router(knowledge_router)
+    app.include_router(question_plan_router)
     return app
 
 

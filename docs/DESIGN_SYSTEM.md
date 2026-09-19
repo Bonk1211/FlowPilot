@@ -90,7 +90,7 @@ The hackathon flow assumes one user can perform the entire journey. Preserve han
 - A compact dark graphite command bar establishes the product boundary without wrapping the entire workspace in dark chrome.
 - The case identifier, defect summary, current phase, and simulation status remain visible.
 - The phase rail uses the canonical sequence: **Report, Diagnose, Inspect, Correct, Verify**.
-- Navigation contains only implemented MVP destinations. Do not display deferred Knowledge Library or document-ingestion surfaces as if they work.
+- Navigation contains implemented destinations: Investigation and Learning Database. Uploaded-document ingestion remains deferred.
 - **Reset demo** is available but visually separated from normal case actions.
 
 The command bar should occupy 56–64px on desktop. It is orientation chrome, not a dashboard region: do not add KPIs, decorative status lights, or a second navigation hierarchy to it.
@@ -543,15 +543,15 @@ The negative inspection branch stops at the next material-check recommendation.
 
 The semantic assembly registry uses these stable IDs and labels:
 
-| Node ID | Visible label |
-| --- | --- |
-| `fluid_reservoir` | Fluid reservoir |
-| `feed_tube` | Feed tube |
-| `jet_actuator` | Jet actuator |
+| Node ID             | Visible label     |
+| ------------------- | ----------------- |
+| `fluid_reservoir`   | Fluid reservoir   |
+| `feed_tube`         | Feed tube         |
+| `jet_actuator`      | Jet actuator      |
 | `service_cartridge` | Service cartridge |
-| `nozzle` | Nozzle |
-| `vision_camera` | Vision camera |
-| `substrate_tray` | Substrate tray |
+| `nozzle`            | Nozzle            |
+| `vision_camera`     | Vision camera     |
+| `substrate_tray`    | Substrate tray    |
 
 Procedure presets are `assembly_overview`, `cartridge_closeup`, and `nozzle_closeup`.
 Future model coordinates use Y up, with explicit camera position and look-at target.
@@ -582,3 +582,17 @@ Before considering a surface complete, verify:
 - Keyboard, focus, zoom, reduced-motion, error, loading, empty, and offline states work.
 - The layout works at 1440×900 and 1280×720 without horizontal page scrolling.
 - The full report-to-verification journey can be completed without developer-only controls.
+
+## Learning Database workspace
+
+Use a graph-first three-pane layout: 246px searchable case browser, flexible central relation graph, and 330px source/review inspector. Desktop panes scroll independently within the available viewport. Under 1150px move the inspector below; on phones stack the browser, graph and details. Keep standard controls at least 44px tall. Keep existing paper, graphite and teal for the workspace. Graph-specific categorical tokens distinguish record types; they do not encode approval or repair success.
+
+Show real Saved cases / Reusable experiences / Pending review totals, then a compact Recorded → Prepared → Reviewed → Reused lifecycle. One investigation remains one case through all updates. Group equivalent simulated experiences with accessible source links; never present these counts as probabilities.
+
+Graph types have distinct colors, labels and shapes: blue rounded Case, amber diamond Symptom, slate hexagon Component, violet triangle Possible cause, green circular Finding, orange square Action and rose pentagon Outcome. Always show the complete legend. Selection preserves category fill and adds an outline; unrelated nodes fade. Compact case identifiers keep the overview readable, with full titles in the case browser and accessible list. Fit the layout to the available graph area; the keyboard list opens over the graph without collapsing its canvas. Dashed possible-cause edges are explicitly hypotheses. Node/edge selection highlights a neighborhood and opens provenance. Provide fit/focus/zoom controls and keyboard-operable node/relationship lists. The graph cannot edit or publish facts by dragging.
+
+Experience details separate source facts, reviewer interpretation, generation mode and lifecycle state. Evidence and version history use progressive disclosure. Review requires visible reviewer/reason fields and explicit confirmation. Pending, live, cached and manually edited preparation are distinct. On desktop Diagnose, place Current assessment and Past experience together beneath the next-check action. Keep source links and the knowledge version visible; disclose the longer lesson and match conditions on demand. At narrow widths stack the panels. Historical references remain separate from current-case evidence.
+
+## Guided Context intake
+
+Show one active condition at a time with an explicit Continue action, a concise evidence-backed planning summary and an editable answer/source summary. Do not imply every click invokes AI: distinguish live AI-guided questions from rule guidance. Free-text interpretations require explicit technician confirmation. Show confirmed and remaining conditions instead of a fixed question count; clarification can change the number of turns. Keep log upload optional and collapse confirmed log details with a visible review/change control. Preserve keyboard focus, 44px targets and the existing paper/graphite/teal palette. Reduced-motion users receive the same immediate state transitions without decorative delays.

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { Investigation } from "@flowpilot/contracts";
-import { Flask, CaretRight } from "@phosphor-icons/react";
+import { Flask, CaretRight, Database } from "@phosphor-icons/react";
 
 const phases = ["Report", "Diagnose", "Inspect", "Correct", "Verify"];
 
@@ -29,13 +29,22 @@ export function ApplicationFrame({
         </a>
         <div className="command-context">
           <span className="mono">
-            {investigation?.id ?? "New investigation"}
+            {investigation?.id ??
+              (phase === "Learning Database"
+                ? "Case knowledge"
+                : "New investigation")}
           </span>
           <span className="command-defect">
-            {investigation?.title ?? "Spray inspection"}
+            {investigation?.title ??
+              (phase === "Learning Database"
+                ? "Evidence and experience"
+                : "Spray inspection")}
           </span>
           <span className="command-phase">{phase}</span>
         </div>
+        <a className="database-nav" href="/knowledge">
+          <Database aria-hidden="true" /> Learning Database
+        </a>
         {showDemoBadge && (
           <span className="demo-badge">Demo / Simulated Data</span>
         )}

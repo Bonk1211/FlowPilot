@@ -1,4 +1,10 @@
 import type {
+  QuestionPlan,
+  QuestionPlanRequest,
+  KnowledgeEntry,
+  KnowledgeCommand,
+  KnowledgeGraph,
+  CitationStatus,
   DemoScenario,
   IngestionResult,
   LogPreviewRequest,
@@ -120,3 +126,69 @@ export const previewLogContext = (log: LogPreviewRequest, board_id?: string) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ log, board_id }),
   });
+
+export const listKnowledge = () => request<KnowledgeEntry[]>("/knowledge");
+export const loadKnowledge = (id: string) =>
+  request<KnowledgeEntry>(`/knowledge/${encodeURIComponent(id)}`);
+export const draftKnowledge = (
+  id: string,
+  source_revision: number,
+  actor: string,
+) =>
+  request<KnowledgeEntry>(`/knowledge/from-case/${encodeURIComponent(id)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ source_revision, actor }),
+  });
+export const changeKnowledge = (id: string, body: KnowledgeCommand) =>
+  request<KnowledgeEntry>(`/knowledge/${encodeURIComponent(id)}/actions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+export const loadKnowledgeGraph = (id: string, version: number) =>
+  request<KnowledgeGraph>(
+    `/knowledge/${encodeURIComponent(id)}/graph?version=${version}`,
+  );
+export const knowledgeStatus = (id: string) =>
+  request<CitationStatus[]>(
+    `/investigations/${encodeURIComponent(id)}/knowledge-status`,
+  );
+
+export const loadLearningDatabase = (
+  filters: {
+    q?: string;
+    status?: string;
+    process?: string;
+    symptom?: string;
+    limit?: string;
+  } = {},
+) =>
+  request<import("@flowpilot/contracts").LibraryOverview>(
+    `/knowledge/graph?${new URLSearchParams(filters)}`,
+  );
+export const prepareKnowledge = (id: string, source_revision: number) =>
+  request<KnowledgeEntry>(`/knowledge/${encodeURIComponent(id)}/prepare`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ source_revision, actor: "system" }),
+  });
+export const knowledgeForCase = (id: string) =>
+  request<KnowledgeEntry | null>(
+    `/knowledge/by-source/${encodeURIComponent(id)}`,
+  );
+
+export const planIntakeQuestions = (
+  body: QuestionPlanRequest,
+  signal: AbortSignal,
+) =>
+  request<QuestionPlan>(
+    "/intake/question-plan",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal,
+    },
+    4000,
+  );

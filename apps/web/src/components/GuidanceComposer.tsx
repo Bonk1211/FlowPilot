@@ -151,6 +151,22 @@ export function GuidanceComposer({
                           ))}
                         </p>
                       )}
+                      {!!exchange.response.knowledge_refs?.length && (
+                        <p className="guidance-citations">
+                          Historical experience:{" "}
+                          {exchange.response.knowledge_refs.map((ref) => {
+                            const [id, version] = ref.split("@v");
+                            return (
+                              <a
+                                key={ref}
+                                href={`/knowledge?entry=${encodeURIComponent(id)}&version=${version}`}
+                              >
+                                {ref}{" "}
+                              </a>
+                            );
+                          })}
+                        </p>
+                      )}
                       <small>
                         Guidance only — this did not change the case.
                       </small>

@@ -420,3 +420,12 @@ viewer and timeline links remain available after resolution.
 
 Automated workflow recordings prove repeatability, not presentation readiness.
 The two full timed presentation rehearsals remain a separate M3 checkpoint.
+
+
+## Learning Database
+
+Run `npm run db:migrate` after pulling this increment. Migration 0003 adds knowledge storage; existing cases are not rewritten. Open `/knowledge` or the command-bar **Learning Database** link. The existing Gemini configuration also controls draft preparation. Model calls happen outside database locks and never publish content.
+
+See [Database Learning](DATABASE_LEARNING_PLAN.md) for APIs, lifecycle, retrieval rules, review walkthrough and verification. Relevant modules are `flowpilot/knowledge/` and the dedicated LearningDatabase/KnowledgeReview/KnowledgeGraph components. Generate OpenAPI/TypeScript with `npm run contracts:generate` after backend contract changes.
+
+A pending model draft survives interruption. Its inspector offers **Retry interrupted preparation**, or save a manual revision. A failed model call leaves a reviewable evidence template. The app has self-reported reviewer names and no enterprise authorization system.

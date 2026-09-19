@@ -478,3 +478,193 @@
     width: 100%;
   }
 }
+
+/* Guided intake: one decision at a time, with an editable evidence summary. */
+.intake-log-disclosure > summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.intake-log-disclosure[open] > summary {
+  margin-bottom: 20px;
+}
+.intake-planner-status {
+  padding: 16px;
+  margin-bottom: 20px;
+  background: var(--surface-document);
+  border-left: 3px solid var(--text-selection);
+  border-radius: 4px;
+}
+.intake-planner-status p {
+  margin: 8px 0;
+  line-height: 1.5;
+}
+.intake-planner-status span,
+.intake-answer-summary small {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.intake-question h4 {
+  font-size: 24px;
+  line-height: 1.3;
+  margin: 0 0 12px;
+}
+.intake-question-navigation {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 20px;
+}
+.intake-question-navigation button,
+.intake-clarification button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.intake-supplement {
+  display: grid;
+  gap: 8px;
+  margin-top: 24px;
+  font-weight: 500;
+}
+.intake-supplement span {
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+}
+.intake-supplement textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  font: inherit;
+}
+.intake-answer-summary {
+  margin-bottom: 24px;
+}
+.intake-answer-summary > div {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-default);
+}
+.intake-answer-summary strong {
+  font-size: 14px;
+  line-height: 1.45;
+  display: block;
+}
+.intake-answer-summary p {
+  margin: 6px 0;
+}
+.intake-answer-summary button {
+  min-height: 44px;
+  margin: 8px 0 0;
+  display: block;
+}
+.intake-clarification {
+  padding: 16px;
+  border: 1px solid var(--border-default);
+  margin-bottom: 16px;
+}
+.intake-clarification button {
+  margin: 4px 8px 4px 0;
+}
+.intake-plan-sources {
+  margin-bottom: 16px;
+  overflow-wrap: anywhere;
+}
+.intake-plan-sources summary {
+  cursor: pointer;
+  min-height: 44px;
+}
+@media (max-width: 700px) {
+  .intake-question h4 {
+    font-size: 21px;
+  }
+  .intake-supplement textarea {
+    font-size: 16px;
+  }
+}
+
+.intake-card {
+  scroll-margin-top: 80px;
+}
+.intake-answer-summary > div {
+  position: relative;
+  padding-right: 54px;
+}
+.intake-answer-summary button {
+  position: absolute;
+  right: 0;
+  top: 8px;
+  padding: 8px;
+}
+.intake-photo-summary img {
+  max-height: 170px;
+  object-fit: contain;
+}
+.intake-remaining {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.report-intake .intake-guided-card {
+  padding: 20px;
+}
+.intake-guided-card .intake-card-heading {
+  margin-bottom: 12px;
+}
+.intake-guided-card .intake-planner-status {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.intake-guided-card .intake-planner-status p {
+  margin: 4px 0;
+  font-size: 14px;
+}
+.intake-guided-card .intake-plan-sources {
+  margin-bottom: 8px;
+}
+.intake-guided-card .intake-plan-sources summary {
+  padding: 8px 0;
+}
+.report-intake .intake-guided-card .intake-question {
+  padding: 14px 0 0;
+}
+.intake-guided-card .intake-help {
+  margin-bottom: 14px;
+}
+.intake-guided-card .intake-supplement {
+  margin-top: 14px;
+  gap: 4px;
+}
+.intake-guided-card textarea {
+  min-height: 58px;
+}
+.intake-guided-card .intake-card-heading {
+  margin-bottom: 10px;
+}
+.intake-guided-card .intake-card-heading p {
+  display: none;
+}
+.intake-guided-card .intake-question-navigation {
+  padding-top: 12px;
+}
+
+.intake-guided-card .intake-card-heading {
+  margin-bottom: 10px;
+}
+.intake-guided-card .intake-card-heading p {
+  display: none;
+}
+.intake-guided-card .intake-question-navigation {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  background: var(--surface-document);
+  padding-bottom: 8px;
+  border-top: 1px solid var(--border-default);
+}

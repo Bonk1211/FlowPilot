@@ -16,60 +16,32 @@ async function submitContext(
     })
     .check();
   if (withLog) {
+    const details = page.locator(".intake-log-disclosure");
+    if (!(await details.getAttribute("open")))
+      await details.locator(":scope > summary").click();
     await page
       .getByLabel("Upload machine log", { exact: true })
       .setInputFiles(
         `fixtures/logs/synthetic-${coarse ? "coarse-deposits" : "incomplete-coverage"}.log`,
       );
     await page.getByRole("checkbox", { name: /I confirm this log/ }).check();
-    await page
-      .getByRole("group", {
-        name: coarse
-          ? "Does flux weight pass despite blobs or droplets?"
-          : "Has measured flux weight been falling?",
-        exact: true,
-      })
-      .getByRole("button", { name: "Use log evidence", exact: true })
-      .click();
-    await page
-      .getByRole("group", {
-        name: "What does fluid pressure show?",
-        exact: true,
-      })
-      .getByRole("button", { name: "Use log evidence", exact: true })
-      .click();
-  } else {
-    await page
-      .getByRole("group", {
-        name: coarse
-          ? "Does flux weight pass despite blobs or droplets?"
-          : "Has measured flux weight been falling?",
-        exact: true,
-      })
-      .getByLabel("Yes", { exact: true })
-      .check();
-    await page
-      .getByRole("group", {
-        name: "What does fluid pressure show?",
-        exact: true,
-      })
-      .getByLabel("Stable / no known change", { exact: true })
-      .check();
   }
-  await page
-    .getByRole("group", {
-      name: "Any material-condition or idle-purge concerns?",
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  for (const answer of [
+    "Yes",
+    "Stable / no known change",
+    "Not recorded",
+    "Not recorded",
+  ]) {
+    const question = page.locator("fieldset.intake-question");
+    const log = question.getByRole("button", {
+      name: "Use log evidence",
       exact: true,
-    })
-    .getByLabel("Not recorded", { exact: true })
-    .check();
-  await page
-    .getByRole("group", {
-      name: "Was there a collision or recent setup change?",
-      exact: true,
-    })
-    .getByLabel("Not recorded", { exact: true })
-    .check();
+    });
+    if (withLog && (await log.count())) await log.click();
+    else await question.getByLabel(answer, { exact: true }).check();
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+  }
   await page
     .getByRole("button", { name: "Generate diagnosis", exact: true })
     .click();
@@ -292,8 +264,14 @@ test("upload-only intake exposes model findings and original/heatmap comparison"
   await expect(
     page.getByRole("button", { name: "Analyze photo", exact: true }),
   ).toHaveCount(0);
+  const choosePhoto = page.getByRole("button", {
+    name: "Choose photo",
+    exact: true,
+  });
+  await expect(choosePhoto).toBeEnabled();
   const chooserPromise = page.waitForEvent("filechooser");
-  await page.getByRole("button", { name: "Choose photo", exact: true }).focus();
+  await choosePhoto.focus();
+  await expect(choosePhoto).toBeFocused();
   await page.keyboard.press("Enter");
   const chooser = await chooserPromise;
   await chooser.setFiles("fixtures/vision/incomplete-coverage.png");
@@ -385,66 +363,54 @@ test("context draft survives back navigation, log changes require new confirmati
   page,
 }, testInfo) => {
   await startPhoto(page);
+  await page.getByLabel("Incomplete coverage", { exact: true }).check();
   await page
-    .getByLabel(/Additional observations/)
+    .getByLabel("Additional detail for this answer")
     .fill("Missing coverage after Board 103.");
-  await page
-    .getByRole("group", {
-      name: "Which spray symptom was observed?",
-      exact: true,
-    })
-    .getByLabel("Incomplete coverage", { exact: true })
-    .check();
   await page
     .getByLabel("Upload machine log", { exact: true })
     .setInputFiles("fixtures/logs/synthetic-incomplete-coverage.log");
-  await expect(page.getByLabel("Board shown in the photo")).toHaveValue("103");
   await page.getByRole("checkbox", { name: /I confirm this log/ }).check();
-  const weight = page.getByRole("group", {
-    name: "Has measured flux weight been falling?",
-    exact: true,
-  });
-  await weight
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page
     .getByRole("button", { name: "Use log evidence", exact: true })
     .click();
   await page.getByRole("button", { name: "Back to photo" }).click();
-  await expect(page.getByLabel(/Additional observations/)).toBeHidden();
   await page.getByRole("button", { name: "Continue to context" }).click();
-  await expect(page.getByLabel(/Additional observations/)).toHaveValue(
-    "Missing coverage after Board 103.",
-  );
-  await expect(weight.getByLabel("Yes", { exact: true })).toBeChecked();
+  await expect(page.getByLabel("Yes", { exact: true })).toBeChecked();
+  await page.locator(".intake-log-disclosure > summary").click();
   await page.getByLabel("Board shown in the photo").selectOption("101");
   await expect(
     page.getByRole("checkbox", { name: /I confirm this log/ }),
   ).not.toBeChecked();
-  await expect(weight.getByLabel("Yes", { exact: true })).not.toBeChecked();
-  await expect(
-    weight.getByRole("button", { name: "Use log evidence", exact: true }),
-  ).toHaveCount(0);
+  await expect(page.getByLabel("Yes", { exact: true })).not.toBeChecked();
   await page.getByLabel("Board shown in the photo").selectOption("103");
   await page.getByRole("checkbox", { name: /I confirm this log/ }).check();
-  await weight
+  await page
     .getByRole("button", { name: "Use log evidence", exact: true })
     .click();
+  await page.locator(".intake-log-disclosure > summary").click();
   await page.getByRole("button", { name: "Remove log" }).click();
-  await expect(weight.getByLabel("Yes", { exact: true })).not.toBeChecked();
-  await expect(page.getByLabel(/Additional observations/)).toHaveValue(
-    "Missing coverage after Board 103.",
-  );
+  await expect(page.getByLabel("Yes", { exact: true })).not.toBeChecked();
   await page.setViewportSize({ width: 375, height: 812 });
   await expect(
-    page.getByRole("button", { name: "Generate diagnosis", exact: true }),
+    page.getByRole("button", { name: "Continue", exact: true }),
   ).toBeDisabled();
   expect(
     await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
+      () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
-  await page
-    .getByRole("heading", { name: "Your observations", exact: true })
-    .scrollIntoViewIfNeeded();
   await page.screenshot({ path: testInfo.outputPath("context-mobile.png") });
+  await page
+    .getByRole("button", {
+      name: "Edit Which spray symptom was observed?",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByLabel("Additional detail for this answer"),
+  ).toHaveValue("Missing coverage after Board 103.");
   await submitContext(page, false, false);
   await expect(
     page
@@ -457,54 +423,31 @@ test("contradictory log and observation requires a reason and retains the select
   page,
 }, testInfo) => {
   await startPhoto(page);
-  await page
-    .getByRole("group", {
-      name: "Which spray symptom was observed?",
-      exact: true,
-    })
-    .getByLabel("Incomplete coverage", { exact: true })
-    .check();
+  await page.getByLabel("Incomplete coverage", { exact: true }).check();
   await page
     .getByLabel("Upload machine log", { exact: true })
     .setInputFiles("fixtures/logs/synthetic-incomplete-coverage.log");
   await page.getByRole("checkbox", { name: /I confirm this log/ }).check();
-  const weight = page.getByRole("group", {
-    name: "Has measured flux weight been falling?",
-    exact: true,
-  });
-  await weight.getByLabel("No", { exact: true }).check();
-  await page
-    .getByRole("group", { name: "What does fluid pressure show?", exact: true })
-    .getByRole("button", { name: "Use log evidence", exact: true })
-    .click();
-  await page
-    .getByRole("group", {
-      name: "Any material-condition or idle-purge concerns?",
-      exact: true,
-    })
-    .getByLabel("Not recorded", { exact: true })
-    .check();
-  await page
-    .getByRole("group", {
-      name: "Was there a collision or recent setup change?",
-      exact: true,
-    })
-    .getByLabel("Not recorded", { exact: true })
-    .check();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByLabel("No", { exact: true }).check();
   await expect(
-    page.getByRole("button", { name: "Generate diagnosis", exact: true }),
+    page.getByRole("button", { name: "Continue", exact: true }),
   ).toBeDisabled();
-  await weight
+  await page
     .getByLabel("Why use this source?")
     .fill("Independent reweighing after the logged run was stable.");
-  await expect(
-    page.getByRole("button", { name: "Generate diagnosis", exact: true }),
-  ).toBeEnabled();
-  await page.setViewportSize({ width: 1440, height: 1000 });
-  await weight.scrollIntoViewIfNeeded();
   await page.screenshot({
     path: testInfo.outputPath("context-evidence-conflict.png"),
   });
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Use log evidence", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  for (let i = 0; i < 2; i++) {
+    await page.getByLabel("Not recorded", { exact: true }).check();
+    await page.getByRole("button", { name: "Continue", exact: true }).click();
+  }
   const responsePromise = page.waitForResponse(
     (r) =>
       r.url().endsWith("/api/investigations") &&

@@ -1,4 +1,11 @@
-import { Component, StrictMode, type ErrorInfo, type ReactNode } from "react";
+import {
+  Component,
+  lazy,
+  StrictMode,
+  Suspense,
+  type ErrorInfo,
+  type ReactNode,
+} from "react";
 import { createRoot } from "react-dom/client";
 import "@fontsource/ibm-plex-sans/400.css";
 import "@fontsource/ibm-plex-sans/500.css";
@@ -8,6 +15,13 @@ import { App } from "./App";
 import { CaseApp } from "./CaseApp";
 import { Prototype } from "./prototype/Prototype";
 import "./styles.css";
+
+// eslint-disable-next-line react-refresh/only-export-components -- This entry point mounts the app below.
+const LearningDatabase = lazy(() =>
+  import("./LearningDatabase").then((module) => ({
+    default: module.LearningDatabase,
+  })),
+);
 
 class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -40,6 +54,16 @@ createRoot(document.getElementById("root")!).render(
     <ErrorBoundary>
       {window.location.pathname.replace(/\/$/, "") === "/prototype" ? (
         <Prototype />
+      ) : window.location.pathname.replace(/\/$/, "") === "/knowledge" ? (
+        <Suspense
+          fallback={
+            <main className="fatal-error" role="status">
+              Loading learning database…
+            </main>
+          }
+        >
+          <LearningDatabase />
+        </Suspense>
       ) : window.location.pathname === "/log-preview" ? (
         <App />
       ) : (
