@@ -380,12 +380,23 @@
   color: var(--text-selection);
   flex-shrink: 0;
 }
+/* One primary action per report step, pinned to the bottom edge of the task
+   column. The negative offset cancels the scroll container's bottom inset so
+   the bar reaches the edge instead of floating over the card, and that inset
+   is the room reserved below the content so it never hides the last row. */
 .intake-footer {
+  position: sticky;
+  bottom: calc(-1 * var(--scroll-bottom-inset, 0px));
+  z-index: 2;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 20px;
-  padding: 24px 0;
+  margin: 8px calc(-1 * var(--scroll-inline-inset, 0px)) 0;
+  padding: 14px var(--scroll-inline-inset, 0px);
+  background: var(--surface-measurement);
+  box-shadow: 0 -12px 16px -12px rgb(19 35 49 / 0.28);
+  border-top: 1px solid var(--border-default);
 }
 .intake-footer p {
   font-size: 14px;

@@ -139,7 +139,10 @@
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 0 var(--space-5) var(--space-6);
+  /* Bottom inset keeps content clear of the floating assistant and of the
+     pinned task action bar; sticky bars offset by it to reach the edge. */
+  --scroll-bottom-inset: var(--space-6);
+  padding: 0 var(--space-5) var(--scroll-bottom-inset);
   scroll-padding-block: var(--space-5) 12rem;
 }
 .workspace-masthead {

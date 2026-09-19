@@ -71,7 +71,8 @@
   background: var(--surface-measurement);
 }
 .workflow-shell .investigation-scroll {
-  padding: 0 clamp(20px, 4vw, 64px) 32px;
+  --scroll-inline-inset: clamp(20px, 4vw, 64px);
+  padding: 0 var(--scroll-inline-inset) 32px;
   scroll-padding-block: 24px;
 }
 .workflow-shell .workspace-masthead {
@@ -703,7 +704,8 @@
   font-size: 14px;
 }
 .workflow-shell .investigation-scroll {
-  padding-bottom: 104px;
+  --scroll-bottom-inset: 104px;
+  padding-bottom: var(--scroll-bottom-inset);
 }
 @media (max-width: 600px) {
   .guidance-widget {
