@@ -85,10 +85,12 @@ export function KnowledgeGraph({
           w: Math.max(220, container.current.clientWidth - 140),
           h: Math.max(150, container.current.clientHeight - 100),
         },
-        nodeRepulsion: () => 1800,
-        idealEdgeLength: () => 45,
-        componentSpacing: 60,
-        nodeOverlap: 8,
+        // Labels must stay legible on a projector, so keep nodes apart enough
+        // that the fit zoom does not have to shrink the map to read it.
+        nodeRepulsion: () => 5200,
+        idealEdgeLength: () => 88,
+        componentSpacing: 110,
+        nodeOverlap: 24,
         nodeDimensionsIncludeLabels: true,
       },
       style: [
@@ -106,7 +108,7 @@ export function KnowledgeGraph({
             "text-valign": "bottom",
             "text-margin-y": 10,
             "text-background-color": color("--surface-document"),
-            "text-background-opacity": 0.92,
+            "text-background-opacity": 1,
             "text-background-padding": "3px",
             "text-background-shape": "roundrectangle",
             width: 21,
@@ -143,11 +145,13 @@ export function KnowledgeGraph({
           selector: 'edge[status = "hypothesis"]',
           style: { "line-style": "dashed" },
         },
-        { selector: "node.dim", style: { opacity: 0.35 } },
+        { selector: "node.dim", style: { opacity: 0.35, "z-index": 1 } },
+        { selector: "node.active", style: { "z-index": 10 } },
         { selector: "edge.dim", style: { opacity: 0.12 } },
         {
           selector: "node.chosen",
           style: {
+            "z-index": 20,
             "border-width": 4,
             "border-color": color("--text-primary"),
             "border-style": "double",

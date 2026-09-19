@@ -7,7 +7,7 @@
   display: flex;
   justify-content: space-between;
   gap: var(--space-6);
-  padding: 20px 28px;
+  padding: 14px 28px 12px;
   align-items: center;
 }
 .learning-masthead h1 {
@@ -16,7 +16,7 @@
   gap: 12px;
   font-size: 28px;
   line-height: 1.2;
-  margin: 4px 0 8px;
+  margin: 2px 0 4px;
   letter-spacing: -0.035em;
 }
 .learning-masthead p {
@@ -29,7 +29,7 @@
   align-items: center;
   gap: var(--space-2);
   font-size: var(--font-caption);
-  margin-bottom: 10px;
+  margin-bottom: 4px;
   text-decoration: none;
 }
 .learning-counts {
@@ -55,8 +55,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 0 28px 18px;
-  padding: 12px 18px;
+  margin: 0 28px 12px;
+  padding: 8px 18px;
   border: 1px solid var(--border-default);
   border-radius: var(--radius-pane);
   background: var(--surface-document);
@@ -211,7 +211,7 @@
   flex-wrap: wrap;
   justify-content: space-between;
   gap: 12px;
-  padding: 18px 20px;
+  padding: 10px 20px;
   border-bottom: 1px solid var(--border-default);
   background: var(--surface-document);
 }
@@ -242,9 +242,14 @@
 .graph-legend {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-3);
-  padding: var(--space-4);
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-4);
   border-top: 1px solid var(--border-default);
+}
+.graph-legend > p {
+  flex-basis: 100%;
+  margin: 0;
 }
 .graph-legend > span {
   display: inline-flex;
@@ -260,10 +265,17 @@
   border-radius: 50%;
 }
 .graph-accessible {
-  padding: 12px 20px;
+  padding: 6px 20px;
   background: var(--surface-document);
   font-size: var(--font-caption);
   border-top: 1px solid var(--border-default);
+}
+.graph-accessible > summary {
+  min-height: 36px;
+  display: list-item;
+  list-style-position: inside;
+  padding-block: 6px;
+  cursor: pointer;
 }
 .graph-accessible li {
   overflow-wrap: anywhere;
@@ -319,9 +331,15 @@
 .review-problem {
   color: var(--text-secondary);
 }
+/* The demo switches Experience → Evidence → Experience inside a long panel;
+   keep the switch reachable without scrolling back to the top. */
 .knowledge-tabs {
   display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 2;
   border-bottom: 1px solid var(--border-default);
+  background: var(--surface-document);
 }
 .knowledge-tabs button {
   text-align: center;
@@ -356,6 +374,13 @@
 .knowledge-review-form {
   border-top: 1px solid var(--border-default);
   padding-top: var(--space-4);
+}
+/* Unavailable review actions need their own surface, not just lower opacity. */
+.learning-workspace .primary:disabled {
+  background: var(--surface-muted);
+  border-color: var(--border-strong);
+  color: var(--text-muted);
+  opacity: 1;
 }
 .knowledge-review-form h3 {
   margin-top: 0;
