@@ -1,3 +1,4 @@
+import { openDisclosure } from "../helpers/disclosures";
 import {
   expect,
   test,
@@ -45,6 +46,7 @@ test("rejected image evidence has its own recovery state after reload", async ({
       exact: true,
     }),
   });
+  await openDisclosure(page.locator(".diagnosis-disclosure > summary"));
   await row.getByText("Correct this evidence", { exact: true }).click();
   await row.getByLabel("Correction reason").fill("Invalid image evidence");
   await row.getByRole("checkbox").check();
@@ -89,13 +91,18 @@ test("ranking and specialist citations reveal and focus evidence through both fi
     saved.investigation.evidence.find((e: { key: string }) => e.key === key).id;
   const imageId = evidenceId("incomplete_coverage");
   const answerId = evidenceId("continuous");
+  await openDisclosure(page.locator(".diagnosis-disclosure > summary"));
+  await openDisclosure(page.locator(".prototype-cause summary").first());
   await page.getByLabel("Evidence source").selectOption("technician_input");
   await page.getByLabel("Evidence status").selectOption("verified");
   await page.locator(`.prototype-cause a[href="#${imageId}"]`).first().click();
   await expect(page.locator(`[id="${imageId}"]`)).toBeFocused();
   await expect(page.getByLabel("Evidence source")).toHaveValue("all");
   await expect(page.getByLabel("Evidence status")).toHaveValue("all");
-  const finding = page.locator(".prototype-diagnosis details").filter({
+  await openDisclosure(
+    page.getByText("How this diagnosis was generated", { exact: true }),
+  );
+  const finding = page.locator(".reasoning-disclosure > details").filter({
     has: page.locator("summary", {
       hasText: "fluid path specialist · fluid supply fault",
     }),
@@ -123,6 +130,7 @@ test("editing evidence invalidates the old branch and filters retained history",
   const row = page.locator(".prototype-ledger-row").filter({
     has: page.getByRole("heading", { name: "frequency", exact: true }),
   });
+  await openDisclosure(page.locator(".diagnosis-disclosure > summary"));
   await row.getByText("Correct this evidence", { exact: true }).click();
   await row.getByLabel("Correction type").selectOption("edit");
   await row.getByLabel("Replacement value").selectOption("intermittent");
@@ -151,6 +159,7 @@ test("editing evidence invalidates the old branch and filters retained history",
   await expect(
     page.getByRole("heading", { name: "1. Coaxial-air / atomization fault" }),
   ).toBeVisible();
+  await openDisclosure(page.locator(".diagnosis-disclosure > summary"));
   await page.getByLabel("Evidence status").selectOption("rejected");
   await expect(page.locator(".prototype-ledger-row")).toHaveCount(5);
   await expect(
@@ -351,6 +360,12 @@ test("negative confirmation locks correction controls after reload", async ({
   });
   expect(response.ok()).toBeTruthy();
   await page.reload();
+  await openDisclosure(page.locator(".diagnosis-disclosure > summary"));
+  await openDisclosure(
+    page.getByText("Inspection rationale and procedure details", {
+      exact: true,
+    }),
+  );
   await expect(
     page.getByText("Evidence is locked after confirmed inspection", {
       exact: false,
@@ -390,6 +405,7 @@ test("correction before confirmation cancels the pending observation", async ({
   const row = page.locator(".prototype-ledger-row").filter({
     has: page.getByRole("heading", { name: "operator report", exact: true }),
   });
+  await openDisclosure(page.locator(".diagnosis-disclosure > summary"));
   await row.getByText("Correct this evidence", { exact: true }).click();
   await row.getByLabel("Correction type").selectOption("edit");
   await row
