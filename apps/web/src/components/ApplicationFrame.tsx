@@ -9,11 +9,13 @@ export function ApplicationFrame({
   children,
   phase = "Report",
   showPhaseRail = true,
+  showDemoBadge = true,
 }: {
   investigation?: Investigation;
   children: ReactNode;
   phase?: string;
   showPhaseRail?: boolean;
+  showDemoBadge?: boolean;
 }) {
   return (
     <div className="app">
@@ -26,13 +28,17 @@ export function ApplicationFrame({
           FlowPilot
         </a>
         <div className="command-context">
-          <span className="mono">{investigation?.id ?? "Sample case"}</span>
+          <span className="mono">
+            {investigation?.id ?? "New investigation"}
+          </span>
           <span className="command-defect">
-            {investigation?.title ?? "Loading report"}
+            {investigation?.title ?? "Spray inspection"}
           </span>
           <span className="command-phase">{phase}</span>
         </div>
-        <span className="demo-badge">Demo / Simulated Data</span>
+        {showDemoBadge && (
+          <span className="demo-badge">Demo / Simulated Data</span>
+        )}
       </header>
       {showPhaseRail && (
         <div className="phase-rail" aria-label="Investigation phases">

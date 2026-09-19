@@ -22,7 +22,9 @@ export function parseIndustryEventLog(
     throw new TypeError("sourceName must be a non-empty string");
   }
   if (timezoneOffset !== null && !isTimezoneOffset(timezoneOffset)) {
-    throw new TypeError("timezoneOffset must be null or an offset such as +08:00");
+    throw new TypeError(
+      "timezoneOffset must be null or an offset such as +08:00",
+    );
   }
 
   const sourceDigest = createHash("sha256").update(text).digest("hex");
@@ -97,7 +99,8 @@ function assemblePhysicalLines(text, warnings) {
 
   for (let index = 0; index < lines.length; index += 1) {
     const rawLine = lines[index];
-    const parseableLine = index === 0 ? rawLine.replace(/^\uFEFF/, "") : rawLine;
+    const parseableLine =
+      index === 0 ? rawLine.replace(/^\uFEFF/, "") : rawLine;
     const lineNumber = index + 1;
     if (parseableLine.trim() === "") continue;
 
@@ -121,7 +124,8 @@ function assemblePhysicalLines(text, warnings) {
       previous.lineEnd = lineNumber;
       warnings.push({
         code: "continuation_line",
-        message: "A non-timestamped line was retained as part of the preceding event.",
+        message:
+          "A non-timestamped line was retained as part of the preceding event.",
         line: lineNumber,
       });
     } else {
@@ -135,7 +139,8 @@ function assemblePhysicalLines(text, warnings) {
       });
       warnings.push({
         code: "unparsed_line",
-        message: "A line before the first timestamped event could not be classified.",
+        message:
+          "A line before the first timestamped event could not be classified.",
         line: lineNumber,
       });
     }
@@ -178,6 +183,36 @@ function parseEvent(draft, { sourceName, sourceDigest, timezoneOffset }) {
 
 function classifyPayload(payload) {
   let match;
+  match = payload.match(
+    new RegExp(
+      `^Flux Weight Results,\\s*Board #([^,]+),\\s*Recipe = ([^,]+),\\s*Measured = (${NUMBER}) ([A-Za-z]+),\\s*Target = (${NUMBER}),\\s*Lower Limit = (${NUMBER}),\\s*Upper Limit = (${NUMBER})$`,
+      "i",
+    ),
+  );
+  if (match)
+    return parsed("flux_weight_result", {
+      boardId: match[1].trim(),
+      recipe: match[2].trim(),
+      measured: Number(match[3]),
+      unit: match[4],
+      target: Number(match[5]),
+      lower: Number(match[6]),
+      upper: Number(match[7]),
+    });
+  match = payload.match(
+    new RegExp(
+      `^Fluid Pressure Results,\\s*Board #([^,]+),\\s*Recipe = ([^,]+),\\s*Setpoint = (${NUMBER}) ([A-Za-z]+),\\s*Actual = (${NUMBER})$`,
+      "i",
+    ),
+  );
+  if (match)
+    return parsed("fluid_pressure_result", {
+      boardId: match[1].trim(),
+      recipe: match[2].trim(),
+      setpoint: Number(match[3]),
+      unit: match[4],
+      actual: Number(match[5]),
+    });
 
   match = payload.match(/^Run Started,\s*Board #([^,:]+):?\s*$/i);
   if (match) return parsed("run_started", { boardId: match[1].trim() });
@@ -195,7 +230,8 @@ function classifyPayload(payload) {
   match = payload.match(
     /^Begin of Timer Between Boards,\s*Conveyor\s+(\d+)\s+Timer Between Boards Started/i,
   );
-  if (match) return parsed("timer_between_boards_started", { conveyor: +match[1] });
+  if (match)
+    return parsed("timer_between_boards_started", { conveyor: +match[1] });
 
   match = payload.match(
     new RegExp(
@@ -402,6 +438,17 @@ function toEvidenceCandidates(event) {
   };
 
   switch (event.kind) {
+    case "flux_weight_result":
+    case "fluid_pressure_result":
+      return [
+        {
+          ...base,
+          key: event.kind,
+          value: event.fields,
+          unit: event.fields.unit,
+          context: { boardId: event.fields.boardId },
+        },
+      ];
     case "run_finished":
       return [
         {

@@ -12,6 +12,10 @@ DEMO_TEXT = fixture_path("demo-industry-machine.log").read_bytes().decode("utf-8
 CASES.append({"name": "demo", "text": DEMO_TEXT, "timezoneOffset": "+08:00"})
 
 
+for path in sorted((ROOT / "fixtures/logs").glob("*.log")):
+    CASES.append({"name": path.name, "text": path.read_text(), "timezoneOffset": None})
+
+
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case["name"])
 def test_reference_parity(case):
     """Compare all fields, IDs, warnings, units and raw provenance to the JS reference."""

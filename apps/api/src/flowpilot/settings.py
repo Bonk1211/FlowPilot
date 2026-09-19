@@ -11,6 +11,8 @@ class Settings(BaseSettings):
         env_prefix="FLOWPILOT_", env_file=ROOT / ".env", extra="ignore", populate_by_name=True
     )
     database_url: str = "sqlite:///./flowpilot.db"
+    vision_storage_dir: Path = ROOT / ".cache/vision/assessments"
+    vision_model_dir: Path = ROOT / ".cache/vision/model"
     gemini_api_key: SecretStr | None = Field(
         default=None, validation_alias=AliasChoices("GEMINI_API_KEY", "FLOWPILOT_GEMINI_API_KEY")
     )

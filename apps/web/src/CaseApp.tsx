@@ -7,6 +7,7 @@ import type {
   IngestionResult,
   LogPreviewRequest,
   Measurement,
+  VisionAssessment,
 } from "@flowpilot/contracts";
 import {
   actOnCase,
@@ -38,6 +39,8 @@ import {
 import { InspectionGuide } from "./components/InspectionGuide";
 import { WorkflowStatus } from "./components/WorkflowStatus";
 import "./workflow.css";
+import { PhotoInput } from "./components/PhotoAnalysis";
+import { ReportIntake, IntakeEvidenceSummary } from "./components/ReportIntake";
 
 type WithoutRevision<T> = T extends unknown ? Omit<T, "revision"> : never;
 type Command = WithoutRevision<CaseAction>;
@@ -85,258 +88,276 @@ function Diagnosis({
     (e) => e.key === "inspection" && e.verification_state === "verified",
   );
   return (
-    <div className="prototype-diagnosis">
-      <section aria-label="Evidence ledger">
-        <p className="eyebrow">01 / Evidence</p>
-        <h2>What we know</h2>
-        <details className="diagnosis-disclosure">
-          <summary>
-            Review {value.investigation.evidence?.length ?? 0} recorded
-            observations
-          </summary>
-          <div className="evidence-filters">
-            <label>
-              Evidence source
-              <select
-                value={source}
-                onChange={(e) => setSource(e.target.value)}
-              >
-                <option value="all">All sources</option>
-                {[
-                  ...new Set(
-                    (value.investigation.evidence ?? []).map(
-                      (e) => e.source_type,
+    <>
+      <IntakeEvidenceSummary value={value} />
+      <div className="prototype-diagnosis">
+        <section aria-label="Evidence ledger">
+          <p className="eyebrow">01 / Evidence</p>
+          <h2>What we know</h2>
+          <details className="diagnosis-disclosure">
+            <summary>
+              Review {value.investigation.evidence?.length ?? 0} recorded
+              observations
+            </summary>
+            <div className="evidence-filters">
+              <label>
+                Evidence source
+                <select
+                  value={source}
+                  onChange={(e) => setSource(e.target.value)}
+                >
+                  <option value="all">All sources</option>
+                  {[
+                    ...new Set(
+                      (value.investigation.evidence ?? []).map(
+                        (e) => e.source_type,
+                      ),
                     ),
-                  ),
-                ].map((s) => (
-                  <option key={s} value={s}>
-                    {humanize(s)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Evidence status
-              <select
-                value={verification}
-                onChange={(e) => setVerification(e.target.value)}
-              >
-                <option value="all">All statuses</option>
-                {["verified", "provisional", "rejected"].map((s) => (
-                  <option key={s}>{s}</option>
-                ))}
-              </select>
-            </label>
-          </div>
-          {locked && (
-            <p>
-              Evidence is locked after confirmed inspection. Start another case
-              for later corrections.
-            </p>
-          )}
-          {value.investigation.evidence
-            ?.filter(
-              (e) =>
-                (source === "all" || e.source_type === source) &&
-                (verification === "all" ||
-                  e.verification_state === verification),
-            )
-            .map((e) => (
-              <article
-                className="prototype-ledger-row"
-                key={e.id}
-                id={e.id}
-                tabIndex={-1}
-              >
-                <span className="status">{humanize(e.verification_state)}</span>
-                <h3>{humanize(e.key)}</h3>
-                <p>{candidateValue(e)}</p>
-                <small>
-                  {e.id} · {humanize(e.source_type)}
-                </small>
-                <details>
-                  <summary>Source reference</summary>
-                  <p>{e.source_ref}</p>
-                  <time>{e.timestamp}</time>
-                </details>
-                {!locked && e.verification_state !== "rejected" && (
-                  <EvidenceCorrection evidence={e} onCorrect={onCorrect} />
-                )}
-              </article>
-            ))}
-          <p>
-            Missing telemetry stays unknown. Machine PASS is a run-status fact,
-            not a product-quality result.
-          </p>
-        </details>
-      </section>
-      <section>
-        <p className="eyebrow">Possible causes</p>
-        <h2>Ranked causes</h2>
-        <p>
-          Diagnostic points, not probabilities. Rules v{value.rules_version}.
-        </p>
-        <p className="diagnosis-intro">
-          These are working hypotheses. An inspection is needed to confirm a
-          cause. Expand a cause to see its evidence.
-        </p>
-        {value.ranking.map((cause, index) => (
-          <article className="prototype-cause" key={cause.hypothesis_id}>
-            <details>
-              <summary className="cause-summary">
-                <h3>
-                  {index + 1}. {cause.label}
-                </h3>
-                <span>
-                  <strong>{cause.score} points</strong> ·{" "}
-                  {cause.confirmed ? "Confirmed" : "Unconfirmed"}
-                </span>
-              </summary>
-              <ul>
-                {cause.contributions.map((c, i) => (
-                  <li key={i}>
-                    <a
-                      href={`#${c.evidence_id}`}
-                      onClick={(event) => revealEvidence(event, c.evidence_id)}
-                    >
-                      {c.evidence_id}
-                    </a>{" "}
-                    {c.weight > 0 ? "+" : ""}
-                    {c.weight}: {c.explanation}
-                  </li>
-                ))}
-              </ul>
-              <p>
-                Missing: {cause.missing_evidence.join(", ") || "None listed"}
-              </p>
-            </details>
-          </article>
-        ))}
-        <details className="reasoning-disclosure">
-          <summary>How this diagnosis was generated</summary>
-          <h3>
-            {value.findings_mode === "live"
-              ? "Live specialist and critic findings"
-              : "Cached specialist and critic findings"}
-          </h3>
-          <p>
-            {value.reasoning?.mode === "live"
-              ? `Gemini ${value.reasoning.model} · reviewed by the diagnostic critic.`
-              : `Deterministic templates. ${value.reasoning?.fallback_reason ?? "Live reasoning has not run."}`}
-          </p>
-          {value.reasoning && (
-            <details>
-              <summary>Reasoning run</summary>
-              <p>
-                Evidence revision {value.reasoning.evidence_revision} · prompt{" "}
-                {value.reasoning.prompt_version} · {value.reasoning.timestamp}
-              </p>
-              {value.reasoning.critic && (
-                <p>
-                  Critic:{" "}
-                  {value.reasoning.critic.accepted ? "Accepted" : "Rejected"}.{" "}
-                  {value.reasoning.critic.reasons.join(" ")}
-                </p>
-              )}
-            </details>
-          )}
-          {value.findings.map((finding, i) => (
-            <details key={i}>
-              <summary>
-                {humanize(finding.agent)} · {humanize(finding.hypothesis_id)}
-              </summary>
-              <p>{finding.summary}</p>
-              <p>
-                Supporting:{" "}
-                {finding.supporting_evidence_ids.map((id) => (
-                  <a
-                    key={id}
-                    href={`#${id}`}
-                    onClick={(event) => revealEvidence(event, id)}
-                  >
-                    {id}{" "}
-                  </a>
-                ))}
-              </p>
-              <p>
-                Conflicting:{" "}
-                {finding.conflicting_evidence_ids.map((id) => (
-                  <a
-                    key={id}
-                    href={`#${id}`}
-                    onClick={(event) => revealEvidence(event, id)}
-                  >
-                    {id}{" "}
-                  </a>
-                ))}
-              </p>
-              <p>
-                Missing: {finding.missing_evidence.join(", ") || "None listed"}
-              </p>
-            </details>
-          ))}
-        </details>
-      </section>
-      <aside>
-        <details open={!value.diagnosis_supported || undefined}>
-          <summary>Inspection rationale and procedure details</summary>
-          <p className="eyebrow">Next check</p>
-          <h2>
-            {!value.diagnosis_supported
-              ? "Image evidence rejected"
-              : (value.recommendation?.name ??
-                (inspection
-                  ? "Inspection recorded"
-                  : "No diagnostic check available"))}
-          </h2>
-          {!value.diagnosis_supported && (
-            <div role="status">
-              <p>
-                The image evidence and its derived measurements have been
-                rejected. This case cannot proceed to inspection from that
-                image.
-              </p>
-              <a href="/">Start a new case with a valid image sample</a>
+                  ].map((s) => (
+                    <option key={s} value={s}>
+                      {humanize(s)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Evidence status
+                <select
+                  value={verification}
+                  onChange={(e) => setVerification(e.target.value)}
+                >
+                  <option value="all">All statuses</option>
+                  {["verified", "provisional", "rejected"].map((s) => (
+                    <option key={s}>{s}</option>
+                  ))}
+                </select>
+              </label>
             </div>
-          )}
-          {value.recommendation && (
-            <>
-              <p>{value.recommendation.rationale}</p>
-              <p>{value.recommendation.instructions}</p>
+            {locked && (
               <p>
-                {value.recommendation.duration_minutes} minutes · Parts:{" "}
-                {value.recommendation.required_parts.join(", ") || "None"}
-              </p>
-              <ul>
-                {value.recommendation.expected_outcomes.map((o) => (
-                  <li key={o}>{o}</li>
-                ))}
-              </ul>
-              <p className="prototype-caution">
-                {value.recommendation.safety_note}
-              </p>
-            </>
-          )}
-          {inspection?.value === "no_obstruction_found" &&
-            value.recommendation?.id === "air_supply" && (
-              <p role="status">
-                Case remains open. Air-cap and pressure-supply review is the
-                next handoff; further repair workflows require additional
-                reviewed procedures.
+                Evidence is locked after confirmed inspection. Start another
+                case for later corrections.
               </p>
             )}
-        </details>
-      </aside>
-    </div>
+            {value.investigation.evidence
+              ?.filter(
+                (e) =>
+                  (source === "all" || e.source_type === source) &&
+                  (verification === "all" ||
+                    e.verification_state === verification),
+              )
+              .map((e) => (
+                <article
+                  className="prototype-ledger-row"
+                  key={e.id}
+                  id={e.id}
+                  tabIndex={-1}
+                >
+                  <span className="status">
+                    {humanize(e.verification_state)}
+                  </span>
+                  <h3>{humanize(e.key)}</h3>
+                  <p>{candidateValue(e)}</p>
+                  <small>
+                    {e.id} · {humanize(e.source_type)}
+                  </small>
+                  <details>
+                    <summary>Source reference</summary>
+                    <p>{e.source_ref}</p>
+                    <time>{e.timestamp}</time>
+                  </details>
+                  {!locked && e.verification_state !== "rejected" && (
+                    <EvidenceCorrection evidence={e} onCorrect={onCorrect} />
+                  )}
+                </article>
+              ))}
+            <p>
+              Missing telemetry stays unknown. Machine PASS is a run-status
+              fact, not a product-quality result.
+            </p>
+          </details>
+        </section>
+        <section>
+          <p className="eyebrow">Possible causes</p>
+          <h2>Ranked causes</h2>
+          <p>
+            Diagnostic points, not probabilities. Rules v{value.rules_version}.
+          </p>
+          <p className="diagnosis-intro">
+            These are working hypotheses. An inspection is needed to confirm a
+            cause. Expand a cause to see its evidence.
+          </p>
+          {value.ranking.map((cause, index) => (
+            <article className="prototype-cause" key={cause.hypothesis_id}>
+              <details>
+                <summary className="cause-summary">
+                  <h3>
+                    {index + 1}. {cause.label}
+                  </h3>
+                  <span>
+                    <strong>{cause.score} points</strong> ·{" "}
+                    {cause.confirmed ? "Confirmed" : "Unconfirmed"}
+                  </span>
+                </summary>
+                <ul>
+                  {cause.contributions.map((c, i) => (
+                    <li key={i}>
+                      <a
+                        href={`#${c.evidence_id}`}
+                        onClick={(event) =>
+                          revealEvidence(event, c.evidence_id)
+                        }
+                      >
+                        {c.evidence_id}
+                      </a>{" "}
+                      {c.weight > 0 ? "+" : ""}
+                      {c.weight}: {c.explanation}
+                    </li>
+                  ))}
+                </ul>
+                <p>
+                  Missing: {cause.missing_evidence.join(", ") || "None listed"}
+                </p>
+              </details>
+            </article>
+          ))}
+          <details className="reasoning-disclosure">
+            <summary>How this diagnosis was generated</summary>
+            <h3>
+              {value.findings_mode === "live"
+                ? "Live specialist and critic findings"
+                : "Cached specialist and critic findings"}
+            </h3>
+            <p>
+              {value.reasoning?.mode === "live"
+                ? `Gemini ${value.reasoning.model} · reviewed by the diagnostic critic.`
+                : `Deterministic templates. ${value.reasoning?.fallback_reason ?? "Live reasoning has not run."}`}
+            </p>
+            {value.reasoning && (
+              <details>
+                <summary>Reasoning run</summary>
+                <p>
+                  Evidence revision {value.reasoning.evidence_revision} · prompt{" "}
+                  {value.reasoning.prompt_version} · {value.reasoning.timestamp}
+                </p>
+                {value.reasoning.critic && (
+                  <p>
+                    Critic:{" "}
+                    {value.reasoning.critic.accepted ? "Accepted" : "Rejected"}.{" "}
+                    {value.reasoning.critic.reasons.join(" ")}
+                  </p>
+                )}
+              </details>
+            )}
+            {value.findings.map((finding, i) => (
+              <details key={i}>
+                <summary>
+                  {humanize(finding.agent)} · {humanize(finding.hypothesis_id)}
+                </summary>
+                <p>{finding.summary}</p>
+                <p>
+                  Supporting:{" "}
+                  {finding.supporting_evidence_ids.map((id) => (
+                    <a
+                      key={id}
+                      href={`#${id}`}
+                      onClick={(event) => revealEvidence(event, id)}
+                    >
+                      {id}{" "}
+                    </a>
+                  ))}
+                </p>
+                <p>
+                  Conflicting:{" "}
+                  {finding.conflicting_evidence_ids.map((id) => (
+                    <a
+                      key={id}
+                      href={`#${id}`}
+                      onClick={(event) => revealEvidence(event, id)}
+                    >
+                      {id}{" "}
+                    </a>
+                  ))}
+                </p>
+                <p>
+                  Missing:{" "}
+                  {finding.missing_evidence.join(", ") || "None listed"}
+                </p>
+              </details>
+            ))}
+          </details>
+        </section>
+        <aside>
+          <details open={!value.diagnosis_supported || undefined}>
+            <summary>Inspection rationale and procedure details</summary>
+            <p className="eyebrow">Next check</p>
+            <h2>
+              {!value.diagnosis_supported
+                ? "Image evidence rejected"
+                : (value.recommendation?.name ??
+                  (inspection
+                    ? "Inspection recorded"
+                    : "No diagnostic check available"))}
+            </h2>
+            {!value.diagnosis_supported && (
+              <div role="status">
+                <p>
+                  The image evidence and its derived measurements have been
+                  rejected. This case cannot proceed to inspection from that
+                  image.
+                </p>
+                <a href="/">Start a new case with a valid image sample</a>
+              </div>
+            )}
+            {value.recommendation && (
+              <>
+                <p>{value.recommendation.rationale}</p>
+                <p>{value.recommendation.instructions}</p>
+                <p>
+                  {value.recommendation.duration_minutes} minutes · Parts:{" "}
+                  {value.recommendation.required_parts.join(", ") || "None"}
+                </p>
+                <ul>
+                  {value.recommendation.expected_outcomes.map((o) => (
+                    <li key={o}>{o}</li>
+                  ))}
+                </ul>
+                <p className="prototype-caution">
+                  {value.recommendation.safety_note}
+                </p>
+              </>
+            )}
+            {inspection?.value === "no_obstruction_found" &&
+              value.recommendation?.id === "air_supply" && (
+                <p role="status">
+                  Case remains open. Air-cap and pressure-supply review is the
+                  next handoff; further repair workflows require additional
+                  reviewed procedures.
+                </p>
+              )}
+          </details>
+        </aside>
+      </div>
+    </>
   );
 }
 
 export function CaseApp() {
   const [value, setValue] = useState<Case | null>(null);
+  const [rasterMode] = useState(
+    () =>
+      new URLSearchParams(window.location.search).get("samples") === "raster",
+  );
+  const [postPhoto, setPostPhoto] = useState<VisionAssessment | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
   const [images, setImages] = useState<Measurement[]>([]);
   const [scenario, setScenario] = useState<DemoScenario | null>(null);
   const [sample, setSample] = useState<Measurement["sample_id"]>("incomplete");
-  const [report, setReport] = useState(defaultReport);
+  const [report, setReport] = useState(
+    rasterMode
+      ? defaultReport
+      : "The latest inspected tray has an unexpected spray pattern.",
+  );
   const [reloadRequired, setReloadRequired] = useState(false);
   const [completionNotes, setCompletionNotes] = useState("");
   const [error, setError] = useState("");
@@ -388,7 +409,11 @@ export function CaseApp() {
             ...(saved?.recovery ?? emptyRecovery),
             confirmed: false,
           });
-          if (saved?.scenario_version === "2.0" && saved.verification) {
+          if (
+            saved?.scenario_version === "2.0" &&
+            saved.verification &&
+            "sample_id" in saved.verification
+          ) {
             setVerificationSample(
               saved.verification.sample_id as Measurement["sample_id"],
             );
@@ -497,6 +522,7 @@ export function CaseApp() {
       accept(next);
     });
   }
+  const photoCase = !!value && "assessment_id" in value.measurement;
   const state = value?.investigation.state;
   const handoff =
     value?.investigation.evidence?.some(
@@ -530,7 +556,9 @@ export function CaseApp() {
           : value.pending_outcome
             ? "Confirm the inspection observation"
             : state === "cause_confirmed"
-              ? "Record the simulated corrective action"
+              ? photoCase
+                ? "Record the corrective action"
+                : "Record the simulated corrective action"
               : phase === "Verify"
                 ? "Verify the recovery"
                 : inspecting && state === "inspection_recommended"
@@ -601,6 +629,7 @@ export function CaseApp() {
       investigation={value?.investigation}
       phase={phase}
       showPhaseRail={false}
+      showDemoBadge={value ? !photoCase : rasterMode}
     >
       <main id="main" tabIndex={-1} className="case-workspace prototype-app">
         <div className="technician-shell workflow-shell">
@@ -637,8 +666,10 @@ export function CaseApp() {
                   </h1>
                   <p className="workspace-status">
                     {value
-                      ? `Saved revision ${value.revision} · ${value.investigation.simulated ? "Simulated case" : "Recorded case"}`
-                      : "Start with the observed defect and controlled sample."}
+                      ? `Saved revision ${value.revision}${photoCase ? "" : ` · ${value.investigation.simulated ? "Simulated case" : "Recorded case"}`}`
+                      : rasterMode
+                        ? "Start with the observed defect and controlled sample."
+                        : "Inspect the photo, add machine context, then choose the next check."}
                   </p>
                 </div>
                 {value && (
@@ -646,14 +677,17 @@ export function CaseApp() {
                     <button
                       className="secondary"
                       disabled={busy || loading}
-                      onClick={() => void restartDemo()}
+                      onClick={() => {
+                        if (photoCase) window.location.assign("/");
+                        else void restartDemo();
+                      }}
                     >
-                      Restart demo
+                      {photoCase ? "New investigation" : "Restart demo"}
                     </button>
                   </div>
                 )}
               </section>
-              {!loading && (
+              {!loading && (value || rasterMode) && (
                 <WorkflowStatus
                   value={value}
                   phase={phase}
@@ -702,7 +736,15 @@ export function CaseApp() {
                 disabled={busy || loading || reloadRequired}
               >
                 <legend className="sr-only">Investigation controls</legend>
-                {!value && selected && (
+                {!value && !rasterMode && (
+                  <ReportIntake
+                    busy={busy}
+                    onSubmit={(request) => {
+                      void run(async () => accept(await createCase(request)));
+                    }}
+                  />
+                )}
+                {!value && rasterMode && selected && (
                   <div className="prototype-two">
                     <form
                       onSubmit={(event) => {
@@ -1062,7 +1104,9 @@ export function CaseApp() {
                             checked={ack}
                             onChange={(e) => setAck(e.target.checked)}
                           />
-                          I confirm this simulated inspection observation.
+                          {photoCase
+                            ? "I confirm this inspection observation."
+                            : "I confirm this simulated inspection observation."}
                         </label>
                         <button
                           className="primary"
@@ -1095,7 +1139,9 @@ export function CaseApp() {
                           comes next to establish whether the issue is resolved.
                         </p>
                         <label>
-                          Simulated corrective action
+                          {photoCase
+                            ? "Corrective action"
+                            : "Simulated corrective action"}
                           <select
                             value={correctiveAction}
                             onChange={(e) =>
@@ -1113,8 +1159,9 @@ export function CaseApp() {
                           </select>
                         </label>
                         <p>
-                          Record simulated nozzle cleaning or replacement under
-                          the applicable site procedure.
+                          {photoCase
+                            ? "Record nozzle cleaning or replacement completed under the applicable site procedure."
+                            : "Record simulated nozzle cleaning or replacement under the applicable site procedure."}
                         </p>
                         <p className="prototype-caution">
                           Expert review pending. Follow the approved site
@@ -1127,7 +1174,9 @@ export function CaseApp() {
                             checked={ack}
                             onChange={(e) => setAck(e.target.checked)}
                           />
-                          I confirm the simulated corrective action is complete.
+                          {photoCase
+                            ? "I confirm the corrective action is complete."
+                            : "I confirm the simulated corrective action is complete."}
                         </label>
                         <button
                           className="primary"
@@ -1158,10 +1207,15 @@ export function CaseApp() {
                             />
                           ) : (
                             <section>
-                              <h2>Measure the post-action sample</h2>
+                              <h2>
+                                {photoCase
+                                  ? "Compare the post-action photo"
+                                  : "Measure the post-action sample"}
+                              </h2>
                               <p>
-                                Passing requires accepted spray coverage and all
-                                required recovery checks.
+                                {photoCase
+                                  ? "Analyze a new photo after the repair, then confirm the equipment recovery checks."
+                                  : "Passing requires accepted spray coverage and all required recovery checks."}
                               </p>
                             </section>
                           )}
@@ -1201,31 +1255,49 @@ export function CaseApp() {
                               <RecoveryForm
                                 value={checks}
                                 onChange={setChecks}
+                                photoMode={photoCase}
                               />
                             )}
-                            <h2>Check the post-action sample</h2>
-                            <p>
-                              Choose the simulated result to compare with the
-                              original defect.
-                            </p>
-                            <label htmlFor="verification-sample">
-                              Verification sample
-                            </label>
-                            <select
-                              id="verification-sample"
-                              value={verificationSample}
-                              onChange={(e) =>
-                                setVerificationSample(
-                                  e.target.value as Measurement["sample_id"],
-                                )
-                              }
-                            >
-                              {Object.entries(sampleNames).map(([id, name]) => (
-                                <option key={id} value={id}>
-                                  {name}
-                                </option>
-                              ))}
-                            </select>
+                            {photoCase ? (
+                              <div className="photo-verification">
+                                <PhotoInput
+                                  key={value.investigation.id}
+                                  value={postPhoto}
+                                  onChange={setPostPhoto}
+                                  onBusy={setPhotoBusy}
+                                  title="Post-action photo"
+                                />
+                              </div>
+                            ) : (
+                              <>
+                                <h2>Check the post-action sample</h2>
+                                <p>
+                                  Choose the simulated result to compare with
+                                  the original defect.
+                                </p>
+                                <label htmlFor="verification-sample">
+                                  Verification sample
+                                </label>
+                                <select
+                                  id="verification-sample"
+                                  value={verificationSample}
+                                  onChange={(e) =>
+                                    setVerificationSample(
+                                      e.target
+                                        .value as Measurement["sample_id"],
+                                    )
+                                  }
+                                >
+                                  {Object.entries(sampleNames).map(
+                                    ([id, name]) => (
+                                      <option key={id} value={id}>
+                                        {name}
+                                      </option>
+                                    ),
+                                  )}
+                                </select>
+                              </>
+                            )}
                             {!checks.confirmed && !value.escalated && (
                               <p className="action-hint">
                                 Confirm the recovery observations above to
@@ -1234,16 +1306,26 @@ export function CaseApp() {
                             )}
                             <button
                               className="primary"
-                              disabled={value.escalated || !checks.confirmed}
+                              disabled={
+                                value.escalated ||
+                                !checks.confirmed ||
+                                (photoCase && (!postPhoto || photoBusy))
+                              }
                               onClick={() =>
                                 command({
                                   action: "verify",
-                                  sample_id: verificationSample,
+                                  ...(photoCase
+                                    ? {
+                                        assessment_id: postPhoto!.assessment_id,
+                                      }
+                                    : { sample_id: verificationSample }),
                                   checks,
                                 })
                               }
                             >
-                              Measure verification sample
+                              {photoCase
+                                ? "Verify recovery"
+                                : "Measure verification sample"}
                             </button>
                           </section>
                         )}
@@ -1274,7 +1356,9 @@ export function CaseApp() {
                                 checked={ack}
                                 onChange={(e) => setAck(e.target.checked)}
                               />
-                              I confirm this simulated case is ready to resolve.
+                              {photoCase
+                                ? "I confirm this case is ready to resolve."
+                                : "I confirm this simulated case is ready to resolve."}
                             </label>
                             <button
                               className="primary"
@@ -1298,6 +1382,18 @@ export function CaseApp() {
                 {value?.summary && (
                   <section className="prototype-summary">
                     <h2>From observed defect to verified recovery</h2>
+                    {photoCase && value.verification && (
+                      <div className="prototype-two verification-comparison">
+                        <ImageMeasurement
+                          value={value.measurement}
+                          title="Before action"
+                        />
+                        <ImageMeasurement
+                          value={value.verification}
+                          title="After action"
+                        />
+                      </div>
+                    )}
                     <dl>
                       {Object.entries(value.summary)
                         .filter(([key]) => key !== "evidence_ids")
@@ -1332,7 +1428,9 @@ export function CaseApp() {
                     </ol>
                     <SummaryEvidence value={value} />
                     <p role="status">Resolved · saved to this case</p>
-                    <p>Simulated case; expert procedure review pending.</p>
+                    {!photoCase && (
+                      <p>Simulated case; expert procedure review pending.</p>
+                    )}
                   </section>
                 )}
               </fieldset>

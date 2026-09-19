@@ -1,0 +1,54 @@
+{
+  "model_id": "flowpilot-patchcore-resnet18-roi-v1",
+  "preprocessing_id": "rgb-roi-20-80-bicubic224-imagenet-v1",
+  "training": "normal-reference.png only; 78 nearest-neighbor reference patches",
+  "calibration": "normal.png only; reused former held-out normal B is now a calibration reference, not an independent normal test",
+  "threshold_rule": "max(1e-8, 1.25 * calibration_normal_raw_score)",
+  "threshold_status": "Provisional demo operating rule, selected before missing-coating inference; not calibrated probability or validated false-positive rate",
+  "roi_normalized_ltrb": [
+    0.2,
+    0.2,
+    0.8,
+    0.8
+  ],
+  "decision": "raw_score > threshold means anomaly; otherwise within_reference",
+  "missing_coating_expected_region_normalized_ltrb": [
+    0.48,
+    0.3,
+    0.72,
+    0.55
+  ],
+  "success_criteria": "Missing-coating and coarse-deposit scores exceed fixed normal-only threshold, and their strongest ROI heatmap point falls within the visually inspected defect region. This is an illustration-specific integration gate, not an accuracy benchmark.",
+  "artifact_role": "Narrow synthetic-photo demo. No physical coverage, coating thickness, defect class or cause can be inferred from this raw score alone.",
+  "normal_calibration_raw_score": 1.5048032999038696,
+  "threshold_multiplier": 1.25,
+  "threshold": 1.881004124879837,
+  "status": "Provisional demo operating rule, not accuracy/probability or validated false-positive rate",
+  "backbone": "resnet18-imagenet1k-v1",
+  "backbone_sha256": "f37072fd47e89c5e827621c5baffa7500819f7896bbacec160b1a16c560e07ec",
+  "memory_shape": [
+    78,
+    384
+  ],
+  "memory_sha256": "904f7a6418c6d030f565e426de1e673ef829d4de00b5bf7a9e6df46a588ce987",
+  "input_size": 224,
+  "resize": "PIL.Image.Resampling.BICUBIC",
+  "normalization_mean": [
+    0.485,
+    0.456,
+    0.406
+  ],
+  "normalization_std": [
+    0.229,
+    0.224,
+    0.225
+  ],
+  "patch_features": "layer2/layer3 average_pool3stride1pad1, layer3 bilinear to layer2 align_corners=False, concatenate; Euclidean nearest distance; image score=max",
+  "map_interpolation": "bilinear align_corners=False to 224x224",
+  "source_sha256": {
+    "incomplete-coverage.png": "930231c80369f412ca410bf6e76f04b5ce8a2411846fbca561e55c14caa6b44e",
+    "normal-reference.png": "b97065a108da643b70c4bfd27636a959be28465a92d8c00227d93dc0659c48c4",
+    "normal.png": "5df5c29e3042f0c5cb61dc510640f2049d2dceb4a44ddc02f5e49bab55260bac",
+    "coarse-deposits.png": "77cf493717fe2798ccb2003b59ff5d34c30fae863ac1aa64d78e246e4f1e8af2"
+  }
+}

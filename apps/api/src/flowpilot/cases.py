@@ -8,7 +8,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import Response
-from pydantic import ConfigDict, Field, model_serializer
+from pydantic import ConfigDict, Field, model_serializer, model_validator
 from sqlalchemy import JSON, Integer, String, select, update
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Mapped, Session, mapped_column
@@ -27,12 +27,14 @@ from flowpilot.golden import (
 from flowpilot.imaging import Measurement, SampleId, generate_raster, png, sample_measurement
 from flowpilot.ingestion.industry_event_log import parse_industry_event_log
 from flowpilot.ingestion.models import IngestionResult, LogPreviewRequest
+from flowpilot.intake import IntakeContext, IntakeRecord, LogContextRequest, log_context
 from flowpilot.investigations.models import Contract, Evidence, Investigation
 from flowpilot.legacy_imaging import LegacyMeasurement
 from flowpilot.persistence.database import Base, make_engine
 from flowpilot.procedures.models import ProcedureStep
 from flowpilot.recovery import RecoveryChecks
 from flowpilot.settings import fixture_path
+from flowpilot.vision import VisionAssessment, load_assessment
 
 
 class CaseRecord(Base):
@@ -69,9 +71,10 @@ class Case(Contract):
     calibration_failures: int = 0
     escalated: bool = False
     corrective_action: Literal["nozzle_cleaning", "nozzle_replacement"] | None = None
-    measurement: Measurement | LegacyMeasurement
-    verification: Measurement | LegacyMeasurement | None = None
+    measurement: Measurement | LegacyMeasurement | VisionAssessment
+    verification: Measurement | LegacyMeasurement | VisionAssessment | None = None
     log: IngestionResult | None = None
+    intake: IntakeRecord | None = None
     answers: dict[str, str] = Field(default_factory=dict)
     next_question: DiscoveryQuestion | None = None
     questions_complete: bool = False
@@ -100,8 +103,16 @@ class Case(Contract):
 
 
 class CreateCase(Contract):
+    context: IntakeContext | None = None
     report: str = Field(min_length=1, max_length=2000)
-    sample_id: SampleId = "incomplete"
+    sample_id: SampleId | None = None
+    assessment_id: str | None = Field(default=None, min_length=1, max_length=100)
+
+    @model_validator(mode="after")
+    def image_source(self):
+        if self.sample_id is not None and self.assessment_id is not None:
+            raise ValueError("Choose a photo assessment or a raster sample, not both.")
+        return self
 
 
 class CaseListItem(Contract):
@@ -172,8 +183,15 @@ class CompleteAction(ActionBase):
 
 class Verify(ActionBase):
     action: Literal["verify"]
-    sample_id: SampleId
+    sample_id: SampleId | None = None
+    assessment_id: str | None = Field(default=None, min_length=1, max_length=100)
     checks: RecoveryChecks = Field(default_factory=RecoveryChecks)
+
+    @model_validator(mode="after")
+    def image_source(self):
+        if (self.sample_id is None) == (self.assessment_id is None):
+            raise ValueError("Choose exactly one verification image source.")
+        return self
 
 
 class CorrectEvidence(ActionBase):
@@ -268,8 +286,13 @@ def question(question_id: str) -> DiscoveryQuestion:
 def create_case(request: CreateCase) -> Case:
     if not request.report.strip():
         raise HTTPException(422, "Enter an operator report.")
-    measurement = sample_measurement(request.sample_id)
-    supported = not measurement.passed
+    measurement = (
+        load_assessment(request.assessment_id)
+        if request.assessment_id is not None
+        else sample_measurement(request.sample_id or "incomplete")
+    )
+    # An operator report can still warrant investigation with a normal-looking photo.
+    supported = isinstance(measurement, VisionAssessment) or not measurement.passed
     case = Case(
         scenario_version="2.0",
         rules_version="2.0",
@@ -288,6 +311,16 @@ def create_case(request: CreateCase) -> Case:
         procedure=load_golden_scenario().procedure_steps,
     )
     evidence(case, "operator_report", request.report.strip(), verified=True)
+    if isinstance(measurement, VisionAssessment):
+        evidence(
+            case,
+            "visual_anomaly_detected",
+            not measurement.passed,
+            "model_inference",
+            measurement.image_url,
+        )
+        transition(case, "reported", "Operator report created; photo analysis attached.")
+        return case
     evidence(
         case,
         "coverage_pct",
@@ -457,18 +490,39 @@ def correct_evidence(case: Case, action: CorrectEvidence):
     before = item.model_dump(mode="json")
     item.verification_state = "rejected"
     invalidated = []
-    if item.key in questions:
+    question_key = item.key if item.key in questions else None
+    if item.source_type == "machine_log" and question_key is None:
+        # Rejecting a measurement also retires answers derived from that source row.
+        question_key = next(
+            (
+                key
+                for key in case.answers
+                if any(
+                    e.key == key
+                    and e.source_type == "machine_log"
+                    and e.verification_state != "rejected"
+                    and case.intake is not None
+                    and key in case.intake.signals
+                    and item.source_ref in case.intake.signals[key].source_refs
+                    for e in items
+                )
+            ),
+            None,
+        )
+    if question_key is not None:
         # Follow the previously answered path, retiring all dependent answers.
-        cursor = item.key
+        cursor = question_key
         while cursor and cursor in case.answers:
             previous = case.answers.pop(cursor)
             for dependent in items:
-                if dependent.key == cursor and dependent.verification_state != "rejected":
+                if (
+                    dependent.key == cursor or dependent.source_ref == f"question:{cursor}"
+                ) and dependent.verification_state != "rejected":
                     invalidated.append(dependent.model_dump(mode="json"))
                     dependent.verification_state = "rejected"
             option = next(o for o in questions[cursor].options if o.value == previous)
             cursor = option.next_question_id
-        case.next_question = question(item.key)
+        case.next_question = question(question_key)
         if action.operation == "edit":
             case.answers[item.key] = action.value
             option = next(o for o in questions[item.key].options if o.value == action.value)
@@ -478,14 +532,16 @@ def correct_evidence(case: Case, action: CorrectEvidence):
         case.questions_complete = case.next_question is None
     if action.operation == "edit":
         evidence(case, item.key, action.value.strip(), source_ref=item.source_ref, verified=True)
+        record_photo_symptom(case, item.key, action.value.strip())
         if item.key == "operator_report":
             case.investigation.title = action.value.strip()
-    if item.source_type == "synthetic_image_measurement":
+    if item.source_type in ("synthetic_image_measurement", "model_inference"):
         for derived in items:
             if derived.source_ref == item.source_ref and derived.verification_state != "rejected":
                 invalidated.append(derived.model_dump(mode="json"))
                 derived.verification_state = "rejected"
-        case.diagnosis_supported = False
+        if item.source_type == "synthetic_image_measurement":
+            case.diagnosis_supported = False
     case.pending_outcome = None
     case.recommendation = None
     had_ranking = bool(case.ranking)
@@ -514,6 +570,21 @@ def correct_evidence(case: Case, action: CorrectEvidence):
             ensure_ascii=False,
         ),
     )
+
+
+def record_photo_symptom(case: Case, question_id: str, value: str):
+    if (
+        isinstance(case.measurement, VisionAssessment)
+        and question_id == "frequency"
+        and value in ("continuous", "intermittent")
+    ):
+        evidence(
+            case,
+            "incomplete_coverage" if value == "continuous" else "coarse_deposits",
+            True,
+            source_ref="question:frequency",
+            verified=True,
+        )
 
 
 def apply_action(case: Case, action: CaseAction) -> Case:
@@ -561,6 +632,7 @@ def apply_action(case: Case, action: CaseAction) -> Case:
             raise HTTPException(422, "Unknown answer option.")
         case.answers[current.id] = action.value
         evidence(case, current.id, action.value, source_ref=f"question:{current.id}", verified=True)
+        record_photo_symptom(case, current.id, action.value)
         case.next_question = question(option.next_question_id) if option.next_question_id else None
         case.questions_complete = case.next_question is None
         transition(case, "diagnosing", f"Answered: {current.prompt} {option.label}")
@@ -614,7 +686,19 @@ def apply_action(case: Case, action: CaseAction) -> Case:
             "Two calibration failures require maintenance escalation; "
             "ordinary retries are blocked.",
         )
-        case.verification = sample_measurement(action.sample_id)
+        if isinstance(case.measurement, VisionAssessment):
+            require(action.assessment_id is not None, "Analyze a post-action photo first.")
+            verification = load_assessment(action.assessment_id)
+            require(
+                verification.model_id == case.measurement.model_id
+                and verification.preprocessing_id == case.measurement.preprocessing_id
+                and verification.threshold == case.measurement.threshold,
+                "Before and after photos must use the same model and reference threshold.",
+            )
+            case.verification = verification
+        else:
+            require(action.sample_id is not None, "Use a raster sample for this saved case.")
+            case.verification = sample_measurement(action.sample_id)
         case.recovery = action.checks
         if action.checks.confirmed and action.checks.calibration != "unknown":
             case.calibration_attempts += 1
@@ -632,7 +716,9 @@ def apply_action(case: Case, action: CaseAction) -> Case:
             case,
             "verification_passed",
             passed,
-            "synthetic_image_measurement",
+            "model_inference"
+            if isinstance(case.verification, VisionAssessment)
+            else "synthetic_image_measurement",
             case.verification.image_url,
             verified=action.checks.confirmed,
         )
@@ -660,7 +746,11 @@ def apply_action(case: Case, action: CaseAction) -> Case:
             corrective_action="Simulated "
             + (case.corrective_action or "nozzle_replacement").replace("_", " "),
             verification=(
-                "Visual and recovery checks passed; synthetic recovery only, not lot release."
+                "Post-action photo is within the normal reference range; "
+                "technician recovery checks confirmed. "
+                "Visual similarity alone does not authorize lot release."
+                if isinstance(case.verification, VisionAssessment)
+                else "Visual and recovery checks passed; synthetic recovery only, not lot release."
             ),
             evidence_ids=[e.id for e in case.investigation.evidence],
             notes=action.notes.strip(),
@@ -801,13 +891,93 @@ def database_operation(operation):
         engine.dispose()
 
 
+def apply_intake(case: Case, context: IntakeContext):
+    if not isinstance(case.measurement, VisionAssessment):
+        raise HTTPException(422, "Combined intake requires a photo assessment.")
+    signals = {}
+    if context.log is not None:
+        parsed = log_context(LogContextRequest(log=context.log, board_id=context.board_id))
+        if not context.log_confirmed or (parsed.boards and context.board_id is None):
+            raise HTTPException(422, "Confirm the log and its matching Board before submitting.")
+        signals = parsed.signals
+        apply_action(case, AttachLog(action="attach_log", revision=case.revision, log=context.log))
+    elif context.board_id is not None or context.log_confirmed:
+        raise HTTPException(422, "A Board selection requires a log.")
+    used = set()
+    while case.next_question is not None:
+        q = case.next_question
+        choice = context.observations.get(q.id)
+        if choice is None:
+            raise HTTPException(422, f"Answer: {q.prompt}")
+        used.add(q.id)
+        option_values = {option.value for option in q.options}
+        if choice.observed_value is not None and choice.observed_value not in option_values:
+            raise HTTPException(422, "Unknown observation option.")
+        signal = signals.get(q.id)
+        conflict = signal is not None and (
+            (choice.source == "technician_input" and choice.value not in (signal.answer, "unknown"))
+            or (
+                choice.observed_value is not None
+                and choice.observed_value not in (signal.answer, "unknown")
+            )
+        )
+        if conflict and not choice.reason.strip():
+            raise HTTPException(
+                422, "Explain which evidence to use when the log and observation differ."
+            )
+        if choice.source == "machine_log" and (signal is None or choice.value != signal.answer):
+            raise HTTPException(422, "This answer is not supported by the selected log window.")
+        apply_action(
+            case,
+            Answer(action="answer", revision=case.revision, question_id=q.id, value=choice.value),
+        )
+        recorded = next(e for e in reversed(case.investigation.evidence) if e.key == q.id)
+        if choice.source == "machine_log":
+            recorded.source_type = "machine_log"
+            recorded.source_ref = "; ".join(signal.source_refs)
+            referenced = next(e for e in case.log.events if e.sourceRef == signal.source_refs[-1])
+            recorded.timestamp = referenced.occurredAt or "unknown"
+        if choice.reason.strip():
+            evidence(
+                case,
+                "evidence_resolution",
+                {
+                    "question": q.id,
+                    "selected_source": choice.source,
+                    "selected_value": choice.value,
+                    "observed_value": choice.observed_value,
+                    "log_value": signal.answer if signal else None,
+                    "reason": choice.reason.strip(),
+                },
+                source_ref=f"intake:{q.id}",
+                verified=True,
+            )
+    if set(context.observations) != used:
+        raise HTTPException(422, "Submit only observations from the selected symptom branch.")
+    case.intake = IntakeRecord(
+        board_id=context.board_id,
+        observations=context.observations,
+        notes=context.notes.strip(),
+        signals=signals,
+    )
+    apply_action(case, Diagnose(action="diagnose", revision=case.revision))
+    asyncio.run(enrich(case))
+    capture_diagnosis(case, "diagnose")
+
+
 @router.post("/investigations", response_model=Case, status_code=201)
 def new_case(request: CreateCase):
     case = create_case(request)
+    if request.context is not None:
+        apply_intake(case, request.context)
 
     def save(session):
         session.add(
-            CaseRecord(id=case.investigation.id, revision=0, payload=case.model_dump(mode="json"))
+            CaseRecord(
+                id=case.investigation.id,
+                revision=case.revision,
+                payload=case.model_dump(mode="json"),
+            )
         )
         return case
 

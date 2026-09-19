@@ -99,7 +99,9 @@ export function WorkflowStatus({
             {phase === "Summary"
               ? "The problem, confirmed observation, action and recovery results are recorded below."
               : "Review the result, add any completion notes and confirm resolution to save the summary."}{" "}
-            Simulated recovery only; this does not release a production lot.
+            {value && "assessment_id" in value.measurement
+              ? "Photo comparison and operator checks are recorded together."
+              : "Simulated recovery only; this does not release a production lot."}
           </p>
         </div>
       </section>
@@ -112,7 +114,7 @@ export function WorkflowStatus({
         ]
       : [
           "From a defect to a verified recovery",
-          "Start with a sample. Answer five questions, inspect the suspected component, then check whether the corrective action worked.",
+          "Analyze an inspection photo. Answer five questions, inspect the suspected component, then check whether the corrective action worked.",
         ],
     Diagnose: value?.ranking.length
       ? [

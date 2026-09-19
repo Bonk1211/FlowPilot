@@ -4,18 +4,21 @@ import golden from "../../../../fixtures/v2/golden-scenario.json";
 export function RecoveryForm({
   value,
   onChange,
+  photoMode = false,
 }: {
   value: RecoveryChecks;
   onChange: (v: RecoveryChecks) => void;
+  photoMode?: boolean;
 }) {
   return (
     <fieldset className="recovery-checks">
-      <legend>Simulated recovery checks</legend>
+      <legend>
+        {photoMode ? "Equipment recovery checks" : "Simulated recovery checks"}
+      </legend>
       <p>
-        This demo has lanes A and B. Each first carrier requires all units
-        accepted: full, centered coverage without dry regions, blobs,
-        staggering, line-end droplets or overspray. Completion does not release
-        a production lot.
+        Check lanes A and B. Each first carrier requires all units accepted:
+        full, centered coverage without dry regions, blobs, staggering, line-end
+        droplets or overspray. Completion does not release a production lot.
       </p>
       <details className="recovery-demo-shortcut">
         <summary>Demo shortcut</summary>
@@ -136,7 +139,9 @@ export function RecoveryForm({
           checked={value.confirmed}
           onChange={(e) => onChange({ ...value, confirmed: e.target.checked })}
         />
-        I confirm these simulated recovery observations.
+        {photoMode
+          ? "I confirm these recovery observations."
+          : "I confirm these simulated recovery observations."}
       </label>
     </fieldset>
   );

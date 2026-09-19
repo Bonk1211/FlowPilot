@@ -522,7 +522,7 @@ test("sample measurements and keyboard journey reflow at 375px", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto("/");
+  await page.goto("/?samples=raster");
   await page.getByLabel("Controlled image sample").selectOption("overspray");
   await expect(
     page.getByRole("img", { name: "Overspray: 100% coverage" }),
