@@ -8,7 +8,7 @@
   display: flex;
   gap: 32px;
   list-style: none;
-  padding: 16px 0 24px;
+  padding: 12px 0 14px;
   margin: 0;
   border-bottom: 1px solid var(--border-default);
 }
@@ -37,18 +37,18 @@
 }
 .report-intake .intake-section-title {
   font-size: 20px;
-  margin: 24px 0 16px;
+  margin: 20px 0 12px;
 }
 .intake-title {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: baseline;
   gap: 24px;
-  padding: 28px 0;
+  padding: 18px 0 14px;
 }
 .intake-title h2 {
-  font-size: 28px;
-  margin: 4px 0 8px;
+  font-size: 22px;
+  margin: 0 0 2px;
 }
 .intake-title p {
   margin: 0;
@@ -65,17 +65,17 @@
 }
 .intake-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 290px;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) 264px;
+  gap: 20px;
   align-items: start;
 }
 .intake-main {
   display: grid;
-  gap: 24px;
+  gap: 16px;
   min-width: 0;
 }
 .report-intake .intake-card {
-  padding: 28px;
+  padding: 20px 24px;
   border: 1px solid var(--border-default);
   border-radius: 12px;
   background: var(--surface-document);
@@ -109,7 +109,7 @@
 .intake-upload-label {
   display: block;
   margin-bottom: 8px;
-  font-weight: 500;
+  font-weight: 600;
 }
 .intake-card input[type="file"] {
   display: block;
@@ -265,6 +265,10 @@
 .intake-suggestion > div {
   flex: 1 1 230px;
   min-width: 0;
+}
+/* On the tinted evidence panel a transparent button reads as disabled. */
+.intake-suggestion button {
+  background: var(--surface-document);
 }
 .intake-suggestion p {
   font-size: 14px;
@@ -500,7 +504,24 @@
   font-weight: 600;
 }
 .intake-log-disclosure[open] > summary {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+}
+/* Once the log is confirmed it becomes a one-line receipt, not a full card. */
+.report-intake .intake-log-disclosure:not([open]) {
+  padding: 4px 24px;
+}
+/* Source line references stay available but do not compete with the answer. */
+.intake-source-lines > summary {
+  min-height: 32px;
+  display: list-item;
+  list-style-position: inside;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.intake-source-lines > small {
+  display: block;
+  padding-bottom: 4px;
 }
 .intake-planner-status {
   padding: 16px;
@@ -603,14 +624,24 @@
 .intake-card {
   scroll-margin-top: 80px;
 }
+/* Confirmed answers are a compact receipt: label, value, source, one Edit. */
 .intake-answer-summary > div {
   position: relative;
-  padding-right: 54px;
+  padding: 10px 54px 10px 0;
+}
+.intake-answer-summary p {
+  margin: 2px 0;
+}
+.intake-answer-summary small {
+  display: block;
+  margin-top: 1px;
 }
 .intake-answer-summary button {
   position: absolute;
   right: 0;
-  top: 8px;
+  top: 4px;
+  min-height: 44px;
+  min-width: 44px;
   padding: 8px;
 }
 .intake-photo-summary img {
@@ -629,8 +660,19 @@
   margin-bottom: 12px;
 }
 .intake-guided-card .intake-planner-status {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 16px;
   padding: 10px 12px;
   margin-bottom: 8px;
+}
+.intake-guided-card .intake-planner-status p {
+  grid-column: 1 / -1;
+}
+.intake-guided-card .intake-planner-status > span {
+  justify-self: end;
+  white-space: nowrap;
 }
 .intake-guided-card .intake-planner-status p {
   margin: 4px 0;
@@ -649,8 +691,8 @@
   margin-bottom: 14px;
 }
 .intake-guided-card .intake-supplement {
-  margin-top: 14px;
-  gap: 4px;
+  margin-top: 16px;
+  gap: 6px;
 }
 .intake-guided-card textarea {
   min-height: 58px;

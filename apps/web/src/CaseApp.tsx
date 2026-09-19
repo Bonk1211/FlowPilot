@@ -698,13 +698,13 @@ export function CaseApp() {
                   <h1 ref={heading} tabIndex={-1}>
                     {title}
                   </h1>
-                  <p className="workspace-status">
-                    {value
-                      ? `Saved revision ${value.revision}${photoCase ? "" : ` · ${value.investigation.simulated ? "Simulated case" : "Recorded case"}`}`
-                      : rasterMode
-                        ? "Start with the observed defect and controlled sample."
-                        : "Inspect the photo, add machine context, then choose the next check."}
-                  </p>
+                  {(value || rasterMode) && (
+                    <p className="workspace-status">
+                      {value
+                        ? `Saved to database · revision ${value.revision}${photoCase ? "" : ` · ${value.investigation.simulated ? "Simulated case" : "Recorded case"}`}`
+                        : "Start with the observed defect and controlled sample."}
+                    </p>
+                  )}
                 </div>
                 {value && (
                   <div className="case-restart">

@@ -76,7 +76,7 @@
   scroll-padding-block: 24px;
 }
 .workflow-shell .workspace-masthead {
-  padding-block: 28px;
+  padding-block: 20px 14px;
   min-height: auto;
 }
 .workflow-shell .workspace-masthead h1 {

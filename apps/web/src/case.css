@@ -146,8 +146,8 @@
   scroll-padding-block: var(--space-5) 12rem;
 }
 .workspace-masthead {
-  min-height: 104px;
-  padding: var(--space-4) 0;
+  min-height: 0;
+  padding: var(--space-4) 0 var(--space-3);
   align-items: flex-start;
   border-bottom: 1px solid var(--border-default);
 }

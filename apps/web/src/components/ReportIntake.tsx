@@ -462,7 +462,7 @@ export function ReportIntake({
         </li>
       </ol>
       <div hidden={step !== "photo"}>
-        <h2 ref={heading} tabIndex={-1} className="intake-section-title">
+        <h2 ref={heading} tabIndex={-1} className="sr-only">
           Start with the inspection photo
         </h2>
         <PhotoInput
@@ -491,7 +491,6 @@ export function ReportIntake({
       <div hidden={step !== "context"}>
         <div className="intake-title">
           <div>
-            <p className="eyebrow">02 / REPORT CONTEXT</p>
             <h2 ref={contextHeading} tabIndex={-1}>
               Connect the evidence
             </h2>
@@ -521,15 +520,9 @@ export function ReportIntake({
                     : "Optional evidence"}
                 </summary>
                 <section aria-labelledby="intake-log-title">
-                  <div className="intake-card-heading">
-                    <FileText aria-hidden="true" />
-                    <div>
-                      <h3 id="intake-log-title">Machine log</h3>
-                      <p>
-                        Optional · use measurements from the same inspection.
-                      </p>
-                    </div>
-                  </div>
+                  <h3 id="intake-log-title" className="sr-only">
+                    Machine log
+                  </h3>
                   <label htmlFor="intake-log" className="intake-upload-label">
                     Upload machine log
                   </label>
@@ -543,7 +536,10 @@ export function ReportIntake({
                       if (file) void upload(file);
                     }}
                   />
-                  <p className="intake-help">.log or .txt · up to 2 MB</p>
+                  <p className="intake-help">
+                    .log or .txt · up to 2 MB. Optional — you can continue with
+                    your own observations.
+                  </p>
                   {logBusy && <p role="status">Reading machine events…</p>}
                   {logError && (
                     <p className="intake-error" role="alert">
@@ -558,11 +554,6 @@ export function ReportIntake({
                     >
                       Remove log
                     </button>
-                  )}
-                  {!context && !logBusy && (
-                    <p className="intake-muted">
-                      No log attached. You can continue using your observations.
-                    </p>
                   )}
                   {context && (
                     <div className="intake-log-result">
@@ -810,7 +801,13 @@ export function ReportIntake({
                             <div>
                               <span className="intake-source">Machine log</span>
                               <p>{signal.summary}</p>
-                              <small>{signal.source_refs.join(" · ")}</small>
+                              <details className="intake-source-lines">
+                                <summary>
+                                  {signal.source_refs.length} source line
+                                  {signal.source_refs.length === 1 ? "" : "s"}
+                                </summary>
+                                <small>{signal.source_refs.join(" · ")}</small>
+                              </details>
                             </div>
                             <button
                               type="button"
