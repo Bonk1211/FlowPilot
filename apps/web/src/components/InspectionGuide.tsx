@@ -16,8 +16,9 @@ export function InspectionGuide({
     <section className="inspection-stage" aria-label="Guided inspection">
       <div className="inspection-stage-header">
         <div>
+          {/* The page heading already names this task; keep one visible title. */}
+          <h2 className="sr-only">Assembly guide</h2>
           <p className="eyebrow">Locate · inspect · record</p>
-          <h2>Assembly guide</h2>
         </div>
         <span className="step-count">
           {step + 1} / {steps.length}

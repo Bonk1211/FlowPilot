@@ -146,6 +146,19 @@
 .workflow-shell .primary:hover {
   background: var(--teal-600);
 }
+/* A faded teal fill still reads as an available action. Unavailable primary
+   actions get their own surface, not just lower opacity. */
+.workflow-shell .primary:disabled {
+  background: var(--surface-muted);
+  border-color: var(--border-strong);
+  color: var(--text-muted);
+  opacity: 1;
+}
+.workflow-shell .procedure-viewer .assembly-step-nav .primary:disabled {
+  background: transparent;
+  border-color: var(--border-on-instrument);
+  color: var(--text-muted-on-instrument);
+}
 .workflow-shell .case-primary-task {
   margin-top: 0;
   padding: 32px;
@@ -270,16 +283,13 @@
 }
 .inspection-stage-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  margin-bottom: 16px;
-}
-.inspection-stage-header h2 {
-  margin: 4px 0 0;
+  margin-bottom: 10px;
 }
 .step-count {
   font-family: "IBM Plex Mono", monospace;
-  font-size: 20px;
+  font-size: 18px;
   color: var(--text-selection);
 }
 .inspection-stage-grid {

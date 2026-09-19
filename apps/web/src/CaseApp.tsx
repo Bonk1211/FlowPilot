@@ -24,7 +24,7 @@ import { ApplicationFrame } from "./components/ApplicationFrame";
 import { EvidencePreview } from "./components/EvidencePreview";
 import { EventViewer } from "./components/EventViewer";
 import { EvidenceCorrection } from "./components/EvidenceCorrection";
-import { candidateValue, humanize } from "./presentation";
+import { candidateValue, humanize, sentenceCase } from "./presentation";
 import "./prototype/prototype.css";
 import "./case.css";
 import { sampleNames, emptyRecovery } from "./fluxModel";
@@ -419,12 +419,20 @@ export function CaseApp() {
   const heading = useRef<HTMLHeadingElement>(null);
   const errorPanel = useRef<HTMLElement>(null);
   const retainedLog = useRef<HTMLDetailsElement>(null);
+  const pendingOutcome = useRef<HTMLElement>(null);
   const lock = useRef(false);
   const returnTarget = useRef("open-events");
 
   useEffect(() => {
     if (error) errorPanel.current?.focus();
   }, [error]);
+
+  // Recording an outcome re-renders the page from the top; bring the
+  // confirmation the technician still has to give back into view.
+  useEffect(() => {
+    if (value?.pending_outcome)
+      pendingOutcome.current?.scrollIntoView({ block: "center" });
+  }, [value?.pending_outcome]);
 
   useEffect(() => {
     let active = true;
@@ -1129,8 +1137,12 @@ export function CaseApp() {
                       </section>
                     )}
                     {value.pending_outcome && (
-                      <section className="prototype-question">
-                        <h2>{humanize(value.pending_outcome)}</h2>
+                      <section
+                        className="prototype-question"
+                        ref={pendingOutcome}
+                      >
+                        <p className="eyebrow">Inspection result</p>
+                        <h2>{sentenceCase(value.pending_outcome)}</h2>
                         <p>
                           This observation has not yet changed the diagnosis.
                         </p>
