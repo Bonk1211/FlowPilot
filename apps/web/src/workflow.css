@@ -643,9 +643,22 @@
   padding: 20px 16px;
 }
 .chat-welcome {
-  padding: 24px 12px;
+  padding: 20px 8px;
   text-align: center;
   color: var(--text-secondary);
+}
+/* Suggested questions are offered up front so the first ask is one click. */
+.chat-welcome .suggested-prompts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+  text-align: left;
+}
+.chat-welcome .prompt-chip {
+  min-height: 44px;
+  width: 100%;
+  justify-content: flex-start;
 }
 .chat-welcome > svg {
   width: 36px;
@@ -694,10 +707,13 @@
   margin-bottom: 8px;
 }
 .chat-panel .composer-input textarea {
-  min-height: 72px;
+  min-height: 56px;
   max-height: 120px;
   resize: none;
   font-size: 14px;
+}
+.chat-panel .guidance-citations a {
+  overflow-wrap: anywhere;
 }
 .chat-loading {
   color: var(--text-muted);

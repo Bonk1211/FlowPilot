@@ -1531,6 +1531,12 @@ export function CaseApp() {
                 exchanges={guidance}
                 busy={guidanceBusy}
                 onAsk={askGuidance}
+                evidenceLabels={Object.fromEntries(
+                  (value.investigation.evidence ?? []).map((item) => [
+                    item.id,
+                    `${humanize(item.key)} · ${humanize(item.source_type)}`,
+                  ]),
+                )}
               />
             )}
           </div>
