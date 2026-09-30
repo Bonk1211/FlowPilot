@@ -13,6 +13,7 @@
   },
   "scripts": {
     "dev": "concurrently --kill-others --names api,web \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:mock": "FLOWPILOT_INCIDENT_AUTH_MODE=demo FLOWPILOT_INCIDENT_AUTO_PROCESS=true FLOWPILOT_REASONING_ENABLED=false FLOWPILOT_INCIDENT_JEV_ENABLED=false npm run dev",
     "dev:api": "uv run uvicorn flowpilot.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir apps/api/src",
     "dev:web": "npm run dev --workspace @flowpilot/web",
     "db:migrate": "uv run alembic -c apps/api/alembic.ini upgrade head",
