@@ -1,0 +1,515 @@
+{
+  "report_version": "s932-mock-benchmark-1",
+  "created_at": "2026-09-30T15:17:11.037093+00:00",
+  "mode": "synthetic_only",
+  "real_machine_validated": false,
+  "environment": {
+    "python": "3.12.12",
+    "platform": "macOS-26.5.1-arm64-arm-64bit",
+    "machine": "arm64",
+    "processor": "arm",
+    "logical_cpus": 10,
+    "numpy": "2.5.3"
+  },
+  "isolation": {
+    "database": "Temporary migrated SQLite, removed after this run",
+    "default_database_modified": false,
+    "background_workers": false,
+    "latency_model_calls": false,
+    "requested_shadow_providers": []
+  },
+  "capture_latency": {
+    "measurement": "Local synchronous service call through durable SQLite commit; HTTP, network, background analysis and live LLM generation excluded.",
+    "acknowledgement": {
+      "samples": 20,
+      "p50_ms": 3.191,
+      "p95_ms": 7.166,
+      "minimum_ms": 2.265,
+      "maximum_ms": 26.096
+    },
+    "first_template_observed": {
+      "samples": 20,
+      "p50_ms": 3.191,
+      "p95_ms": 7.166,
+      "minimum_ms": 2.265,
+      "maximum_ms": 26.096,
+      "interpretation": "Observed at acknowledgement; this bounds template availability, not LLM draft latency."
+    },
+    "duplicate_delivery": {
+      "samples": 20,
+      "p50_ms": 1.324,
+      "p95_ms": 2.285,
+      "minimum_ms": 0.976,
+      "maximum_ms": 2.485
+    },
+    "package_bytes": {
+      "minimum": 2621,
+      "maximum": 2621,
+      "includes": "JSON incident package with local image references; image bytes excluded."
+    },
+    "targets": {
+      "proposed_acknowledgement_p95_ms": 2000,
+      "proposed_initial_draft_p95_ms": 15000,
+      "acknowledgement_met_in_this_local_run": true,
+      "template_observation_met_in_this_local_run": true,
+      "production_or_llm_draft_sla_established": false
+    }
+  },
+  "decision_workflow": {
+    "fixture_version": "s932-workflow-evaluation-1",
+    "cases": [
+      {
+        "incident_id": "HELDOUT-01",
+        "fixture_sha256": "974eb47a14a26936d3bebfd7c186f7396ecc315a6625914ebc90acb3e8e44566",
+        "expected_next_id": "delivery_review",
+        "actual_next_id": "delivery_review",
+        "kind": "check",
+        "latency_ms": 0.199,
+        "matches_authored_workflow_expectation": true,
+        "abstained_or_escalated": false,
+        "inconclusive_hypotheses": [],
+        "unknown_discovery_fields": [
+          "question_recent_changes"
+        ],
+        "all_reference_ids_exist": true,
+        "cited_reference_count": 1,
+        "unverified_sources_block_operational_instructions": true,
+        "inapplicable_configuration_blocks_checks": null,
+        "warnings": []
+      },
+      {
+        "incident_id": "HELDOUT-02",
+        "fixture_sha256": "96cdc943138954e4d6498cf6bb0e131d8343d016c36f7e93c211f4d4d1decea8",
+        "expected_next_id": "delivery_review",
+        "actual_next_id": "delivery_review",
+        "kind": "check",
+        "latency_ms": 0.082,
+        "matches_authored_workflow_expectation": true,
+        "abstained_or_escalated": false,
+        "inconclusive_hypotheses": [],
+        "unknown_discovery_fields": [
+          "question_recent_changes"
+        ],
+        "all_reference_ids_exist": true,
+        "cited_reference_count": 1,
+        "unverified_sources_block_operational_instructions": true,
+        "inapplicable_configuration_blocks_checks": null,
+        "warnings": []
+      },
+      {
+        "incident_id": "HELDOUT-03",
+        "fixture_sha256": "f04e53b199c969c332e0ca461832acea08d1f322c448b0c3ce2f39a7a2cc912c",
+        "expected_next_id": "restriction_review",
+        "actual_next_id": "restriction_review",
+        "kind": "check",
+        "latency_ms": 0.064,
+        "matches_authored_workflow_expectation": true,
+        "abstained_or_escalated": false,
+        "inconclusive_hypotheses": [],
+        "unknown_discovery_fields": [
+          "question_recent_changes"
+        ],
+        "all_reference_ids_exist": true,
+        "cited_reference_count": 1,
+        "unverified_sources_block_operational_instructions": true,
+        "inapplicable_configuration_blocks_checks": null,
+        "warnings": []
+      },
+      {
+        "incident_id": "HELDOUT-04",
+        "fixture_sha256": "958ef5436d615504180760476489d844dbecefb576417ea42c45b41d8da7bb7b",
+        "expected_next_id": "material_review",
+        "actual_next_id": "material_review",
+        "kind": "check",
+        "latency_ms": 0.056,
+        "matches_authored_workflow_expectation": true,
+        "abstained_or_escalated": false,
+        "inconclusive_hypotheses": [],
+        "unknown_discovery_fields": [
+          "question_recent_changes"
+        ],
+        "all_reference_ids_exist": true,
+        "cited_reference_count": 1,
+        "unverified_sources_block_operational_instructions": true,
+        "inapplicable_configuration_blocks_checks": null,
+        "warnings": []
+      },
+      {
+        "incident_id": "HELDOUT-05",
+        "fixture_sha256": "8115f2f8e9f754b6bf2ed1729eed664668eec7b9b747040649d0005c8e69c212",
+        "expected_next_id": "restriction_review",
+        "actual_next_id": "restriction_review",
+        "kind": "check",
+        "latency_ms": 0.059,
+        "matches_authored_workflow_expectation": true,
+        "abstained_or_escalated": false,
+        "inconclusive_hypotheses": [],
+        "unknown_discovery_fields": [
+          "question_recent_changes"
+        ],
+        "all_reference_ids_exist": true,
+        "cited_reference_count": 2,
+        "unverified_sources_block_operational_instructions": true,
+        "inapplicable_configuration_blocks_checks": null,
+        "warnings": []
+      },
+      {
+        "incident_id": "HELDOUT-06",
+        "fixture_sha256": "bb9f5fb5a800b9d8e75e27852c953377486d23a940d2f95256cd9ded9e4f8124",
+        "expected_next_id": "inconclusive_review",
+        "actual_next_id": "inconclusive_review",
+        "kind": "escalate",
+        "latency_ms": 0.057,
+        "matches_authored_workflow_expectation": true,
+        "abstained_or_escalated": true,
+        "inconclusive_hypotheses": [
+          "restriction",
+          "unstable_delivery",
+          "material_condition"
+        ],
+        "unknown_discovery_fields": [
+          "question_recent_changes"
+        ],
+        "all_reference_ids_exist": true,
+        "cited_reference_count": 1,
+        "unverified_sources_block_operational_instructions": true,
+        "inapplicable_configuration_blocks_checks": null,
+        "warnings": []
+      },
+      {
+        "incident_id": "HELDOUT-07",
+        "fixture_sha256": "e4c9a96905af41348ce086e247d63d0f9a6e1a3471d8170a89dc9f816d75753f",
+        "expected_next_id": "question_coverage",
+        "actual_next_id": "question_coverage",
+        "kind": "question",
+        "latency_ms": 0.053,
+        "matches_authored_workflow_expectation": true,
+        "abstained_or_escalated": false,
+        "inconclusive_hypotheses": [],
+        "unknown_discovery_fields": [
+          "question_material"
+        ],
+        "all_reference_ids_exist": true,
+        "cited_reference_count": 0,
+        "unverified_sources_block_operational_instructions": true,
+        "inapplicable_configuration_blocks_checks": null,
+        "warnings": []
+      },
+      {
+        "incident_id": "HELDOUT-08",
+        "fixture_sha256": "36ddd96fa9ac9a05054fe23a160831e1bf9df782e43e089d441f3ecb6ee8c5dd",
+        "expected_next_id": "configuration_review",
+        "actual_next_id": "configuration_review",
+        "kind": "escalate",
+        "latency_ms": 0.052,
+        "matches_authored_workflow_expectation": true,
+        "abstained_or_escalated": true,
+        "inconclusive_hypotheses": [],
+        "unknown_discovery_fields": [
+          "question_recent_changes"
+        ],
+        "all_reference_ids_exist": true,
+        "cited_reference_count": 1,
+        "unverified_sources_block_operational_instructions": true,
+        "inapplicable_configuration_blocks_checks": true,
+        "warnings": []
+      },
+      {
+        "incident_id": "HELDOUT-09",
+        "fixture_sha256": "0e44ffd19233eeeeb62ca353b50ec2e950d45c6f123bb0495f9f09d64b1e228f",
+        "expected_next_id": "restriction_review",
+        "actual_next_id": "restriction_review",
+        "kind": "check",
+        "latency_ms": 0.056,
+        "matches_authored_workflow_expectation": true,
+        "abstained_or_escalated": false,
+        "inconclusive_hypotheses": [
+          "unstable_delivery"
+        ],
+        "unknown_discovery_fields": [
+          "question_recent_changes"
+        ],
+        "all_reference_ids_exist": true,
+        "cited_reference_count": 3,
+        "unverified_sources_block_operational_instructions": true,
+        "inapplicable_configuration_blocks_checks": null,
+        "warnings": []
+      },
+      {
+        "incident_id": "HELDOUT-10",
+        "fixture_sha256": "9abbc7a92aaf8cbd78e1d889b3ac4034144d88e042a90498daa40ce90ff4ba20",
+        "expected_next_id": "delivery_review",
+        "actual_next_id": "delivery_review",
+        "kind": "check",
+        "latency_ms": 0.051,
+        "matches_authored_workflow_expectation": true,
+        "abstained_or_escalated": false,
+        "inconclusive_hypotheses": [],
+        "unknown_discovery_fields": [
+          "question_recent_changes"
+        ],
+        "all_reference_ids_exist": true,
+        "cited_reference_count": 1,
+        "unverified_sources_block_operational_instructions": true,
+        "inapplicable_configuration_blocks_checks": null,
+        "warnings": [
+          "HELDOUT-10-observation-0: operational or inapplicable result excluded; the current methods permit replay only."
+        ]
+      }
+    ],
+    "providers": {
+      "jev": {
+        "status": "not_run",
+        "reason": "No explicit --providers opt-in.",
+        "cases": []
+      },
+      "llm": {
+        "status": "not_run",
+        "reason": "No explicit --providers opt-in.",
+        "cases": []
+      }
+    },
+    "interpretation": "Fixed synthetic workflow expectations, not independent real-machine ground truth or production diagnostic accuracy.",
+    "semantic_traceability": "Not measured. Existing reference IDs do not establish claim correctness; human review is required."
+  },
+  "simulation": {
+    "model_version": "s932-illustrative-surrogate-1",
+    "fixture_version": "synthetic-flux-fixture-1",
+    "evaluation": {
+      "training_incident_ids": [
+        "train-restriction-delivery-0.80_material-0.80-severity-0.00",
+        "train-restriction-delivery-0.80_material-0.80-severity-0.25",
+        "train-restriction-delivery-0.80_material-0.80-severity-0.50",
+        "train-restriction-delivery-0.80_material-0.80-severity-0.75",
+        "train-restriction-delivery-0.80_material-0.80-severity-1.00",
+        "train-restriction-delivery-0.80_material-1.00-severity-0.00",
+        "train-restriction-delivery-0.80_material-1.00-severity-0.25",
+        "train-restriction-delivery-0.80_material-1.00-severity-0.50",
+        "train-restriction-delivery-0.80_material-1.00-severity-0.75",
+        "train-restriction-delivery-0.80_material-1.00-severity-1.00",
+        "train-restriction-delivery-0.80_material-1.20-severity-0.00",
+        "train-restriction-delivery-0.80_material-1.20-severity-0.25",
+        "train-restriction-delivery-0.80_material-1.20-severity-0.50",
+        "train-restriction-delivery-0.80_material-1.20-severity-0.75",
+        "train-restriction-delivery-0.80_material-1.20-severity-1.00",
+        "train-restriction-delivery-1.00_material-0.80-severity-0.00",
+        "train-restriction-delivery-1.00_material-0.80-severity-0.25",
+        "train-restriction-delivery-1.00_material-0.80-severity-0.50",
+        "train-restriction-delivery-1.00_material-0.80-severity-0.75",
+        "train-restriction-delivery-1.00_material-0.80-severity-1.00",
+        "train-restriction-delivery-1.00_material-1.20-severity-0.00",
+        "train-restriction-delivery-1.00_material-1.20-severity-0.25",
+        "train-restriction-delivery-1.00_material-1.20-severity-0.50",
+        "train-restriction-delivery-1.00_material-1.20-severity-0.75",
+        "train-restriction-delivery-1.00_material-1.20-severity-1.00",
+        "train-restriction-delivery-1.20_material-0.80-severity-0.00",
+        "train-restriction-delivery-1.20_material-0.80-severity-0.25",
+        "train-restriction-delivery-1.20_material-0.80-severity-0.50",
+        "train-restriction-delivery-1.20_material-0.80-severity-0.75",
+        "train-restriction-delivery-1.20_material-0.80-severity-1.00",
+        "train-restriction-delivery-1.20_material-1.00-severity-0.00",
+        "train-restriction-delivery-1.20_material-1.00-severity-0.25",
+        "train-restriction-delivery-1.20_material-1.00-severity-0.50",
+        "train-restriction-delivery-1.20_material-1.00-severity-0.75",
+        "train-restriction-delivery-1.20_material-1.00-severity-1.00",
+        "train-restriction-delivery-1.20_material-1.20-severity-0.00",
+        "train-restriction-delivery-1.20_material-1.20-severity-0.25",
+        "train-restriction-delivery-1.20_material-1.20-severity-0.50",
+        "train-restriction-delivery-1.20_material-1.20-severity-0.75",
+        "train-restriction-delivery-1.20_material-1.20-severity-1.00",
+        "train-unstable_delivery-delivery-0.80_material-0.80-severity-0.00",
+        "train-unstable_delivery-delivery-0.80_material-0.80-severity-0.25",
+        "train-unstable_delivery-delivery-0.80_material-0.80-severity-0.50",
+        "train-unstable_delivery-delivery-0.80_material-0.80-severity-0.75",
+        "train-unstable_delivery-delivery-0.80_material-0.80-severity-1.00",
+        "train-unstable_delivery-delivery-0.80_material-1.00-severity-0.00",
+        "train-unstable_delivery-delivery-0.80_material-1.00-severity-0.25",
+        "train-unstable_delivery-delivery-0.80_material-1.00-severity-0.50",
+        "train-unstable_delivery-delivery-0.80_material-1.00-severity-0.75",
+        "train-unstable_delivery-delivery-0.80_material-1.00-severity-1.00",
+        "train-unstable_delivery-delivery-0.80_material-1.20-severity-0.00",
+        "train-unstable_delivery-delivery-0.80_material-1.20-severity-0.25",
+        "train-unstable_delivery-delivery-0.80_material-1.20-severity-0.50",
+        "train-unstable_delivery-delivery-0.80_material-1.20-severity-0.75",
+        "train-unstable_delivery-delivery-0.80_material-1.20-severity-1.00",
+        "train-unstable_delivery-delivery-1.00_material-0.80-severity-0.00",
+        "train-unstable_delivery-delivery-1.00_material-0.80-severity-0.25",
+        "train-unstable_delivery-delivery-1.00_material-0.80-severity-0.50",
+        "train-unstable_delivery-delivery-1.00_material-0.80-severity-0.75",
+        "train-unstable_delivery-delivery-1.00_material-0.80-severity-1.00",
+        "train-unstable_delivery-delivery-1.00_material-1.20-severity-0.00",
+        "train-unstable_delivery-delivery-1.00_material-1.20-severity-0.25",
+        "train-unstable_delivery-delivery-1.00_material-1.20-severity-0.50",
+        "train-unstable_delivery-delivery-1.00_material-1.20-severity-0.75",
+        "train-unstable_delivery-delivery-1.00_material-1.20-severity-1.00",
+        "train-unstable_delivery-delivery-1.20_material-0.80-severity-0.00",
+        "train-unstable_delivery-delivery-1.20_material-0.80-severity-0.25",
+        "train-unstable_delivery-delivery-1.20_material-0.80-severity-0.50",
+        "train-unstable_delivery-delivery-1.20_material-0.80-severity-0.75",
+        "train-unstable_delivery-delivery-1.20_material-0.80-severity-1.00",
+        "train-unstable_delivery-delivery-1.20_material-1.00-severity-0.00",
+        "train-unstable_delivery-delivery-1.20_material-1.00-severity-0.25",
+        "train-unstable_delivery-delivery-1.20_material-1.00-severity-0.50",
+        "train-unstable_delivery-delivery-1.20_material-1.00-severity-0.75",
+        "train-unstable_delivery-delivery-1.20_material-1.00-severity-1.00",
+        "train-unstable_delivery-delivery-1.20_material-1.20-severity-0.00",
+        "train-unstable_delivery-delivery-1.20_material-1.20-severity-0.25",
+        "train-unstable_delivery-delivery-1.20_material-1.20-severity-0.50",
+        "train-unstable_delivery-delivery-1.20_material-1.20-severity-0.75",
+        "train-unstable_delivery-delivery-1.20_material-1.20-severity-1.00",
+        "train-material_condition-delivery-0.80_material-0.80-severity-0.00",
+        "train-material_condition-delivery-0.80_material-0.80-severity-0.25",
+        "train-material_condition-delivery-0.80_material-0.80-severity-0.50",
+        "train-material_condition-delivery-0.80_material-0.80-severity-0.75",
+        "train-material_condition-delivery-0.80_material-0.80-severity-1.00",
+        "train-material_condition-delivery-0.80_material-1.00-severity-0.00",
+        "train-material_condition-delivery-0.80_material-1.00-severity-0.25",
+        "train-material_condition-delivery-0.80_material-1.00-severity-0.50",
+        "train-material_condition-delivery-0.80_material-1.00-severity-0.75",
+        "train-material_condition-delivery-0.80_material-1.00-severity-1.00",
+        "train-material_condition-delivery-0.80_material-1.20-severity-0.00",
+        "train-material_condition-delivery-0.80_material-1.20-severity-0.25",
+        "train-material_condition-delivery-0.80_material-1.20-severity-0.50",
+        "train-material_condition-delivery-0.80_material-1.20-severity-0.75",
+        "train-material_condition-delivery-0.80_material-1.20-severity-1.00",
+        "train-material_condition-delivery-1.00_material-0.80-severity-0.00",
+        "train-material_condition-delivery-1.00_material-0.80-severity-0.25",
+        "train-material_condition-delivery-1.00_material-0.80-severity-0.50",
+        "train-material_condition-delivery-1.00_material-0.80-severity-0.75",
+        "train-material_condition-delivery-1.00_material-0.80-severity-1.00",
+        "train-material_condition-delivery-1.00_material-1.20-severity-0.00",
+        "train-material_condition-delivery-1.00_material-1.20-severity-0.25",
+        "train-material_condition-delivery-1.00_material-1.20-severity-0.50",
+        "train-material_condition-delivery-1.00_material-1.20-severity-0.75",
+        "train-material_condition-delivery-1.00_material-1.20-severity-1.00",
+        "train-material_condition-delivery-1.20_material-0.80-severity-0.00",
+        "train-material_condition-delivery-1.20_material-0.80-severity-0.25",
+        "train-material_condition-delivery-1.20_material-0.80-severity-0.50",
+        "train-material_condition-delivery-1.20_material-0.80-severity-0.75",
+        "train-material_condition-delivery-1.20_material-0.80-severity-1.00",
+        "train-material_condition-delivery-1.20_material-1.00-severity-0.00",
+        "train-material_condition-delivery-1.20_material-1.00-severity-0.25",
+        "train-material_condition-delivery-1.20_material-1.00-severity-0.50",
+        "train-material_condition-delivery-1.20_material-1.00-severity-0.75",
+        "train-material_condition-delivery-1.20_material-1.00-severity-1.00",
+        "train-material_condition-delivery-1.20_material-1.20-severity-0.00",
+        "train-material_condition-delivery-1.20_material-1.20-severity-0.25",
+        "train-material_condition-delivery-1.20_material-1.20-severity-0.50",
+        "train-material_condition-delivery-1.20_material-1.20-severity-0.75",
+        "train-material_condition-delivery-1.20_material-1.20-severity-1.00"
+      ],
+      "heldout_incident_ids": [
+        "heldout-restriction-delivery-0.90_material-1.10-severity-0.15",
+        "heldout-restriction-delivery-0.90_material-1.10-severity-0.45",
+        "heldout-restriction-delivery-0.90_material-1.10-severity-0.85",
+        "heldout-restriction-delivery-1.00_material-1.00-severity-0.15",
+        "heldout-restriction-delivery-1.00_material-1.00-severity-0.45",
+        "heldout-restriction-delivery-1.00_material-1.00-severity-0.85",
+        "heldout-restriction-delivery-1.10_material-0.90-severity-0.15",
+        "heldout-restriction-delivery-1.10_material-0.90-severity-0.45",
+        "heldout-restriction-delivery-1.10_material-0.90-severity-0.85",
+        "heldout-unstable_delivery-delivery-0.90_material-1.10-severity-0.15",
+        "heldout-unstable_delivery-delivery-0.90_material-1.10-severity-0.45",
+        "heldout-unstable_delivery-delivery-0.90_material-1.10-severity-0.85",
+        "heldout-unstable_delivery-delivery-1.00_material-1.00-severity-0.15",
+        "heldout-unstable_delivery-delivery-1.00_material-1.00-severity-0.45",
+        "heldout-unstable_delivery-delivery-1.00_material-1.00-severity-0.85",
+        "heldout-unstable_delivery-delivery-1.10_material-0.90-severity-0.15",
+        "heldout-unstable_delivery-delivery-1.10_material-0.90-severity-0.45",
+        "heldout-unstable_delivery-delivery-1.10_material-0.90-severity-0.85",
+        "heldout-material_condition-delivery-0.90_material-1.10-severity-0.15",
+        "heldout-material_condition-delivery-0.90_material-1.10-severity-0.45",
+        "heldout-material_condition-delivery-0.90_material-1.10-severity-0.85",
+        "heldout-material_condition-delivery-1.00_material-1.00-severity-0.15",
+        "heldout-material_condition-delivery-1.00_material-1.00-severity-0.45",
+        "heldout-material_condition-delivery-1.00_material-1.00-severity-0.85",
+        "heldout-material_condition-delivery-1.10_material-0.90-severity-0.15",
+        "heldout-material_condition-delivery-1.10_material-0.90-severity-0.45",
+        "heldout-material_condition-delivery-1.10_material-0.90-severity-0.85"
+      ],
+      "training_condition_ids": [
+        "delivery-0.80_material-0.80",
+        "delivery-0.80_material-1.00",
+        "delivery-0.80_material-1.20",
+        "delivery-1.00_material-0.80",
+        "delivery-1.00_material-1.20",
+        "delivery-1.20_material-0.80",
+        "delivery-1.20_material-1.00",
+        "delivery-1.20_material-1.20"
+      ],
+      "heldout_condition_ids": [
+        "delivery-0.90_material-1.10",
+        "delivery-1.00_material-1.00",
+        "delivery-1.10_material-0.90"
+      ],
+      "training_samples": 1560,
+      "heldout_samples": 351,
+      "split_method": "Entire incidents and operating-condition pairs held out before fitting; held-out severity levels also differ. All samples come from one toy generator.",
+      "training_metrics": {
+        "relative_mass_mae": 0.01145922066814087,
+        "coverage_fraction_mae": 0.012056164470005074,
+        "relative_mass_max_error": 0.09167534722221804,
+        "coverage_fraction_max_error": 0.06590840946985799
+      },
+      "heldout_metrics": {
+        "relative_mass_mae": 0.007950762120874788,
+        "coverage_fraction_mae": 0.011559161768254205,
+        "relative_mass_max_error": 0.035957041834342895,
+        "coverage_fraction_max_error": 0.03993480631302471
+      },
+      "constant_baseline_heldout_metrics": {
+        "relative_mass_mae": 0.16069426658567648,
+        "coverage_fraction_mae": 0.07424392645661831,
+        "relative_mass_max_error": 0.4975355113636365,
+        "coverage_fraction_max_error": 0.28247270764575383
+      },
+      "per_scenario_heldout_metrics": {
+        "restriction": {
+          "relative_mass_mae": 0.007898264158680609,
+          "coverage_fraction_mae": 0.011411791019416896,
+          "relative_mass_max_error": 0.030788194444439476,
+          "coverage_fraction_max_error": 0.03993480631302471
+        },
+        "unstable_delivery": {
+          "relative_mass_mae": 0.006203216054778233,
+          "coverage_fraction_mae": 0.01135542112960317,
+          "relative_mass_max_error": 0.023024305555556568,
+          "coverage_fraction_max_error": 0.03162591435025719
+        },
+        "material_condition": {
+          "relative_mass_mae": 0.009750806149165516,
+          "coverage_fraction_mae": 0.011910273155742545,
+          "relative_mass_max_error": 0.035957041834342895,
+          "coverage_fraction_max_error": 0.03592561608823441
+        }
+      },
+      "accepted_error_tolerance": {
+        "relative_mass_mae": 0.08,
+        "coverage_fraction_mae": 0.06
+      },
+      "synthetic_acceptance_passed": true,
+      "real_machine_validated": false
+    },
+    "assumptions": [
+      "All model inputs, coefficients and training targets are invented development fixtures.",
+      "Relative mass compares output to an arbitrary synthetic reference, not measured milligrams.",
+      "Coverage fraction is an illustrative scalar; it does not reconstruct an actual spray image.",
+      "Restriction and material resistance grow along the sequence; delivery instability oscillates.",
+      "Delivery, valve-actuation and atomizing-air paths are distinct; only a toy delivery response is modelled."
+    ],
+    "limits": [
+      "No real-machine training, calibration or validation has been performed.",
+      "A synthetic held-out pass does not approve diagnosis, operating settings, repair or release.",
+      "Evidence references identify incident context only; parameters are not inferred sensor measurements.",
+      "Use only severity 0–1 and delivery/material ratios 0.8–1.2; no extrapolation is supported.",
+      "Geometry, material rheology, atomization, temperatures and valve dynamics are not calibrated."
+    ]
+  },
+  "limits": [
+    "Service timings exclude browser/HTTP/network and real-machine gateway work.",
+    "The first template is synchronous; live LLM draft latency is not measured.",
+    "Identical replay packages use distinct triggers for latency sampling.",
+    "Synthetic agreement is workflow verification, not diagnostic accuracy.",
+    "No technician time savings, 30% handoff improvement or production SLA is established."
+  ]
+}
