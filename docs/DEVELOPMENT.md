@@ -1,4 +1,4 @@
-> Current baseline: version 2 flux spraying. Historical M0-M2 descriptions below document earlier implementation. The current [requirements](PRODUCT_REQUIREMENTS.md) and [expert review](EXPERT_REVIEW.md) take precedence.
+> Current workspace: version 3 S932 incident investigation. See the [incident guide](S932_INCIDENT_WORKSPACE.md) and [latest PRD](S932_AI_Troubleshooting_PRD.md). Version 2 guided repair and the historical M0–M2 descriptions below remain applicable to `/legacy` and saved case URLs.
 
 # Development
 

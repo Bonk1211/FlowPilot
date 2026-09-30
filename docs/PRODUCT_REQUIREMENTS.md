@@ -1,5 +1,7 @@
 # FlowPilot - Hackathon MVP requirements
 
+> This document describes the retained v1/v2 guided-repair workflow at `/legacy`. The new default workspace follows the [S932 incident PRD](S932_AI_Troubleshooting_PRD.md); see the [implementation guide](S932_INCIDENT_WORKSPACE.md) for delivered behaviour and remaining pilot integrations.
+
 **Version:** 0.6 / 19 September 2026
 
 **Status:** Flux-spray development baseline; revised procedure approval pending.
