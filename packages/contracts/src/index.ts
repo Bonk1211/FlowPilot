@@ -48,3 +48,45 @@ export type LearningCase = components["schemas"]["LearningCase"];
 
 export type QuestionPlan = components["schemas"]["QuestionPlan"];
 export type QuestionPlanRequest = components["schemas"]["QuestionPlanRequest"];
+
+export type Incident = components["schemas"]["Incident"];
+export type IncidentEvidence = components["schemas"]["IncidentEvidence"];
+export type EvidenceInput = components["schemas"]["EvidenceInput"];
+export type IncidentObservation = components["schemas"]["IncidentObservation"];
+export type DiagnosticAssessment =
+  components["schemas"]["DiagnosticAssessment"];
+export type CreateIncident = components["schemas"]["CreateIncident"];
+export type IncidentExperience = components["schemas"]["IncidentExperience"];
+export type Artifact = components["schemas"]["Artifact"];
+export type IncidentSourceDocument =
+  components["schemas"]["IncidentSourceDocument"];
+export type SourceDocumentInput = components["schemas"]["SourceDocumentInput"];
+export type ApplicableSourcePassage =
+  components["schemas"]["ApplicableSourcePassage"];
+export type SourceConflict = components["schemas"]["SourceConflict"];
+export type IncidentJob = components["schemas"]["IncidentJob"];
+export type SimulationRun = components["schemas"]["SimulationRun"];
+export type SimulationDemo = components["schemas"]["SimulationDemo"];
+export type SimulationRequest = components["schemas"]["SimulationRequest"];
+export type IncidentExperiment = components["schemas"]["IncidentExperiment"];
+export type ExperimentProposal = components["schemas"]["ExperimentProposal"];
+export type ExperimentCommand = components["schemas"]["ExperimentCommand"];
+export type ExperimentWithdrawal = components["schemas"]["ExperimentWithdrawal"];
+export type ExperimentFactor = components["schemas"]["ExperimentFactor"];
+export type IncidentCommunication =
+  components["schemas"]["IncidentCommunication"];
+export type CommunicationApprovalRequest =
+  components["schemas"]["CommunicationApprovalRequest"];
+export type CommunicationSendRequest =
+  components["schemas"]["CommunicationSendRequest"];
+export type CommunicationReceiptRequest =
+  components["schemas"]["CommunicationReceiptRequest"];
+export type IncidentAction =
+  | components["schemas"]["SimpleAction"]
+  | components["schemas"]["AddEvidenceAction"]
+  | components["schemas"]["CorrectEvidenceAction"]
+  | components["schemas"]["RecordResultAction"]
+  | components["schemas"]["EditHandoffAction"]
+  | components["schemas"]["EscalateAction"]
+  | components["schemas"]["CloseIncidentAction"]
+  | components["schemas"]["ReviewLearningAction"];

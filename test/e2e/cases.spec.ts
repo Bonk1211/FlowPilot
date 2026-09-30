@@ -195,7 +195,7 @@ test("legacy case view retains original evidence and has no mutation controls", 
   ).toBeVisible();
   await expect(
     page.getByRole("link", { name: "Start a new flux investigation" }),
-  ).toHaveAttribute("href", "/");
+  ).toHaveAttribute("href", "/legacy");
   await expect(page.getByRole("button")).toHaveCount(0);
 });
 

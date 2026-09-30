@@ -22,6 +22,12 @@ const LearningDatabase = lazy(() =>
     default: module.LearningDatabase,
   })),
 );
+// eslint-disable-next-line react-refresh/only-export-components -- Application entry point.
+const IncidentWorkspace = lazy(() =>
+  import("./incidents/IncidentWorkspace").then((module) => ({
+    default: module.IncidentWorkspace,
+  })),
+);
 
 class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -66,6 +72,17 @@ createRoot(document.getElementById("root")!).render(
         </Suspense>
       ) : window.location.pathname === "/log-preview" ? (
         <App />
+      ) : (window.location.pathname === "/" && !window.location.search) ||
+        window.location.pathname.startsWith("/incidents") ? (
+        <Suspense
+          fallback={
+            <main className="fatal-error" role="status">
+              Loading incident workspace…
+            </main>
+          }
+        >
+          <IncidentWorkspace />
+        </Suspense>
       ) : (
         <CaseApp />
       )}

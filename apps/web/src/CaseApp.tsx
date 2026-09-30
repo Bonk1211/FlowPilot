@@ -342,7 +342,7 @@ function Diagnosis({
                   rejected. This case cannot proceed to inspection from that
                   image.
                 </p>
-                <a href="/">Start a new case with a valid image sample</a>
+                <a href="/legacy">Start a new case with a valid image sample</a>
               </div>
             )}
             {value.recommendation && (
@@ -621,7 +621,7 @@ export function CaseApp() {
           <p role="status">
             Read-only legacy case. Original evidence and results are preserved.
           </p>
-          <a href="/">Start a new flux investigation</a>
+          <a href="/legacy">Start a new flux investigation</a>
           <h2>{value.investigation.title}</h2>
           <ImageMeasurement
             value={value.measurement}
@@ -722,7 +722,7 @@ export function CaseApp() {
                       className="secondary"
                       disabled={busy || loading}
                       onClick={() => {
-                        if (photoCase) window.location.assign("/");
+                        if (photoCase) window.location.assign("/legacy");
                         else void restartDemo();
                       }}
                     >

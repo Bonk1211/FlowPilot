@@ -58,7 +58,7 @@ async function startPhoto(
   page: import("@playwright/test").Page,
   file = "incomplete-coverage.png",
 ) {
-  await page.goto("/");
+  await page.goto("/legacy");
   await expect(
     page.getByRole("button", { name: "Start investigation", exact: true }),
   ).toHaveCount(0);
@@ -161,7 +161,7 @@ test("photo inspection, failed comparison, recovery and persisted before/after",
 test("coarse photo supports technician discovery and clear-nozzle handoff", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/legacy");
   await page
     .getByLabel("Upload a photo")
     .setInputFiles("fixtures/vision/coarse-deposits.png");
@@ -189,7 +189,7 @@ test("photo upload rejects invalid input and stays usable on mobile", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 375, height: 812 });
-  await page.goto("/");
+  await page.goto("/legacy");
   await page.getByLabel("Upload a photo").setInputFiles({
     name: "broken.png",
     mimeType: "image/png",
@@ -225,7 +225,7 @@ test("photo upload rejects invalid input and stays usable on mobile", async ({
 test("uploaded image is analyzed and replacing it invalidates the previous result", async ({
   page,
 }) => {
-  await page.goto("/");
+  await page.goto("/legacy");
   await page
     .getByLabel("Upload a photo")
     .setInputFiles("fixtures/vision/incomplete-coverage.png");
@@ -259,7 +259,7 @@ test("uploaded image is analyzed and replacing it invalidates the previous resul
 test("upload-only intake exposes model findings and original/heatmap comparison", async ({
   page,
 }, testInfo) => {
-  await page.goto("/");
+  await page.goto("/legacy");
   await expect(page.getByText(/try an example/i)).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Analyze photo", exact: true }),
@@ -329,7 +329,7 @@ test("pending analysis is cancellable and respects reduced motion", async ({
     await route.fulfill({ json: assessment }).catch(() => undefined);
   });
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/");
+  await page.goto("/legacy");
   await page
     .getByLabel("Upload a photo")
     .setInputFiles("fixtures/vision/incomplete-coverage.png");

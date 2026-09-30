@@ -1,0 +1,70 @@
+.incident-access-page {
+  min-height: 100vh;
+  padding: 32px;
+  background: var(--surface-workspace);
+}
+.incident-access-page > .wordmark {
+  color: var(--text-primary);
+  width: fit-content;
+}
+.incident-access-panel {
+  width: min(480px, 100%);
+  margin: 70px auto;
+  padding: 32px;
+  background: var(--surface-document);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  display: grid;
+  gap: 20px;
+}
+.incident-access-panel h1 {
+  font-size: 30px;
+}
+.incident-access-panel > p {
+  color: var(--text-secondary);
+}
+.incident-access-icon {
+  width: 32px;
+  height: 32px;
+  color: var(--text-selection);
+}
+.incident-access-panel .incident-access-error {
+  color: var(--state-conflicting);
+}
+.incident-access-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.incident-access-status button {
+  min-height: 36px;
+  padding: 6px 10px;
+  font-size: 12px;
+}
+.incident-access-demo {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.incident-access-banner {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.incident-permission-note {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 12px 0;
+}
+@media (max-width: 520px) {
+  .incident-access-page {
+    padding: 20px 16px;
+  }
+  .incident-access-panel {
+    padding: 24px;
+    margin-block: 40px;
+  }
+}

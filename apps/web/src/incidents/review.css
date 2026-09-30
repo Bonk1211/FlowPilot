@@ -1,0 +1,65 @@
+.incident-review form {
+  display: grid;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+}
+.incident-review label {
+  display: grid;
+  gap: var(--space-2);
+  font-weight: 500;
+}
+.incident-review input:not([type="checkbox"]),
+.incident-review textarea,
+.incident-review select {
+  width: 100%;
+  min-height: var(--control-height);
+  padding: var(--space-3);
+  color: var(--text-primary);
+  background: var(--surface-document);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  font: inherit;
+}
+.incident-review .incident-role-control {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.incident-role-control input {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.incident-review-record {
+  padding: var(--space-4);
+  margin-block: var(--space-4);
+  border-left: 3px solid var(--selection-active);
+  background: var(--surface-measurement);
+  overflow-wrap: anywhere;
+}
+.incident-review-record p {
+  margin-block: var(--space-2);
+}
+.incident-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.incident-review-error {
+  color: var(--state-conflicting);
+}
+.incident-experience-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-4);
+}
+.incident-experience-list li {
+  border-top: 1px solid var(--border-default);
+  padding-top: var(--space-4);
+}
+.incident-experience-list a {
+  color: var(--text-selection);
+  font-weight: 600;
+}

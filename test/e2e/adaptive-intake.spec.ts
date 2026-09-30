@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 
 async function enter(page: Page) {
-  await page.goto("/");
+  await page.goto("/legacy");
   await page
     .getByLabel("Upload a photo", { exact: true })
     .setInputFiles("fixtures/vision/incomplete-coverage.png");

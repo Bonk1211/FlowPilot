@@ -62,7 +62,7 @@ test("rejected image evidence has its own recovery state after reload", async ({
     page.getByRole("link", {
       name: "Start a new case with a valid image sample",
     }),
-  ).toHaveAttribute("href", "/");
+  ).toHaveAttribute("href", "/legacy");
   await expect(
     page.getByRole("heading", { name: "Inspection recorded" }),
   ).toHaveCount(0);

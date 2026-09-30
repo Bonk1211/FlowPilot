@@ -33,7 +33,7 @@ export function CaseNavigator({
         <p className="eyebrow">Case workspace</p>
         <h2>Investigations</h2>
       </div>
-      <a className="case-new primary" href="/">
+      <a className="case-new primary" href="/legacy">
         <Plus aria-hidden="true" />
         New case
       </a>
