@@ -1,9 +1,21 @@
 from pathlib import Path
+from typing import Literal
 
-from pydantic import AliasChoices, Field, SecretStr
+from pydantic import AliasChoices, BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ROOT = Path(__file__).resolve().parents[4]
+
+
+Permission = Literal[
+    "view", "edit", "authorize_test", "send_email", "close", "publish_knowledge", "manage_data"
+]
+
+
+class IncidentPrincipal(BaseModel):
+    subject: str = Field(min_length=1, max_length=100, pattern=r".*\S.*")
+    token_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+    permissions: list[Permission]
 
 
 class Settings(BaseSettings):
@@ -19,6 +31,29 @@ class Settings(BaseSettings):
     gemini_model: str = "gemini-3.5-flash-lite"
     reasoning_enabled: bool = True
     reasoning_timeout_seconds: float = Field(default=12, gt=0, le=30)
+    incident_auth_mode: Literal["demo", "configured"] = "demo"
+    incident_auto_process: bool = False
+    incident_gateway_root: Path | None = None
+    incident_gateway_pre_seconds: int = Field(default=300, ge=0, le=86400)
+    incident_gateway_post_seconds: int = Field(default=60, ge=0, le=86400)
+    incident_principals: list[IncidentPrincipal] = Field(default_factory=list)
+    incident_artifact_limit_bytes: int = Field(default=20 * 1024 * 1024, ge=1, le=100 * 1024 * 1024)
+    incident_retention_days: int = Field(default=90, ge=1, le=3650)
+    incident_external_data_policy: Literal["synthetic_only", "permitted", "disabled"] = (
+        "synthetic_only"
+    )
+    incident_jev_enabled: bool = False
+    jev_api_key: SecretStr | None = None
+    jev_model: str = "jev-latest"
+    jev_timeout_seconds: float = Field(default=3, gt=0, le=30)
+    jev_min_probability: float = Field(default=0.75, ge=0, le=1)
+    incident_email_recipients: list[str] = Field(default_factory=list)
+    incident_smtp_host: str | None = None
+    incident_smtp_port: int = Field(default=587, ge=1, le=65535)
+    incident_smtp_username: str | None = None
+    incident_smtp_password: SecretStr | None = None
+    incident_smtp_from: str | None = None
+    incident_smtp_starttls: bool = True
 
 
 def fixture_path(name: str) -> Path:
