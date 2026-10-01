@@ -62,9 +62,17 @@ test("configured access gates loading, preserves the tab session, and signs out"
     page.getByText("Signed in as engineer@example.test"),
   ).toBeVisible();
   await expect(page.getByLabel("Workspace access token")).toHaveCount(0);
+  await page
+    .getByRole("navigation", { name: "Incident features" })
+    .getByRole("link", { name: "Evidence", exact: true })
+    .click();
   await expect(
     page.getByRole("button", { name: "Collect next evidence" }),
   ).toBeDisabled();
+  await page
+    .getByRole("navigation", { name: "Incident features" })
+    .getByRole("link", { name: "Review", exact: true })
+    .click();
   await expect(
     page.getByRole("button", { name: "Save review and close" }),
   ).toBeDisabled();
@@ -102,6 +110,10 @@ test("configured review uses the authenticated subject and separates closure fro
   await signIn(page);
   await page.getByRole("button", { name: "Start S932 replay" }).click();
   await expect(page).toHaveURL(/\/incidents\/INC-/);
+  await page
+    .getByRole("navigation", { name: "Incident features" })
+    .getByRole("link", { name: "Review", exact: true })
+    .click();
   await expect(page.getByLabel("Reviewer name")).toHaveValue(
     "engineer@example.test",
   );
@@ -141,6 +153,14 @@ test("authenticated source upload preserves bytes, links evidence and survives c
   await signIn(page);
   await page.getByRole("button", { name: "Start S932 replay" }).click();
   await expect(page).toHaveURL(/\/incidents\/INC-/);
+  await page
+    .getByRole("navigation", { name: "Incident features" })
+    .getByRole("link", { name: "Evidence", exact: true })
+    .click();
+  await page
+    .locator("summary")
+    .filter({ hasText: /Source files/ })
+    .click();
   await page.getByText("Upload a source file", { exact: true }).click();
   const bytes = Buffer.from(
     "Original material note\r\nBatch identity pending\r\n",
@@ -154,7 +174,7 @@ test("authenticated source upload preserves bytes, links evidence and survives c
     .getByRole("combobox", { name: "Evidence origin", exact: true })
     .selectOption("simulated");
   await page
-    .getByLabel("Evidence label", { exact: true })
+    .getByRole("textbox", { name: "Evidence label", exact: true })
     .fill("Uploaded material note");
   await page
     .getByLabel("Context note", { exact: true })
@@ -188,6 +208,10 @@ test("authenticated source upload preserves bytes, links evidence and survives c
     requests.some((path) => path.includes("/artifacts/ART-")),
   ).toBeTruthy();
   await page
+    .locator("summary")
+    .filter({ hasText: /Source files/ })
+    .click();
+  await page
     .locator(".incident-event")
     .filter({ hasText: "Uploaded material note" })
     .click();
@@ -213,5 +237,9 @@ test("authenticated source upload preserves bytes, links evidence and survives c
       .locator(".incident-event")
       .filter({ hasText: "Corrected material note context" }),
   ).toBeVisible();
+  await page
+    .locator("summary")
+    .filter({ hasText: /Source files/ })
+    .click();
   await expect(page.locator(".incident-artifact-list > li")).toHaveCount(1);
 });

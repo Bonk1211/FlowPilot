@@ -1,20 +1,29 @@
 import {
+  Activity,
   useCallback,
   useEffect,
   useRef,
   useState,
   type FormEvent,
+  type MouseEvent,
 } from "react";
 import {
   ArrowLeft,
+  Books,
+  CheckSquare,
+  ClockCounterClockwise,
+  Cube,
+  Info,
+  MagnifyingGlass,
+  PaperPlaneTilt,
+  SidebarSimple,
+  X,
   ArrowRight,
   ArrowSquareOut,
   DownloadSimple,
-  EnvelopeSimple,
   Flask,
   Plus,
   UploadSimple,
-  X,
 } from "@phosphor-icons/react";
 import {
   actOnIncident,
@@ -37,200 +46,28 @@ import { PastIncidents } from "./PastIncidents";
 import { AccessPanel, AccessStatus, useIncidentAccess } from "./AccessPanel";
 import { RawArtifacts } from "./RawArtifacts";
 import { JobStatus } from "./JobStatus";
-import { CommunicationPanel } from "./CommunicationPanel";
+import { HandoffPage } from "./HandoffPage";
 import { KnowledgeRegistry } from "./KnowledgeRegistry";
 import { SimulationPanel } from "./SimulationPanel";
 import { ExperimentsPanel } from "./ExperimentsPanel";
+import {
+  incidentPages,
+  incidentPageUrl,
+  pageNames,
+  useIncidentRoute,
+  type IncidentRoute,
+} from "./navigation";
 import "./incidents.css";
 
-function getIncidentId() {
-  const match = window.location.pathname.match(/^\/incidents\/([^/]+)\/?$/);
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
-function HandoffDrawer({
-  incident,
-  open,
-  onClose,
-  busy,
-  onAction,
-}: {
-  incident: Incident;
-  open: boolean;
-  onClose: () => void;
-  busy: boolean;
-  onAction: (command: IncidentCommand) => Promise<void>;
-}) {
-  const access = useIncidentAccess();
-  const canEdit = access.mode === "demo" || access.permissions.includes("edit");
-  const dialog = useRef<HTMLDialogElement>(null);
-  const [edited, setEdited] = useState<string | null>(null);
-  const [error, setError] = useState("");
-  const [draftStatus, setDraftStatus] = useState("Draft");
-  useEffect(() => {
-    if (open && !dialog.current?.open) dialog.current?.showModal();
-    if (!open && dialog.current?.open) dialog.current?.close();
-  }, [open]);
-  const text = edited ?? incident.handoff.body;
-  return (
-    <dialog
-      className="incident-handoff"
-      ref={dialog}
-      aria-labelledby="handoff-title"
-      onCancel={onClose}
-      onClose={onClose}
-    >
-      <div className="incident-section-title">
-        <div>
-          <p className="eyebrow">Ready before the cause is known</p>
-          <h2 id="handoff-title">Engineer handoff</h2>
-        </div>
-        <button
-          type="button"
-          aria-label="Close engineer handoff"
-          onClick={onClose}
-        >
-          <X aria-hidden="true" />
-        </button>
-      </div>
-      <div className="incident-inline">
-        <span className="incident-tag">{draftStatus}</span>
-        <span className="incident-caption">
-          Version {incident.handoff.version} · based on revision{" "}
-          {incident.handoff.source_revision}
-        </span>
-      </div>
-      <h3>{incident.handoff.subject}</h3>
-      <form
-        onSubmit={async (event) => {
-          event.preventDefault();
-          setError("");
-          try {
-            await onAction({ action: "edit_handoff", body: text });
-            setEdited(null);
-          } catch (cause) {
-            setError(
-              cause instanceof Error
-                ? cause.message
-                : "Draft could not be saved. Your edits are retained.",
-            );
-          }
-        }}
-      >
-        <label>
-          Handoff message
-          <textarea
-            rows={19}
-            value={text}
-            onChange={(event) => setEdited(event.target.value)}
-            required
-            maxLength={20000}
-            disabled={busy || !canEdit}
-          />
-        </label>
-        {edited !== null && (
-          <p className="incident-notice">
-            Unsaved edits are retained here. Save before exporting the report.
-          </p>
-        )}
-        {error && (
-          <p className="incident-notice" role="alert">
-            {error}
-          </p>
-        )}
-        {incident.handoff.human_edited && (
-          <p className="incident-caption">
-            This draft contains human edits. Refresh saves a generated
-            suggestion in draft history and preserves your active edits.
-          </p>
-        )}
-        {incident.handoff.source_revision !== incident.revision && (
-          <p className="incident-notice">
-            New evidence arrived after this draft. Review its contents and save
-            the reviewed handoff before approving a communication.
-          </p>
-        )}
-        <div className="incident-actions">
-          <button
-            className="primary"
-            disabled={
-              busy ||
-              !canEdit ||
-              (edited === null &&
-                incident.handoff.source_revision === incident.revision) ||
-              !text.trim()
-            }
-          >
-            {edited === null &&
-            incident.handoff.source_revision !== incident.revision
-              ? "Save reviewed handoff"
-              : "Save handoff edits"}
-          </button>
-          <button
-            type="button"
-            disabled={busy || !canEdit || edited !== null}
-            onClick={() => {
-              setError("");
-              void onAction({ action: "refresh_handoff" }).catch(
-                (cause: unknown) =>
-                  setError(
-                    cause instanceof Error
-                      ? cause.message
-                      : "Draft could not be refreshed.",
-                  ),
-              );
-            }}
-          >
-            Refresh from evidence
-          </button>
-        </div>
-      </form>
-      <a
-        className="incident-button-link"
-        href={incidentReportUrl(incident.id)}
-        download
-        onClick={(event) => {
-          event.preventDefault();
-          setError("");
-          void downloadIncidentReport(incident.id).catch((cause: unknown) =>
-            setError(
-              cause instanceof Error
-                ? cause.message
-                : "Report download failed.",
-            ),
-          );
-        }}
-      >
-        <DownloadSimple aria-hidden="true" />
-        Export saved report
-      </a>
-      <p className="incident-muted">
-        Export creates a saved file. Any email submission is a separate approved
-        action below.
-      </p>
-      <details>
-        <summary>
-          Draft versions ({(incident.handoff_history ?? []).length})
-        </summary>
-        {(incident.handoff_history ?? []).map((draft) => (
-          <details key={draft.version}>
-            <summary>
-              Version {draft.version} · revision {draft.source_revision}
-              {draft.human_edited ? " · human edited" : ""}
-            </summary>
-            <pre>{draft.body}</pre>
-          </details>
-        ))}
-      </details>
-      <CommunicationPanel
-        incident={incident}
-        draftDirty={edited !== null}
-        busy={busy}
-        onDraftStatus={setDraftStatus}
-      />
-    </dialog>
-  );
-}
+const featureIcons = {
+  investigation: MagnifyingGlass,
+  evidence: ClockCounterClockwise,
+  simulation: Cube,
+  experiments: Flask,
+  handoff: PaperPlaneTilt,
+  knowledge: Books,
+  review: CheckSquare,
+};
 
 function PackageImport({
   busy,
@@ -370,12 +207,20 @@ function AddEvidence({
   );
 }
 
-function IncidentWorkspaceContent() {
+function IncidentWorkspaceContent({
+  route,
+  navigate,
+  followLink,
+}: {
+  route: IncidentRoute;
+  navigate: (path: string) => void;
+  followLink: (event: MouseEvent<HTMLAnchorElement>) => void;
+}) {
   const access = useIncidentAccess();
   const canEdit = access.mode === "demo" || access.permissions.includes("edit");
   const [incident, setIncident] = useState<Incident | null>(null);
   const [recent, setRecent] = useState<Incident[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!route.invalid || !!route.incidentId);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
@@ -388,14 +233,27 @@ function IncidentWorkspaceContent() {
   const [historicalRevision, setHistoricalRevision] = useState<number | null>(
     null,
   );
-  const [handoffOpen, setHandoffOpen] = useState(false);
+  const featureHeading = useRef<HTMLHeadingElement>(null);
+  const [navigationExpanded, setNavigationExpanded] = useState(false);
+  const [overviewOpen, setOverviewOpen] = useState(false);
+  const timelinePage = route.page === "evidence" && !!incident;
+
   const [manualTool, setManualTool] = useState("S932-DEMO-01");
   const [manualSymptom, setManualSymptom] = useState(
     "Progressively insufficient flux coverage",
   );
+  const mounted = useRef(false);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const invalidListRoute = route.invalid && !route.incidentId;
   useEffect(() => {
     let active = true;
-    const id = getIncidentId();
+    const id = route.incidentId;
+    if (invalidListRoute) return;
     (id
       ? loadIncident(id).then((value) => {
           if (active) setIncident(value);
@@ -418,24 +276,16 @@ function IncidentWorkspaceContent() {
     return () => {
       active = false;
     };
-  }, [retry]);
+  }, [retry, route.incidentId, invalidListRoute]);
 
-  function showIncident(value: Incident) {
-    setIncident(value);
-    setHistoricalRevision(null);
-    window.history.replaceState(
-      null,
-      "",
-      `/incidents/${encodeURIComponent(value.id)}`,
-    );
-  }
   async function start(create: () => Promise<Incident>) {
     if (!canEdit) return;
     setBusy(true);
     setError("");
     try {
       const value = await create();
-      showIncident(value);
+      if (!mounted.current) return;
+      navigate(incidentPageUrl(value.id));
       setStatus("Incident saved. A partial engineer handoff is ready.");
     } catch (cause) {
       setError(
@@ -502,8 +352,9 @@ function IncidentWorkspaceContent() {
         : current,
     );
   }, [incidentId]);
+  const eventId = selectedEvent ?? incident?.evidence?.[0]?.id ?? null;
   const selectedObservation = incident?.observations?.find(
-    (item) => item.id === selectedEvent,
+    (item) => item.id === eventId,
   );
   const visibleObservations = (incident?.observations ?? []).filter(
     (item) =>
@@ -511,8 +362,23 @@ function IncidentWorkspaceContent() {
       Date.parse(item.recorded_at) <= Date.parse(snapshot.created_at),
   );
 
+  useEffect(() => {
+    const label = route.invalid
+      ? "Page not found"
+      : route.page
+        ? incidentPages[route.page].label
+        : "Incidents";
+    document.title = `${label}${route.incidentId ? ` · ${route.incidentId}` : ""} · FlowPilot`;
+    if (!loading) {
+      featureHeading.current?.focus({ preventScroll: true });
+      featureHeading.current?.scrollIntoView({ block: "start" });
+    }
+  }, [route.page, route.incidentId, route.invalid, loading]);
+
   return (
-    <div className="incident-app">
+    <div
+      className={`incident-app${incident ? " incident-workspace" : ""}${timelinePage ? " incident-timeline-page" : ""}`}
+    >
       <a className="skip-link" href="#main">
         Skip to main content
       </a>
@@ -521,13 +387,30 @@ function IncidentWorkspaceContent() {
           className="wordmark"
           href="/incidents"
           aria-label="FlowPilot incidents"
+          onClick={followLink}
         >
           <Flask aria-hidden="true" />
           FlowPilot
         </a>
-        <span className="incident-nav-context">S932 · Incident workspace</span>
+        <span className="incident-nav-context">
+          {timelinePage
+            ? `${incident.tool_id} · Evidence timeline`
+            : "S932 · Incident workspace"}
+        </span>
+        {timelinePage && (
+          <button
+            className="incident-overview-toggle"
+            aria-expanded={overviewOpen}
+            aria-controls="incident-overview"
+            onClick={() => setOverviewOpen((open) => !open)}
+          >
+            <Info aria-hidden="true" /> Incident details
+          </button>
+        )}
         <nav aria-label="Workspace navigation">
-          <a href="/incidents">Incidents</a>
+          <a href="/incidents" onClick={followLink}>
+            Incidents
+          </a>
           <a href="/knowledge">Learning database</a>
           <a href="/legacy">
             Legacy demo <ArrowSquareOut aria-hidden="true" />
@@ -536,9 +419,11 @@ function IncidentWorkspaceContent() {
         <span className="demo-badge">Prototype / Simulated data</span>
       </header>
       <main id="main" tabIndex={-1} className="incident-main">
-        <div className="incident-access-banner">
-          <AccessStatus />
-        </div>
+        {!timelinePage && (
+          <div className="incident-access-banner">
+            <AccessStatus />
+          </div>
+        )}
         {!canEdit && (
           <p className="incident-permission-note">
             View access. Evidence edits and new investigations require the edit
@@ -566,6 +451,25 @@ function IncidentWorkspaceContent() {
           <div className="incident-loading" role="status">
             Loading saved incidents…
           </div>
+        ) : route.invalid && !route.incidentId ? (
+          <section className="incident-card incident-page-error">
+            <h1>Page not found</h1>
+            <p>This address does not identify an incident page.</p>
+            <a href="/incidents" onClick={followLink}>
+              Return to incidents
+            </a>
+          </section>
+        ) : !incident && route.incidentId ? (
+          <section className="incident-card incident-page-error">
+            <h1>Incident unavailable</h1>
+            <p>
+              The saved incident could not be loaded. Retry above or return to
+              the incident list.
+            </p>
+            <a href="/incidents" onClick={followLink}>
+              Return to incidents
+            </a>
+          </section>
         ) : !incident ? (
           <>
             <div className="incident-home-heading">
@@ -675,6 +579,7 @@ function IncidentWorkspaceContent() {
                     <a
                       href={`/incidents/${encodeURIComponent(item.id)}`}
                       key={item.id}
+                      onClick={followLink}
                     >
                       <div>
                         <strong>{item.symptom}</strong>
@@ -700,273 +605,496 @@ function IncidentWorkspaceContent() {
           </>
         ) : (
           <>
-            <a href="/incidents" className="incident-back">
-              <ArrowLeft aria-hidden="true" />
-              All incidents
-            </a>
-            <div className="incident-masthead">
-              <div>
-                <p className="eyebrow">
-                  {incident.tool_id}{" "}
-                  <span className="mono">/ {incident.id}</span>
-                </p>
-                <h1>{incident.symptom}</h1>
-                <p>{incident.configuration}</p>
-              </div>
-              <div className="incident-masthead-actions">
-                <span className="incident-tag">
-                  {incident.status.replaceAll("_", " ")}
-                </span>
-                <button onClick={() => setHandoffOpen(true)}>
-                  <EnvelopeSimple aria-hidden="true" />
-                  Engineer handoff
-                </button>
-                <a
-                  className="incident-button-link"
-                  href={incidentReportUrl(incident.id)}
-                  download
-                  onClick={(event) => {
-                    event.preventDefault();
-                    setError("");
-                    void downloadIncidentReport(incident.id).catch(
-                      (cause: unknown) =>
-                        setError(
-                          cause instanceof Error
-                            ? cause.message
-                            : "Report download failed.",
-                        ),
-                    );
-                  }}
-                >
-                  <DownloadSimple aria-hidden="true" />
-                  Export report
-                </a>
-              </div>
-            </div>
-            <div className="incident-state-strip">
-              <span>
-                <strong>Evidence revision {incident.revision}</strong> ·{" "}
-                {incident.mode}
-              </span>
-              <span>Equipment disposition: not assessed</span>
-              <span>Owner: {incident.owner ?? "Unassigned"}</span>
-              {incident.waiting_for && (
-                <span>
-                  Waiting for:{" "}
-                  {
-                    {
-                      observation: "technician observation",
-                      test_authorization: "test authorization",
-                      engineer: "engineer review",
-                      missing_data: "missing evidence",
-                    }[incident.waiting_for]
-                  }
-                </span>
-              )}
-              <span>
-                {incident.escalated
-                  ? "Engineer escalation recorded · email not sent"
-                  : "Engineer handoff: saved draft · see communication status"}
-              </span>
-            </div>
-            <div className="incident-action-bar">
-              <div className="incident-actions">
-                {!closed &&
-                  incident.mode === "replay" &&
-                  incident.replay_stage < 1 && (
-                    <button
-                      disabled={busy || !canEdit}
-                      onClick={() => perform({ action: "advance_replay" })}
-                    >
-                      {busy ? "Collecting…" : "Collect next evidence"}
-                    </button>
-                  )}
-                {!closed && (
-                  <button
-                    className="primary"
-                    disabled={busy || !canEdit}
-                    onClick={() => perform({ action: "analyze" })}
-                  >
-                    {busy
-                      ? "Working…"
-                      : incident.assessment
-                        ? "Reassess evidence"
-                        : "Analyze available evidence"}
-                  </button>
-                )}
-                {!closed && !incident.escalated && (
-                  <button
-                    disabled={busy || !canEdit}
-                    onClick={() =>
-                      perform({
-                        action: "escalate",
-                        notes:
-                          "Technician requested engineer review from the incident workspace.",
-                      })
-                    }
-                  >
-                    Request engineer review
-                  </button>
-                )}
-              </div>
-              <label className="incident-history-select">
-                Assessment view
-                <select
-                  value={historicalRevision ?? "current"}
-                  onChange={(event) =>
-                    setHistoricalRevision(
-                      event.target.value === "current"
-                        ? null
-                        : Number(event.target.value),
+            <section
+              id="incident-overview"
+              className="incident-overview"
+              aria-label="Incident details"
+              hidden={timelinePage && !overviewOpen}
+              onKeyDown={(event) => {
+                if (timelinePage && event.key === "Escape") {
+                  setOverviewOpen(false);
+                  document
+                    .querySelector<HTMLButtonElement>(
+                      ".incident-overview-toggle",
                     )
-                  }
-                >
-                  <option value="current">Current evidence</option>
-                  {(incident.assessment_history ?? []).map((item) => (
-                    <option
-                      key={item.incident_revision}
-                      value={item.incident_revision}
-                    >
-                      Saved assessment · revision {item.incident_revision}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            {historicalRevision !== null && (
-              <p className="incident-notice">
-                Historical assessment at revision {historicalRevision}; the
-                evidence timeline shows current records, including later
-                arrivals. The mechanism view follows this saved assessment, not
-                a historical sensor state. Return to Current evidence to record
-                a new result.
-              </p>
-            )}
-            <JobStatus
-              key={`jobs-${incident.id}`}
-              incident={incident}
-              onRefresh={refreshSaved}
-            />
-            <div className="incident-work-grid">
-              <div className="incident-evidence-column">
-                <EvidenceExplorer
-                  evidence={incident.evidence ?? []}
-                  selectedId={selectedEvent}
-                  onSelect={setSelectedEvent}
-                  busy={busy || !canEdit}
-                  closed={closed ?? false}
-                  onCorrect={(id, replacement, reason) =>
-                    onAction({
-                      action: "correct_evidence",
-                      evidence_id: id,
-                      replacement,
-                      reason,
-                    })
-                  }
-                />
-                {selectedObservation && (
-                  <article
-                    className="incident-card incident-selected-observation"
-                    aria-label="Selected recorded result"
+                    ?.focus();
+                }
+              }}
+            >
+              {timelinePage && (
+                <div className="incident-access-banner">
+                  <AccessStatus />
+                  <button
+                    aria-label="Close incident details"
+                    onClick={() => setOverviewOpen(false)}
                   >
-                    <span className="incident-tag">
-                      {selectedObservation.synthetic ? "Simulated" : "Observed"}
-                    </span>
-                    <h3>{selectedObservation.check_id.replaceAll("_", " ")}</h3>
-                    <p>
-                      {selectedObservation.result} ·{" "}
-                      {displayTime(selectedObservation.recorded_at)}
-                    </p>
-                    <p>{selectedObservation.notes}</p>
-                    <span className="mono">{selectedObservation.id}</span>
-                  </article>
-                )}
-                <AddEvidence
-                  busy={busy || !canEdit}
-                  onAction={onAction}
-                  closed={!!closed}
-                />
+                    <X aria-hidden="true" />
+                  </button>
+                </div>
+              )}
+              <a
+                href="/incidents"
+                className="incident-back"
+                onClick={followLink}
+              >
+                <ArrowLeft aria-hidden="true" />
+                All incidents
+              </a>
+              <div className="incident-masthead">
+                <div>
+                  <p className="eyebrow">
+                    {incident.tool_id}{" "}
+                    <span className="mono">/ {incident.id}</span>
+                  </p>
+                  <h1>{incident.symptom}</h1>
+                  <p>{incident.configuration}</p>
+                </div>
+                <div className="incident-masthead-actions">
+                  <span className="incident-tag">
+                    {incident.status.replaceAll("_", " ")}
+                  </span>
+                  <a
+                    className="incident-button-link"
+                    href={incidentReportUrl(incident.id)}
+                    download
+                    onClick={(event) => {
+                      event.preventDefault();
+                      setError("");
+                      void downloadIncidentReport(incident.id).catch(
+                        (cause: unknown) =>
+                          setError(
+                            cause instanceof Error
+                              ? cause.message
+                              : "Report download failed.",
+                          ),
+                      );
+                    }}
+                  >
+                    <DownloadSimple aria-hidden="true" />
+                    Export report
+                  </a>
+                </div>
               </div>
-              <InvestigationPanel
-                assessment={assessment}
-                observations={visibleObservations}
-                onObserve={(input) =>
-                  onAction({ action: "record_result", ...input })
-                }
-                onSelectEvidence={setSelectedEvent}
-                onSelectHypothesis={setSelectedHypothesis}
-                selectedHypothesisId={hypothesisId}
-                busy={
-                  busy || !canEdit || historicalRevision !== null || !!closed
-                }
+              <div className="incident-state-strip">
+                <span>
+                  <strong>Evidence revision {incident.revision}</strong> ·{" "}
+                  {incident.mode}
+                </span>
+                <span>Equipment disposition: not assessed</span>
+                <span>Owner: {incident.owner ?? "Unassigned"}</span>
+                {incident.waiting_for && (
+                  <span>
+                    Waiting for:{" "}
+                    {
+                      {
+                        observation: "technician observation",
+                        test_authorization: "test authorization",
+                        engineer: "engineer review",
+                        missing_data: "missing evidence",
+                      }[incident.waiting_for]
+                    }
+                  </span>
+                )}
+                <span>
+                  {incident.escalated
+                    ? "Engineer escalation recorded · email not sent"
+                    : "Engineer handoff: saved draft · see communication status"}
+                </span>
+              </div>
+              <JobStatus
+                key={`jobs-${incident.id}`}
+                incident={incident}
+                onRefresh={refreshSaved}
               />
+            </section>
+            <div className="incident-feature-layout">
+              <aside
+                className="incident-feature-sidebar"
+                data-expanded={navigationExpanded}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    setNavigationExpanded(false);
+                    event.currentTarget
+                      .querySelector<HTMLButtonElement>("button")
+                      ?.focus();
+                  }
+                }}
+              >
+                <button
+                  className="incident-sidebar-toggle"
+                  aria-label={
+                    navigationExpanded
+                      ? "Collapse navigation"
+                      : "Expand navigation"
+                  }
+                  aria-expanded={navigationExpanded}
+                  aria-controls="incident-feature-nav"
+                  onClick={() => setNavigationExpanded((expanded) => !expanded)}
+                >
+                  <SidebarSimple aria-hidden="true" />
+                  <span>Workspace</span>
+                </button>
+                <nav id="incident-feature-nav" aria-label="Incident features">
+                  {pageNames.map((page) => {
+                    const Icon = featureIcons[page];
+                    return (
+                      <a
+                        key={page}
+                        href={incidentPageUrl(incident.id, page)}
+                        onClick={(event) => {
+                          setNavigationExpanded(false);
+                          followLink(event);
+                          if (page === route.page)
+                            featureHeading.current?.focus();
+                        }}
+                        aria-label={incidentPages[page].label}
+                        title={incidentPages[page].label}
+                        aria-current={route.page === page ? "page" : undefined}
+                      >
+                        <Icon aria-hidden="true" />
+                        <span>{incidentPages[page].label}</span>
+                      </a>
+                    );
+                  })}
+                </nav>
+                <p>
+                  Sources, selected evidence and investigation context stay with
+                  this incident.
+                </p>
+              </aside>
+              <div className="incident-feature-content">
+                <header className="incident-feature-heading">
+                  <h2 ref={featureHeading} tabIndex={-1}>
+                    {route.page
+                      ? incidentPages[route.page].label
+                      : "Page not found"}
+                  </h2>
+                  <p>
+                    {route.page
+                      ? incidentPages[route.page].description
+                      : "This incident page does not exist. Choose a feature from the navigation to continue."}
+                  </p>
+                </header>
+                {route.invalid && (
+                  <a
+                    className="incident-button-link"
+                    href={incidentPageUrl(incident.id, "investigation")}
+                    onClick={followLink}
+                  >
+                    Return to Investigation
+                  </a>
+                )}
+                {historicalRevision !== null && (
+                  <p className="incident-notice">
+                    Historical assessment at revision {historicalRevision}; the
+                    evidence page shows current records, including later
+                    arrivals. The mechanism follows this saved assessment, not a
+                    historical sensor state.{" "}
+                    <button
+                      type="button"
+                      onClick={() => setHistoricalRevision(null)}
+                    >
+                      Return to current evidence
+                    </button>
+                  </p>
+                )}
+                {route.visited.includes("investigation") && (
+                  <Activity
+                    mode={route.page === "investigation" ? "visible" : "hidden"}
+                  >
+                    <section aria-label="Investigation workspace">
+                      <div className="incident-action-bar">
+                        <div className="incident-actions">
+                          {!closed && (
+                            <button
+                              className="primary"
+                              disabled={busy || !canEdit}
+                              onClick={() => perform({ action: "analyze" })}
+                            >
+                              {busy
+                                ? "Working…"
+                                : incident.assessment
+                                  ? "Reassess evidence"
+                                  : "Analyze available evidence"}
+                            </button>
+                          )}
+                          {!closed && !incident.escalated && (
+                            <button
+                              disabled={busy || !canEdit}
+                              onClick={() =>
+                                perform({
+                                  action: "escalate",
+                                  notes:
+                                    "Technician requested engineer review from the incident workspace.",
+                                })
+                              }
+                            >
+                              Request engineer review
+                            </button>
+                          )}
+                        </div>
+                        <label className="incident-history-select">
+                          Assessment view
+                          <select
+                            value={historicalRevision ?? "current"}
+                            onChange={(event) =>
+                              setHistoricalRevision(
+                                event.target.value === "current"
+                                  ? null
+                                  : Number(event.target.value),
+                              )
+                            }
+                          >
+                            <option value="current">Current evidence</option>
+                            {(incident.assessment_history ?? []).map((item) => (
+                              <option
+                                key={item.incident_revision}
+                                value={item.incident_revision}
+                              >
+                                Saved assessment · revision{" "}
+                                {item.incident_revision}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                      {!assessment && (
+                        <p className="incident-investigation-intro">
+                          A partial incident package is ready.{" "}
+                          <a
+                            href={incidentPageUrl(incident.id, "evidence")}
+                            onClick={followLink}
+                          >
+                            Collect and inspect evidence
+                          </a>{" "}
+                          before choosing the next investigation step.
+                        </p>
+                      )}
+                      <InvestigationPanel
+                        assessment={assessment}
+                        observations={visibleObservations}
+                        onObserve={(input) =>
+                          onAction({ action: "record_result", ...input })
+                        }
+                        onSelectEvidence={(id) => {
+                          setSelectedEvent(id);
+                          navigate(incidentPageUrl(incident.id, "evidence"));
+                        }}
+                        onSelectHypothesis={setSelectedHypothesis}
+                        selectedHypothesisId={hypothesisId}
+                        busy={
+                          busy ||
+                          !canEdit ||
+                          historicalRevision !== null ||
+                          !!closed
+                        }
+                      />
+                      <p className="incident-page-next">
+                        <a
+                          href={incidentPageUrl(incident.id, "simulation")}
+                          onClick={followLink}
+                        >
+                          Explore the selected mechanism in Simulation{" "}
+                          <ArrowRight aria-hidden="true" />
+                        </a>
+                      </p>
+                    </section>
+                  </Activity>
+                )}
+                {route.visited.includes("evidence") && (
+                  <Activity
+                    mode={route.page === "evidence" ? "visible" : "hidden"}
+                  >
+                    <section
+                      className="incident-evidence-workspace"
+                      aria-label="Evidence workspace"
+                    >
+                      <EvidenceExplorer
+                        actions={
+                          <>
+                            {!closed &&
+                              incident.mode === "replay" &&
+                              incident.replay_stage < 1 && (
+                                <div className="incident-collect-action">
+                                  <button
+                                    disabled={busy || !canEdit}
+                                    onClick={() =>
+                                      perform({ action: "advance_replay" })
+                                    }
+                                  >
+                                    {busy
+                                      ? "Collecting…"
+                                      : "Collect next evidence"}
+                                  </button>
+                                </div>
+                              )}
+
+                            <details
+                              className="incident-source-tools"
+                              name="evidence-tools"
+                            >
+                              <summary>
+                                <UploadSimple aria-hidden="true" /> Source files
+                              </summary>
+                              <div className="incident-source-drawer">
+                                <AddEvidence
+                                  busy={busy || !canEdit}
+                                  onAction={onAction}
+                                  closed={!!closed}
+                                />
+                                <RawArtifacts
+                                  incident={incident}
+                                  busy={busy}
+                                  onAction={onAction}
+                                />
+                              </div>
+                            </details>
+                          </>
+                        }
+                        evidence={incident.evidence ?? []}
+                        selectedId={eventId}
+                        onSelect={setSelectedEvent}
+                        busy={busy || !canEdit}
+                        closed={closed ?? false}
+                        onCorrect={(id, replacement, reason) =>
+                          onAction({
+                            action: "correct_evidence",
+                            evidence_id: id,
+                            replacement,
+                            reason,
+                          })
+                        }
+                      />
+                      {selectedObservation && (
+                        <article
+                          className="incident-card incident-selected-observation"
+                          aria-label="Selected recorded result"
+                        >
+                          <span className="incident-tag">
+                            {selectedObservation.synthetic
+                              ? "Simulated"
+                              : "Observed"}
+                          </span>
+                          <h3>
+                            {selectedObservation.check_id.replaceAll("_", " ")}
+                          </h3>
+                          <p>
+                            {selectedObservation.result} ·{" "}
+                            {displayTime(selectedObservation.recorded_at)}
+                          </p>
+                          <p>{selectedObservation.notes}</p>
+                          <span className="mono">{selectedObservation.id}</span>
+                        </article>
+                      )}
+                      <p className="incident-page-next">
+                        <a
+                          href={incidentPageUrl(incident.id, "investigation")}
+                          onClick={followLink}
+                        >
+                          Continue the investigation{" "}
+                          <ArrowRight aria-hidden="true" />
+                        </a>
+                      </p>
+                    </section>
+                  </Activity>
+                )}
+                {route.visited.includes("simulation") && (
+                  <Activity
+                    mode={route.page === "simulation" ? "visible" : "hidden"}
+                  >
+                    <section aria-label="Simulation workspace">
+                      <MechanismView
+                        hypothesisId={hypothesisId}
+                        revision={
+                          snapshot?.incident_revision ?? incident.revision
+                        }
+                        eventLabel={
+                          incident.evidence?.find((item) => item.id === eventId)
+                            ?.label ?? selectedObservation?.check_id
+                        }
+                      />
+                      <SimulationPanel
+                        incident={incident}
+                        selectedHypothesis={hypothesisId}
+                        onSelectHypothesis={setSelectedHypothesis}
+                        selectedEvidenceId={eventId}
+                        onRefresh={refreshSaved}
+                        busy={busy || historicalRevision !== null}
+                      />
+                    </section>
+                  </Activity>
+                )}
+                {route.visited.includes("experiments") && (
+                  <Activity
+                    mode={route.page === "experiments" ? "visible" : "hidden"}
+                  >
+                    <ExperimentsPanel
+                      incident={incident}
+                      busy={busy || historicalRevision !== null}
+                    />
+                  </Activity>
+                )}
+                {route.visited.includes("handoff") && (
+                  <Activity
+                    mode={route.page === "handoff" ? "visible" : "hidden"}
+                  >
+                    <HandoffPage
+                      incident={incident}
+                      busy={busy}
+                      onAction={onAction}
+                    />
+                  </Activity>
+                )}
+                {route.visited.includes("knowledge") && (
+                  <Activity
+                    mode={route.page === "knowledge" ? "visible" : "hidden"}
+                  >
+                    <section
+                      className="incident-knowledge-page"
+                      aria-label="Knowledge workspace"
+                    >
+                      <PastIncidents incident={incident} />
+                      <KnowledgeRegistry
+                        configuration={incident.configuration}
+                      />
+                    </section>
+                  </Activity>
+                )}
+                {route.visited.includes("review") && (
+                  <Activity
+                    mode={route.page === "review" ? "visible" : "hidden"}
+                  >
+                    <section aria-label="Review workspace">
+                      <IncidentReview
+                        incident={incident}
+                        busy={busy}
+                        onAction={onAction}
+                      />
+                      <details className="incident-audit">
+                        <summary>
+                          Application activity (
+                          {(incident.history ?? []).length})
+                        </summary>
+                        <p className="incident-muted">
+                          These are application actions, separate from machine
+                          and source event times.
+                        </p>
+                        <ol>
+                          {(incident.history ?? []).map((item, index) => (
+                            <li key={`${item.revision}-${index}`}>
+                              <span className="mono">r{item.revision}</span> ·{" "}
+                              {displayTime(item.timestamp)} ·{" "}
+                              {item.action.replaceAll("_", " ")}
+                              <p>{item.detail}</p>
+                            </li>
+                          ))}
+                        </ol>
+                      </details>
+                    </section>
+                  </Activity>
+                )}
+              </div>
             </div>
-            <MechanismView
-              hypothesisId={hypothesisId}
-              revision={snapshot?.incident_revision ?? incident.revision}
-              eventLabel={
-                incident.evidence?.find((item) => item.id === selectedEvent)
-                  ?.label ?? selectedObservation?.check_id
-              }
-            />
-            <SimulationPanel
-              key={`simulation-${incident.id}`}
-              incident={incident}
-              selectedHypothesis={hypothesisId}
-              onSelectHypothesis={setSelectedHypothesis}
-              selectedEvidenceId={selectedEvent}
-              onRefresh={refreshSaved}
-              busy={busy || historicalRevision !== null}
-            />
-            <ExperimentsPanel
-              key={`experiments-${incident.id}`}
-              incident={incident}
-              busy={busy || historicalRevision !== null}
-            />
-            <PastIncidents
-              key={`experience-${incident.id}`}
-              incident={incident}
-            />
-            <RawArtifacts
-              key={`originals-${incident.id}`}
-              incident={incident}
-              busy={busy}
-              onAction={onAction}
-            />
-            <KnowledgeRegistry configuration={incident.configuration} />
-            <IncidentReview
-              key={`review-${incident.id}`}
-              incident={incident}
-              busy={busy}
-              onAction={onAction}
-            />
-            <details className="incident-audit">
-              <summary>
-                Application activity ({(incident.history ?? []).length})
-              </summary>
-              <p className="incident-muted">
-                These are application actions, separate from machine and source
-                event times.
-              </p>
-              <ol>
-                {(incident.history ?? []).map((item, index) => (
-                  <li key={`${item.revision}-${index}`}>
-                    <span className="mono">r{item.revision}</span> ·{" "}
-                    {displayTime(item.timestamp)} ·{" "}
-                    {item.action.replaceAll("_", " ")}
-                    <p>{item.detail}</p>
-                  </li>
-                ))}
-              </ol>
-            </details>
-            <HandoffDrawer
-              key={`handoff-${incident.id}`}
-              incident={incident}
-              busy={busy}
-              open={handoffOpen}
-              onClose={() => setHandoffOpen(false)}
-              onAction={onAction}
-            />
           </>
         )}
       </main>
@@ -979,9 +1107,13 @@ function IncidentWorkspaceContent() {
 }
 
 export function IncidentWorkspace() {
+  const navigation = useIncidentRoute();
   return (
     <AccessPanel>
-      <IncidentWorkspaceContent />
+      <IncidentWorkspaceContent
+        key={navigation.route.incidentId ?? "incident-list"}
+        {...navigation}
+      />
     </AccessPanel>
   );
 }

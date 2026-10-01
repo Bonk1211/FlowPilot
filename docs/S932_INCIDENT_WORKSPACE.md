@@ -13,7 +13,7 @@ npm run dev:mock
 
 Open `http://127.0.0.1:5173/`. `dev:mock` enables the independent background analysis/handoff workers and disables external model calls. The bundled images need no vision-model download. These shell environment assignments work on macOS/Linux or WSL; on other shells set the four environment variables shown in `package.json` before running `npm run dev`.
 
-`npm run dev` retains explicit collection/analysis controls unless `FLOWPILOT_INCIDENT_AUTO_PROCESS=true`. Saved URLs use `/incidents/INC-...`. `/legacy`, saved `/?case=...` URLs, `/knowledge`, `/prototype` and `/log-preview` remain available for the older workflows. Run migrations after updating; incident, source, original-file, job, communication, gateway and experiment tables are additive.
+`npm run dev` retains explicit collection/analysis controls unless `FLOWPILOT_INCIDENT_AUTO_PROCESS=true`. Saved URLs use `/incidents/INC-...`, with a separate URL for each feature below. `/legacy`, saved `/?case=...` URLs, `/knowledge`, `/prototype` and `/log-preview` remain available for the older workflows. Run migrations after updating; incident, source, original-file, job, communication, gateway and experiment tables are additive.
 
 To demonstrate the file gateway instead of the staged replay, run this after migration, before or while the mock application is running:
 
@@ -23,13 +23,31 @@ uv run python -m flowpilot.incidents.gateway --mock --once
 
 Open the incident URL printed by the command. Repeating the command reuses its incident and evidence. See [gateway contract and fixtures](S932_GATEWAY.md).
 
+## Feature pages
+
+Each incident keeps one shared context while a floating sidebar opens a focused feature page. The sidebar overlays every incident page; use **Expand navigation** to reveal page labels. On narrow screens, the navigation toggle sits at the bottom left. URLs support bookmarks, reload and browser Back/Forward; the original incident URL opens Investigation.
+
+| Page | URL suffix | Contents |
+|---|---|---|
+| Investigation | `/investigation` | Competing causes, questions, checks and assessment history |
+| Evidence | `/evidence` | Good/bad images, source timeline, progressive collection, original files and corrections |
+| Simulation | `/simulation` | 3D/2D mechanism explanations, synthetic responses, saved runs and model evaluation |
+| Experiments | `/experiments` | Factorial plans, authorization and fixed mock results |
+| Handoff | `/handoff` | Editable engineer message, draft history and communication status |
+| Knowledge | `/knowledge` | Applicable document revisions, source review and reviewed past incidents |
+| Review | `/review` | Closure, learning publication and application activity |
+
+Unsaved form input is retained when switching feature pages within the same incident. Save changes before reloading, closing the tab or leaving the incident. Background job status remains available across pages. Evidence and hypothesis selections carry between Investigation, Evidence and Simulation.
+
+Evidence opens a fullscreen horizontal timeline with synchronized content below. Select a marker, use the previous/next controls or scrub through events; switch to the vertical layout when useful. Playback can advance events automatically and respects reduced-motion preferences. Expand **Compare images**, **Source files** or **Incident details** for the supporting tools and status.
+
 ## Demonstration flow
 
 1. **Start S932 replay.** The incident and a useful partial draft are saved immediately. Analysis and handoff jobs run independently in mock mode. PM is unavailable; machine-log collection is initially pending.
-2. **Collect next evidence.** Synthetic falling-mass/stable-pressure records and a material change arrive. Inspect good/bad images, original timestamps, event ordering uncertainty and the separate pneumatic paths.
-3. **Compare explanations.** Review restriction, unstable delivery and material-condition hypotheses. Answer or confirm discovery questions; Unknown remains valid. A contradictory delivery check redirects the next step. Repeated conflicting checks remain separate observations.
+2. **Open Evidence and collect next evidence.** Synthetic falling-mass/stable-pressure records and a material change arrive. Inspect good/bad images, original timestamps and event ordering uncertainty.
+3. **Open Investigation and compare explanations.** Review restriction, unstable delivery and material-condition hypotheses and their separate pneumatic paths. Answer or confirm discovery questions; Unknown remains valid. A contradictory delivery check redirects the next step. Repeated conflicting checks remain separate observations.
 4. **Explore the mechanism.** Select a hypothesis or scrub source events. Compare the 3D/2D schematic and run the bounded synthetic model. The fixture and learned surrogate curves, held-out baseline comparison, inputs, versions and limits stay visible. These outputs do not become observed evidence.
-5. **Prepare the handoff.** Edit and save the draft. New generated suggestions preserve human edits. Use the separately labelled mock communication flow to simulate acceptance, failure, uncertain submission, delivery and acknowledgment. No email is sent.
+5. **Open Handoff.** Edit and save the draft. New generated suggestions preserve human edits. Use the separately labelled mock communication flow to simulate acceptance, failure, uncertain submission, delivery and acknowledgment. No email is sent.
 6. **Run a mock experiment when useful.** Propose a finite factorial study using the simulator's dimensionless factors, inspect its planned runs, use the demonstration engineer role to approve, then run the predetermined matrix. Outcomes remain simulated differences or inconclusive findings, not proof of an equipment cause.
 7. **Review and export.** Close a supported replay or an inconclusive investigation. Publish or withdraw reviewed experience separately. Download the report. New evidence reopens the incident, preserves prior conclusions and withdraws stale learning.
 

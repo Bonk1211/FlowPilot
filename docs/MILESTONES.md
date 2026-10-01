@@ -1,5 +1,13 @@
 > **30 September 2026: default workspace changed to version 3 incident investigation.** The [latest S932 PRD](S932_AI_Troubleshooting_PRD.md) defines the target. The [incident guide](S932_INCIDENT_WORKSPACE.md) and [requirement audit](S932_IMPLEMENTATION_AUDIT.md) record the implemented mock scope and limits. Earlier checkpoints remain below as history.
 
+## 1 October 2026 — Incident feature pages and fullscreen evidence timeline
+
+- Split the incident workspace into Investigation, Evidence, Simulation, Experiments, Handoff, Knowledge and Review. Each page has a bookmarkable URL; existing incident URLs open Investigation. A collapsible floating sidebar overlays every incident page on desktop and mobile.
+- Kept one incident context across pages, including selected evidence/hypotheses and unfinished form input. React Activity retains visited-page state and pauses hidden effects; background job polling remains active. Handoff is a page instead of a modal.
+- Made Evidence a fullscreen timeline with horizontal flow by default, an alternate vertical layout, synchronized content, keyboard navigation, scrubbing and pausable playback. Playback stops when hidden and respects reduced motion. Image comparison, source files and incident details remain available in expandable panels.
+- Added browser-history handling, visible current-page navigation, page titles, heading focus and recovery from invalid addresses. Fixed late creation responses redirecting away from a newly selected incident, image recovery after revisiting Evidence, and reduced-motion preferences changing while Simulation is hidden.
+- **Verification:** focused lint, TypeScript and production build passed. All **19 affected incident, access and navigation browser scenarios passed across the main run and a targeted rerun**, covering deep links, Back/Forward, draft/selection retention, pending creation, background completion, timeline synchronization, playback, reduced motion and floating navigation on desktop/mobile. Reviewed desktop/mobile screenshots. No backend or contract changes were needed.
+
 ## 30 September 2026 — Complete mock workflow and optional adapters
 
 - The user clarified **“mock first i dont have real machine.”** Added `npm run dev:mock` to enable independent analysis/handoff workers while disabling external model calls. A real FastAPI-lifespan check verifies automatic processing for both HTTP-created and replay incidents, status polling and clean shutdown.

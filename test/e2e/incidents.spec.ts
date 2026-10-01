@@ -1,6 +1,18 @@
 import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 
+async function goToFeature(page: Page, name: string) {
+  const navigation = page.getByRole("navigation", {
+    name: "Incident features",
+    exact: true,
+  });
+  if (!(await navigation.isVisible()))
+    await page
+      .getByRole("button", { name: "Expand navigation", exact: true })
+      .click();
+  await navigation.getByRole("link", { name, exact: true }).click();
+}
+
 async function startReplay(page: Page) {
   await page.goto("/");
   await page.getByRole("button", { name: "Start S932 replay" }).click();
@@ -10,13 +22,16 @@ async function startReplay(page: Page) {
       name: "Progressively insufficient flux coverage",
     }),
   ).toBeVisible();
+  await goToFeature(page, "Investigation");
 }
 
 async function analyzeReplay(page: Page) {
+  await goToFeature(page, "Evidence");
   await page.getByRole("button", { name: "Collect next evidence" }).click();
   await expect(
     page.getByRole("button", { name: "Collect next evidence" }),
   ).toHaveCount(0);
+  await goToFeature(page, "Investigation");
   await page
     .getByRole("button", { name: "Analyze available evidence" })
     .click();
@@ -48,10 +63,11 @@ test("incident replay preserves the early handoff, branches, exports and survive
 }, testInfo) => {
   await startReplay(page);
   const url = page.url();
-  await page
-    .getByRole("button", { name: "Engineer handoff", exact: true })
-    .click();
-  const handoff = page.getByRole("dialog");
+  await goToFeature(page, "Handoff");
+  const handoff = page.getByRole("region", {
+    name: "Engineer handoff",
+    exact: true,
+  });
   await expect(handoff.getByLabel("Handoff message")).toHaveValue(
     /Diagnosis is pending/,
   );
@@ -65,7 +81,7 @@ test("incident replay preserves the early handoff, branches, exports and survive
   await expect(
     handoff.getByRole("button", { name: "Save handoff edits" }),
   ).toBeDisabled();
-  await handoff.getByRole("button", { name: "Close engineer handoff" }).click();
+  await goToFeature(page, "Investigation");
   await analyzeReplay(page);
   await expect(
     page.getByRole("heading", {
@@ -95,6 +111,7 @@ test("incident replay preserves the early handoff, branches, exports and survive
   await page
     .getByRole("button", { name: /Material-condition change possible/ })
     .click();
+  await goToFeature(page, "Simulation");
   await expect(page.locator(".incident-mechanism-text h3")).toHaveText(
     "Material-condition change",
   );
@@ -104,18 +121,17 @@ test("incident replay preserves the early handoff, branches, exports and survive
     path: testInfo.outputPath("incident-desktop.png"),
     fullPage: true,
   });
+  await goToFeature(page, "Investigation");
   await page.reload();
   await expect(page).toHaveURL(url);
   await expect(page.locator(".investigation-candidate").first()).toContainText(
     "supported",
   );
-  await page
-    .getByRole("button", { name: "Engineer handoff", exact: true })
-    .click();
+  await goToFeature(page, "Handoff");
   await expect(handoff.getByLabel("Handoff message")).toHaveValue(
     "Engineer note: preserve the material container identity.",
   );
-  await handoff.getByRole("button", { name: "Close engineer handoff" }).click();
+  await goToFeature(page, "Investigation");
   const download = page.waitForEvent("download");
   await page.getByRole("link", { name: "Export report", exact: true }).click();
   const file = await download;
@@ -140,6 +156,7 @@ test("inconclusive closure requires explicit demo review and learning stays a ca
       name: "Escalate the unresolved investigation",
     }),
   ).toBeVisible();
+  await goToFeature(page, "Review");
   await page.getByLabel("Reviewer name").fill("Demo reviewer");
   await page
     .getByLabel("Findings and unresolved questions")
@@ -180,6 +197,11 @@ test("inconclusive closure requires explicit demo review and learning stays a ca
   await expect(
     page.getByText("Equipment disposition: not assessed", { exact: true }),
   ).toBeVisible();
+  await goToFeature(page, "Evidence");
+  await page
+    .locator("summary")
+    .filter({ hasText: /Source files/ })
+    .click();
   await page.getByText("Add late evidence and reopen", { exact: true }).click();
   await page.getByLabel("Evidence JSON").fill(
     JSON.stringify({
@@ -193,6 +215,7 @@ test("inconclusive closure requires explicit demo review and learning stays a ca
     }),
   );
   await page.getByRole("button", { name: "Save source evidence" }).click();
+  await goToFeature(page, "Investigation");
   await expect(
     page.getByRole("button", { name: "Analyze available evidence" }),
   ).toBeVisible();
@@ -208,6 +231,7 @@ test("narrow workspace retains evidence, accessible schematic and recovery from 
   await page.emulateMedia({ reducedMotion: "reduce" });
   await startReplay(page);
   await analyzeReplay(page);
+  await goToFeature(page, "Simulation");
   await page.getByRole("button", { name: "2D schematic", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Play schematic" }),
@@ -222,6 +246,7 @@ test("narrow workspace retains evidence, accessible schematic and recovery from 
     path: testInfo.outputPath("incident-mobile.png"),
     fullPage: true,
   });
+  await goToFeature(page, "Knowledge");
   await page.route("**/api/incidents/*/experience", (route) =>
     route.fulfill({ status: 503, body: "{}" }),
   );
@@ -250,10 +275,11 @@ for (const outcome of ["accepted", "unknown"] as const) {
         realSubmissions.push(request.url());
     });
     await startReplay(page);
-    await page
-      .getByRole("button", { name: "Engineer handoff", exact: true })
-      .click();
-    const handoff = page.getByRole("dialog");
+    await goToFeature(page, "Handoff");
+    const handoff = page.getByRole("region", {
+      name: "Engineer handoff",
+      exact: true,
+    });
     await handoff
       .getByRole("button", { name: "Simulate handoff", exact: true })
       .click();
@@ -316,11 +342,11 @@ for (const outcome of ["accepted", "unknown"] as const) {
       "Simulated · Engineer acknowledgement recorded",
     );
     await page.reload();
-    await page
-      .getByRole("button", { name: "Engineer handoff", exact: true })
-      .click();
+    await goToFeature(page, "Handoff");
     await expect(
-      page.getByRole("dialog").locator(".incident-mail-state"),
+      page
+        .getByRole("region", { name: "Engineer handoff", exact: true })
+        .locator(".incident-mail-state"),
     ).toHaveText("Simulated · Engineer acknowledgement recorded");
     expect(realSubmissions).toEqual([]);
   });
@@ -332,6 +358,7 @@ test("synthetic simulation follows the selected mechanism and preserves its save
   await startReplay(page);
   await expect(page.getByText("Manual mode", { exact: true })).toBeVisible();
   await analyzeReplay(page);
+  await goToFeature(page, "Evidence");
   const scrubber = page.getByRole("slider", {
     name: "Explore source events",
     exact: false,
@@ -341,9 +368,11 @@ test("synthetic simulation follows the selected mechanism and preserves its save
   const label = await page
     .locator(".incident-event.selected strong")
     .textContent();
+  await goToFeature(page, "Simulation");
   await expect(page.locator(".incident-mechanism")).toContainText(
     `Inspecting evidence: ${label}`,
   );
+  await goToFeature(page, "Simulation");
   const simulation = page.locator(".incident-simulation");
   await simulation
     .getByText("Explore and save a simulated response", { exact: true })
@@ -354,6 +383,7 @@ test("synthetic simulation follows the selected mechanism and preserves its save
   await expect(page.locator(".incident-mechanism-text h3")).toHaveText(
     "Material-condition change",
   );
+  await goToFeature(page, "Simulation");
   await simulation
     .getByRole("slider", { name: "Illustrative fault severity", exact: true })
     .focus();
@@ -417,6 +447,7 @@ test("synthetic simulation follows the selected mechanism and preserves its save
   await expect(page.locator(".incident-mechanism-text h3")).toHaveText(
     "Material-condition change",
   );
+  await goToFeature(page, "Simulation");
   await expect(
     page.locator(".incident-simulation").getByRole("heading", {
       name: "Material-condition change · saved simulation",
@@ -439,6 +470,7 @@ test("mock factorial plan is previewed, authorized, executed once and preserved 
   page,
 }, testInfo) => {
   await startReplay(page);
+  await goToFeature(page, "Experiments");
   const experiments = page.locator(".incident-experiments");
   await experiments.locator(":scope > summary").click();
   await experiments

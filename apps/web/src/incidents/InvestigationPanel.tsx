@@ -61,7 +61,7 @@ export function InvestigationPanel({
         className="incident-card investigation-panel"
         aria-labelledby="investigation-title"
       >
-        <h2 id="investigation-title">Investigation</h2>
+        <h2 id="investigation-title">Ready to investigate</h2>
         <p>
           Analyze the available evidence to compare possible causes. Missing
           sources can arrive later.

@@ -8,6 +8,10 @@ test("source owner registers exact secondary text and reviews it without grantin
   await page.goto("/incidents");
   await page.getByRole("button", { name: "Start S932 replay" }).click();
   await expect(page).toHaveURL(/\/incidents\/INC-/);
+  await page
+    .getByRole("navigation", { name: "Incident features" })
+    .getByRole("link", { name: "Knowledge", exact: true })
+    .click();
   const panel = page.locator(
     'details[aria-label="Controlled source registry"]',
   );
@@ -47,9 +51,13 @@ test("source owner registers exact secondary text and reviews it without grantin
     .click();
   await expect(source.getByText(/published · secondary summary/)).toBeVisible();
   await page
+    .getByRole("navigation", { name: "Incident features" })
+    .getByRole("link", { name: "Investigation", exact: true })
+    .click();
+  await page
     .getByRole("button", { name: "Analyze available evidence" })
     .click();
-  const id = new URL(page.url()).pathname.split("/").at(-1);
+  const id = new URL(page.url()).pathname.split("/")[2];
   await expect
     .poll(async () => {
       const response = await request.get(

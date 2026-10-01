@@ -4,6 +4,8 @@ FlowPilot is an evidence-led investigation assistant for industrial fluid-dispen
 
 The S932 / DJ-2200 / BFS workflow now runs as a complete mock demonstration: progressive evidence, parallel analysis and handoff, three competing causes, a 3D mechanism view, recorded synthetic model comparisons, mock experiments and communication, report export and reviewed learning. No real machine or provider key is required. [Run the incident demo](docs/S932_INCIDENT_WORKSPACE.md).
 
+Each incident has separate [feature pages](docs/S932_INCIDENT_WORKSPACE.md#feature-pages) for Investigation, Evidence, Simulation, Experiments, Handoff, Knowledge and Review, with shared incident context and bookmarkable URLs.
+
 Existing v1/v2 cases remain available at `/legacy` and their saved `/?case=...` links. Epoxy cases remain read-only. Controlled operating procedures and real-machine validation are still pending.
 
 The **Learning Database** at `/knowledge` connects saved cases, symptoms, findings and outcomes in an interactive graph. Gemini can prepare experience drafts; technician publication makes them available to future diagnoses, with versioned citations and correction history.

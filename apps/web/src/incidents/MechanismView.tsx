@@ -92,6 +92,7 @@ export function MechanismView({
       if (query.matches) setPlaying(false);
     };
     query.addEventListener("change", update);
+    update();
     return () => query.removeEventListener("change", update);
   }, []);
   const node =
