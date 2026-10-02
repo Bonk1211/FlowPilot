@@ -38,6 +38,29 @@ Each replay request contained 2,621 JSON bytes, excluding referenced image bytes
 
 The decision fixtures cover ambiguous evidence, structured delivery/material/restriction signals, a contradictory result, all-inconclusive checks, an Unknown answer, an inapplicable configuration, conflicting repeated observations and rejection of a result labelled as physical. Every fixture is invented, including negative provenance labels. They are workflow checks, not an independently validated fault dataset.
 
+## Browser timing
+
+The service benchmark above excludes the browser. A separate Playwright run measures the replay flow a technician sees under `dev:mock` settings (background jobs on, external reasoning and Jev off):
+
+```sh
+PLAYWRIGHT_CHANNEL=chrome npm run test:timing
+TIMING_ITERATIONS=30 PLAYWRIGHT_CHANNEL=chrome npm run test:timing
+```
+
+Each value runs from the triggering click to the first visible DOM state showing the result, timed inside the page so Playwright's retry polling does not round it. Analysis waits for that click's own saved status, not an earlier background result. One warm-up run is excluded. Output goes to `artifacts/demo/timing/` (ignored by Git).
+
+Executed on 3 October 2026 with 30 iterations on an Apple M5, macOS 26.6.2, Chrome via Playwright 1.63.0, Vite 8.3.0 dev server and a local FastAPI/SQLite API. The complete result is preserved in [S932_BROWSER_TIMING.json](S932_BROWSER_TIMING.json).
+
+| Measurement | p50 | p95 | Maximum |
+|---|---:|---:|---:|
+| Start replay → incident workspace visible (acknowledgement) | 48.3 ms | 63.1 ms | 66.1 ms |
+| Open Handoff → saved draft visible | 18.2 ms | 25.3 ms | 31.5 ms |
+| Analyze → investigation result saved and visible | 32.7 ms | 49.3 ms | 49.4 ms |
+
+The replay creation response already contains the saved template draft, so the draft exists at acknowledgement; the second row only measures opening the Handoff page. These numbers are a single local run on loopback with synthetic data. They exclude real network latency, equipment collection, image transfer and LLM drafting. Meeting the PRD's proposed 2-second acknowledgement target here does not establish a production result.
+
+This run also exposed a demo-mode race. A background analysis or draft job could save a new incident revision between the page's 2-second job polls, so an immediate "Collect next evidence" or "Analyze" click failed with "Incident changed". Replay collection, analysis and draft refresh now apply to the current revision when only background-job revisions intervened. Every other action, and any human change in between, still requires reloading.
+
 ## Optional provider comparison
 
 The default report marks Jev and LLM results `not_run`; it never substitutes fabricated provider answers or accuracy figures. An explicit command can permit real, potentially billable **shadow** requests:

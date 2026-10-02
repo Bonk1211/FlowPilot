@@ -552,14 +552,41 @@ def apply_action(incident: Incident, action: IncidentAction, actor: str | None =
     return incident
 
 
+BACKGROUND_ACTOR = "system:incident-coordinator"
+BACKGROUND_EVENTS = {"background_analysis", "background_handoff"}
+# The intent of these actions does not depend on the assessment or draft a background job refreshed.
+REBASEABLE_ACTIONS = {"advance_replay", "analyze", "refresh_handoff"}
+
+
+def only_background_changes(incident: Incident, since_revision: int) -> bool:
+    later = [event for event in incident.history if event.revision > since_revision]
+    return (
+        since_revision < incident.revision
+        and len({event.revision for event in later}) == incident.revision - since_revision
+        and all(
+            event.actor == BACKGROUND_ACTOR and event.action in BACKGROUND_EVENTS for event in later
+        )
+    )
+
+
 def act(incident_id: str, action: IncidentAction, actor: str | None = None) -> Incident:
-    incident = get_incident(incident_id)
-    if incident.revision != action.revision:
-        raise HTTPException(409, "Incident changed. Reload before applying this action.")
-    # No database transaction remains open during diagnostic/provider work.
-    incident = apply_action(incident, action, actor)
-    incident.history[-1].actor = actor
-    return save_incident(incident, action.revision, actor)
+    rebaseable = action.action in REBASEABLE_ACTIONS
+    for attempt in range(3):
+        incident = get_incident(incident_id)
+        if incident.revision != action.revision:
+            if not (rebaseable and only_background_changes(incident, action.revision)):
+                raise HTTPException(409, "Incident changed. Reload before applying this action.")
+        # Only background analysis/draft refreshes intervened; apply to the current revision.
+        current = action.model_copy(update={"revision": incident.revision})
+        # No database transaction remains open during diagnostic/provider work.
+        incident = apply_action(incident, current, actor)
+        incident.history[-1].actor = actor
+        try:
+            return save_incident(incident, current.revision, actor)
+        except HTTPException as error:
+            # A background job may commit while this action runs; re-check and retry.
+            if error.status_code != 409 or not rebaseable or attempt == 2:
+                raise
 
 
 def save_incident(incident: Incident, expected_revision: int, actor: str | None = None) -> Incident:

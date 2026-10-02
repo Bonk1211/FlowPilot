@@ -24,6 +24,7 @@
     "test:reference": "node --test test/industryEventLog.test.mjs",
     "test:api": "uv run pytest",
     "test:e2e": "playwright test",
+    "test:timing": "playwright test --config playwright.timing.config.ts",
     "contracts:generate": "node scripts/contracts.mjs",
     "contracts:check": "node scripts/contracts.mjs --check",
     "check": "npm run lint && npm run typecheck && npm test && npm run contracts:check && npm run build",

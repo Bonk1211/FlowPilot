@@ -113,6 +113,7 @@ The generated OpenAPI contract is authoritative. Main routes are:
 npm run contracts:generate
 npm run check
 PLAYWRIGHT_CHANNEL=chrome npm run test:e2e -- --workers=2
+PLAYWRIGHT_CHANNEL=chrome npm run test:timing   # optional local browser timing
 ```
 
 Alternatively install bundled Chromium with `npx playwright install chromium` and omit `PLAYWRIGHT_CHANNEL`. API/browser tests use temporary databases and disable paid providers. See [mock evaluation](S932_MOCK_EVALUATION.md) and [milestones](MILESTONES.md) for measured checks.

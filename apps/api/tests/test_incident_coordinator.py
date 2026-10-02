@@ -6,9 +6,16 @@ from time import monotonic, sleep
 import pytest
 from alembic import command
 from alembic.config import Config
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from flowpilot.incidents import coordinator, diagnostic, service
-from flowpilot.incidents.models import AddEvidenceAction, EditHandoffAction, EvidenceInput
+from flowpilot.incidents.models import (
+    AddEvidenceAction,
+    EditHandoffAction,
+    EscalateAction,
+    EvidenceInput,
+    SimpleAction,
+)
 from flowpilot.incidents.replay import replay_request
 from flowpilot.main import create_app
 from flowpilot.settings import ROOT, Settings
@@ -59,6 +66,54 @@ def test_jobs_are_idempotent_and_handoff_finishes_while_analysis_waits(incident)
     assert "Assessment:" in current.handoff.body
     assert len(coordinator.schedule_incident(current)) == 2
     assert all(job.state == "succeeded" for job in coordinator.list_jobs(incident.id))
+
+
+def test_safe_actions_rebase_only_over_background_job_revisions(incident):
+    stale = incident.revision
+    coordinator.schedule_incident(incident)
+    assert coordinator.process_next_job("analysis", baseline).state == "succeeded"
+    assert (
+        coordinator.process_next_job("handoff", handoff_fn=service.draft_for).state == "succeeded"
+    )
+    assert service.get_incident(incident.id).revision == stale + 2
+
+    # A technician acting on the page they loaded before the jobs finished is not rejected.
+    collected = service.act(
+        incident.id, SimpleAction(action="advance_replay", revision=stale), actor="demo:technician"
+    )
+    assert collected.revision == stale + 3 and collected.replay_stage == 1
+    assert collected.history[-1].action == "advance_replay"
+
+    # Intent-dependent actions still require the current revision.
+    with pytest.raises(HTTPException) as conflict:
+        service.act(incident.id, EscalateAction(action="escalate", revision=stale))
+    assert conflict.value.status_code == 409
+
+    # A human change in between blocks rebasing even for a safe action.
+    current = service.get_incident(incident.id)
+    service.act(
+        incident.id,
+        EditHandoffAction(action="edit_handoff", revision=current.revision, body="Human note."),
+    )
+    with pytest.raises(HTTPException) as human:
+        service.act(incident.id, SimpleAction(action="analyze", revision=current.revision))
+    assert human.value.status_code == 409
+
+
+def test_safe_action_retries_when_a_background_job_commits_mid_action(incident, monkeypatch):
+    coordinator.schedule_incident(incident)
+    analyze = diagnostic.analyze
+    calls = []
+
+    def background_commit_during_analysis(*args, **kwargs):
+        calls.append(coordinator.process_next_job("handoff", handoff_fn=service.draft_for))
+        return analyze(*args, **kwargs)
+
+    monkeypatch.setattr(diagnostic, "analyze", background_commit_during_analysis)
+    analyzed = service.act(incident.id, SimpleAction(action="analyze", revision=incident.revision))
+    assert calls[0].state == "succeeded" and calls[1] is None
+    assert analyzed.revision == incident.revision + 2
+    assert [event.action for event in analyzed.history[-2:]] == ["background_handoff", "analyze"]
 
 
 def test_late_evidence_supersedes_running_result(incident):
