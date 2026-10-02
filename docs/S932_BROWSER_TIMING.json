@@ -1,0 +1,179 @@
+{
+  "conditions": "Local Chromium via Playwright against the Vite dev server and a local FastAPI/SQLite API with dev:mock settings (auto-process on, external reasoning and Jev off). Synthetic replay; no network, real equipment collection or real LLM. Each value runs from the triggering click to the first DOM state showing the result, measured inside the page (analysis waits for that click's saved status, not an earlier background result). The replay creation response already contains the saved template draft. One excluded warm-up run.",
+  "iterations": 30,
+  "warmup": {
+    "acknowledgement_ms": 51.39999985694885,
+    "handoff_render_ms": 22.799999952316284,
+    "analysis_ms": 40.60000014305115
+  },
+  "acknowledgement": {
+    "minimum_ms": 26,
+    "p50_ms": 48.3,
+    "p95_ms": 63.1,
+    "maximum_ms": 66.1
+  },
+  "handoff_render": {
+    "minimum_ms": 17.3,
+    "p50_ms": 18.2,
+    "p95_ms": 25.3,
+    "maximum_ms": 31.5
+  },
+  "analysis": {
+    "minimum_ms": 26.8,
+    "p50_ms": 32.7,
+    "p95_ms": 49.3,
+    "maximum_ms": 49.4
+  },
+  "runs": [
+    {
+      "acknowledgement_ms": 43.40000009536743,
+      "handoff_render_ms": 17.899999856948853,
+      "analysis_ms": 49.40000009536743
+    },
+    {
+      "acknowledgement_ms": 54,
+      "handoff_render_ms": 23,
+      "analysis_ms": 33
+    },
+    {
+      "acknowledgement_ms": 30,
+      "handoff_render_ms": 18.09999990463257,
+      "analysis_ms": 32.59999990463257
+    },
+    {
+      "acknowledgement_ms": 29.5,
+      "handoff_render_ms": 18.09999990463257,
+      "analysis_ms": 32.700000047683716
+    },
+    {
+      "acknowledgement_ms": 27.700000047683716,
+      "handoff_render_ms": 24.09999990463257,
+      "analysis_ms": 32.59999990463257
+    },
+    {
+      "acknowledgement_ms": 45,
+      "handoff_render_ms": 18.199999809265137,
+      "analysis_ms": 26.800000190734863
+    },
+    {
+      "acknowledgement_ms": 29.799999952316284,
+      "handoff_render_ms": 17.700000047683716,
+      "analysis_ms": 32.40000009536743
+    },
+    {
+      "acknowledgement_ms": 26,
+      "handoff_render_ms": 17.600000143051147,
+      "analysis_ms": 32.5
+    },
+    {
+      "acknowledgement_ms": 26.200000047683716,
+      "handoff_render_ms": 18,
+      "analysis_ms": 29.59999990463257
+    },
+    {
+      "acknowledgement_ms": 51.5,
+      "handoff_render_ms": 18.09999990463257,
+      "analysis_ms": 32.700000047683716
+    },
+    {
+      "acknowledgement_ms": 57.89999985694885,
+      "handoff_render_ms": 18.700000047683716,
+      "analysis_ms": 32.799999952316284
+    },
+    {
+      "acknowledgement_ms": 29.799999952316284,
+      "handoff_render_ms": 18,
+      "analysis_ms": 32.80000019073486
+    },
+    {
+      "acknowledgement_ms": 60,
+      "handoff_render_ms": 22.40000009536743,
+      "analysis_ms": 33
+    },
+    {
+      "acknowledgement_ms": 54.90000009536743,
+      "handoff_render_ms": 18.90000009536743,
+      "analysis_ms": 38.299999952316284
+    },
+    {
+      "acknowledgement_ms": 50.200000047683716,
+      "handoff_render_ms": 18.09999990463257,
+      "analysis_ms": 32.299999952316284
+    },
+    {
+      "acknowledgement_ms": 47.59999990463257,
+      "handoff_render_ms": 31.5,
+      "analysis_ms": 34.10000014305115
+    },
+    {
+      "acknowledgement_ms": 45,
+      "handoff_render_ms": 18.799999952316284,
+      "analysis_ms": 33.19999980926514
+    },
+    {
+      "acknowledgement_ms": 44.30000019073486,
+      "handoff_render_ms": 19.700000047683716,
+      "analysis_ms": 32.89999985694885
+    },
+    {
+      "acknowledgement_ms": 48.299999952316284,
+      "handoff_render_ms": 18.899999856948853,
+      "analysis_ms": 33.90000009536743
+    },
+    {
+      "acknowledgement_ms": 47.200000047683716,
+      "handoff_render_ms": 18.399999856948853,
+      "analysis_ms": 34.700000047683716
+    },
+    {
+      "acknowledgement_ms": 49.89999985694885,
+      "handoff_render_ms": 18.100000143051147,
+      "analysis_ms": 32.40000009536743
+    },
+    {
+      "acknowledgement_ms": 54.89999985694885,
+      "handoff_render_ms": 18.199999809265137,
+      "analysis_ms": 33.80000019073486
+    },
+    {
+      "acknowledgement_ms": 53.5,
+      "handoff_render_ms": 18.800000190734863,
+      "analysis_ms": 29.600000143051147
+    },
+    {
+      "acknowledgement_ms": 63.09999990463257,
+      "handoff_render_ms": 18.5,
+      "analysis_ms": 33.5
+    },
+    {
+      "acknowledgement_ms": 57,
+      "handoff_render_ms": 18.40000009536743,
+      "analysis_ms": 32.69999980926514
+    },
+    {
+      "acknowledgement_ms": 56.39999985694885,
+      "handoff_render_ms": 18.100000143051147,
+      "analysis_ms": 31.899999856948853
+    },
+    {
+      "acknowledgement_ms": 66.10000014305115,
+      "handoff_render_ms": 17.299999952316284,
+      "analysis_ms": 32.10000014305115
+    },
+    {
+      "acknowledgement_ms": 59,
+      "handoff_render_ms": 18.600000143051147,
+      "analysis_ms": 32.299999952316284
+    },
+    {
+      "acknowledgement_ms": 56.299999952316284,
+      "handoff_render_ms": 17.899999856948853,
+      "analysis_ms": 49.299999952316284
+    },
+    {
+      "acknowledgement_ms": 42.799999952316284,
+      "handoff_render_ms": 25.299999952316284,
+      "analysis_ms": 34
+    }
+  ]
+}

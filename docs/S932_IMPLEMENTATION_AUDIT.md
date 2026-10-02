@@ -48,8 +48,8 @@ Open the app, start an S932 replay and collect the next evidence. Alternatively,
 
 | ID | Implemented mock / software behaviour | Evidence | Remaining limit |
 |---|---|---|---|
-| NFR-01 — Progressive response | Persisted initial incident/template plus explicit collection/job status; later results append versions. | [Core tests][core-tests], [coordinator tests][coordinator-tests]. | Proposed p95 targets require deployment measurement; local service timings exclude browser/network/real collection. |
-| NFR-02 — Resilient orchestration | Independent leased jobs, unique input fingerprints, bounded retries, stale-result rejection and startup recovery. Sends have separate durable claims and uncertainty handling. | [Coordinator tests][coordinator-tests], [communication tests][communication-tests]. | Local SQLite workflows have not been load-tested for a multi-site production deployment. |
+| NFR-01 — Progressive response | Persisted initial incident/template plus explicit collection/job status; later results append versions. | [Core tests][core-tests], [coordinator tests][coordinator-tests]; [browser timing](S932_MOCK_EVALUATION.md#browser-timing). | Proposed p95 targets require deployment measurement. Local service and loopback browser timings exclude real network, collection and LLM drafting. |
+| NFR-02 — Resilient orchestration | Independent leased jobs, unique input fingerprints, bounded retries, stale-result rejection and startup recovery. Replay collection, analysis and draft refresh rebase only over background-job revisions; any human change still requires reload. Sends have separate durable claims and uncertainty handling. | [Coordinator tests][coordinator-tests], [communication tests][communication-tests]. | Local SQLite workflows have not been load-tested for a multi-site production deployment. |
 | NFR-03 — Read-only equipment | Gateway reads approved normalized exports; mock execution uses internal simulation. No machine-command or production-release adapter is implemented. | [Gateway][gateway], [experiments][experiments]; [gateway][gateway-tests] and [experiment tests][experiment-tests]. | Actual exporter permission and device integration remain site work. |
 | NFR-04 — Roles | Demo roles are visibly separate from configured credentials. View, edit, test authorization, sending, closure, publication and data management have distinct permissions. | [Access][access]; [access tests][artifact-tests], [communication tests][communication-tests], [experiment tests][experiment-tests]. | Demo role selection is not authentication. Site identity provisioning, HTTPS and credential operations require deployment review. |
 | NFR-05 — Data handling | External-data policy defaults to synthetic-only; original uploads are bounded/hash-checked. Original deletion/retention retains tombstones; configured API access is audited. | [Artifacts][artifacts], [data policy][policy], [access][access]; [access/artifact tests][artifact-tests]. | Original/buffer retention is implemented; full incident-record retention, legal holds and site data governance are not established. |
@@ -75,6 +75,19 @@ These are covered by authored mock or transport-level tests. They are not twelve
 | AT-10 — Unauthorized / failed email | Separate mock events and fake SMTP tests retain failed/unknown states. No draft or SMTP acceptance is labelled delivered without a distinct attributed receipt. [Communication tests][communication-tests], [browser tests][browser-tests]. |
 | AT-11 — Inconclusive closure | Reviewer can close without inventing a confirmed cause; unresolved findings persist and equipment disposition remains separate. [Incident tests][core-tests], [browser tests][browser-tests]. |
 | AT-12 — Learning review | Candidate capture does not auto-publish. Reviews preserve source versions; withdrawal and later source changes remove eligibility for reuse. [Incident][core-tests], [experience tests][experience-tests], [browser tests][browser-tests]. |
+
+### Incident-response acceptance run
+
+Run on 3 October 2026 by the incident response and handoff owner. All listed tests passed.
+
+| Scenario | Tests |
+|---|---|
+| AT-01 duplicate trigger | `test_incidents.py::test_partial_creation_deduplicates_without_diagnosis_or_machine_assumptions`, `test_incident_gateway.py::test_bundled_mock_needs_no_machine_credentials_and_archives_original_bytes` |
+| AT-02 missing PM | `test_incident_gateway.py::test_pre_and_post_buffer_survive_restarts_keep_clock_and_missing_sources`, `test_incident_coordinator.py::test_jobs_are_idempotent_and_handoff_finishes_while_analysis_waits` |
+| AT-10 communication status | `test_incident_communication.py::test_mock_handoff_states_never_call_mail_transport`, `::test_send_claim_is_durable_and_accepted_is_not_delivered`, `::test_receipts_are_attributed_and_cannot_fabricate_delivery_before_submission`, `::test_allowlist_auth_and_demo_mode_prevent_unapproved_delivery`; browser "mock communication records accepted/unknown and receipt states without sending email" |
+| AT-11 inconclusive closure | `test_incidents.py::test_inconclusive_closure_review_export_and_late_evidence_withdrawal`; browser "inconclusive closure requires explicit demo review and learning stays a candidate" |
+| Late results cannot overwrite newer evidence or human edits | `test_incidents.py::test_late_analysis_cannot_overwrite_concurrent_evidence`, `test_incident_coordinator.py::test_late_evidence_supersedes_running_result`, `::test_human_edit_is_preserved_and_old_analysis_draft_cannot_replace_current` |
+| Safe actions survive background revisions | `test_incident_coordinator.py::test_safe_actions_rebase_only_over_background_job_revisions`, `::test_safe_action_retries_when_a_background_job_commits_mid_action` |
 
 ## Claims the implementation does not establish
 
