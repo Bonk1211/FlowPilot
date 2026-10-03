@@ -19,7 +19,6 @@ import {
   SidebarSimple,
   X,
   ArrowRight,
-  ArrowSquareOut,
   DownloadSimple,
   Flask,
   Plus,
@@ -414,9 +413,6 @@ function IncidentWorkspaceContent({
             Incidents
           </a>
           <a href="/knowledge">Learning database</a>
-          <a href="/legacy">
-            Legacy demo <ArrowSquareOut aria-hidden="true" />
-          </a>
         </nav>
         <span className="demo-badge">Prototype / Simulated data</span>
       </header>
