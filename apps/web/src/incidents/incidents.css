@@ -872,6 +872,99 @@
     margin: 0 0 0 40px;
   }
 }
+/* Vertical timeline: a pale rail, solid dots, flags on the rail and cards that
+   open in place, alternating either side of the rail. */
+.incident-events[data-layout="vertical"] .incident-timeline > li::before {
+  left: calc(50% - 3px);
+  width: 6px;
+  background: var(--border-default);
+}
+.incident-events[data-layout="vertical"]
+  .incident-timeline
+  > li:first-child::before {
+  border-radius: 3px 3px 0 0;
+}
+.incident-events[data-layout="vertical"]
+  .incident-timeline
+  > li:last-child::before {
+  border-radius: 0 0 3px 3px;
+}
+.incident-events[data-layout="vertical"] .incident-event-flag {
+  background: var(--text-selection);
+}
+.incident-events[data-layout="vertical"] .incident-event-flag::after {
+  border-top-color: var(--text-selection);
+}
+.incident-events[data-layout="vertical"] .incident-event-dot {
+  width: 22px;
+  height: 22px;
+  margin-top: 19px;
+  border: 0;
+  background: var(--selection-active);
+  font-size: 0;
+  transition: box-shadow var(--duration-feedback);
+}
+.incident-events[data-layout="vertical"]
+  .incident-event.selected
+  .incident-event-dot {
+  background: var(--selection-active);
+  box-shadow: 0 0 0 5px
+    color-mix(in srgb, var(--selection-active) 28%, transparent);
+}
+.incident-events[data-layout="vertical"]
+  .incident-timeline
+  > li[data-missing]
+  .incident-event-dot {
+  border: 2px dashed var(--text-muted);
+  background: var(--surface-document);
+}
+.incident-events[data-layout="vertical"] .incident-event-time {
+  margin-top: 20px;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+.incident-events[data-layout="vertical"] .incident-event-card {
+  padding: 18px 20px;
+  border-radius: var(--radius-pane);
+}
+.incident-events[data-layout="vertical"] .incident-event-card::before {
+  top: 24px;
+}
+.incident-events[data-layout="vertical"]
+  .incident-event.selected
+  .incident-event-card {
+  border-radius: var(--radius-pane) var(--radius-pane) 0 0;
+}
+.incident-events[data-layout="vertical"] .incident-event-detail {
+  border-radius: 0 0 var(--radius-pane) var(--radius-pane);
+}
+.incident-events[data-layout="vertical"] .incident-event-text strong {
+  font-size: 16px;
+  font-weight: 600;
+}
+.incident-events[data-layout="vertical"] .incident-event-text span {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.incident-events[data-layout="vertical"] .incident-event-caret {
+  transition: transform var(--duration-feedback);
+}
+.incident-events[data-layout="vertical"]
+  .incident-event.selected
+  .incident-event-caret {
+  transform: rotate(90deg);
+}
+@media (max-width: 760px) {
+  .incident-events[data-layout="vertical"] .incident-timeline > li::before {
+    left: 8px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .incident-events[data-layout="vertical"] .incident-event-dot,
+  .incident-events[data-layout="vertical"] .incident-event-caret {
+    transition: none;
+  }
+}
 .incident-facts {
   display: grid;
   gap: 10px;
