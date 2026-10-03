@@ -21,6 +21,8 @@ type Props = {
   reduced: boolean;
   onFailure: () => void;
   onInteract: () => void;
+  /** Extra parts to highlight with the step's part; defaults to that part alone. */
+  highlightIds?: readonly string[];
 };
 
 type Material = THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial;
@@ -32,7 +34,7 @@ type Runtime = {
   target: THREE.Vector3;
   moving: boolean;
   reduced: boolean;
-  highlight: string;
+  highlight: ReadonlySet<string>;
   kind: string;
   isolated: boolean;
 };
@@ -96,8 +98,10 @@ export default function AssemblyScene({
   reduced,
   onFailure,
   onInteract,
+  highlightIds,
 }: Props) {
   const host = useRef<HTMLDivElement>(null);
+  const highlightKey = highlightIds?.join(",");
   const runtime = useRef<Runtime | null>(null);
   const callbacks = useRef({ onFailure, onInteract });
   const [isolated, setIsolated] = useState(false);
@@ -179,7 +183,7 @@ export default function AssemblyScene({
       target: new THREE.Vector3(),
       moving: false,
       reduced: false,
-      highlight: "",
+      highlight: new Set<string>(),
       kind: "none",
       isolated: false,
     };
@@ -262,7 +266,8 @@ export default function AssemblyScene({
       state.parts.traverse((object) => {
         if (!(object instanceof THREE.Mesh)) return;
         const owner = semanticOwner(object, state.parts);
-        const active = owner === state.highlight && state.kind !== "none";
+        const active =
+          !!owner && state.highlight.has(owner) && state.kind !== "none";
         for (const material of materials(object)) {
           const baseColor =
             material.userData.baseColor ?? material.color.getHex();
@@ -284,7 +289,7 @@ export default function AssemblyScene({
                   ? 0.48
                   : 0;
           }
-          const faded = state.isolated && owner && owner !== state.highlight;
+          const faded = state.isolated && owner && !state.highlight.has(owner);
           material.transparent = faded || baseOpacity < 1;
           material.opacity = faded ? Math.min(baseOpacity, 0.16) : baseOpacity;
           material.depthWrite = !faded;
@@ -322,12 +327,14 @@ export default function AssemblyScene({
     }
     current.goal.fromArray(preset.position);
     current.target.fromArray(preset.target);
-    current.highlight = step.model_node_id;
+    current.highlight = new Set(
+      highlightKey ? highlightKey.split(",") : [step.model_node_id],
+    );
     current.kind = step.highlight;
     current.reduced = reduced;
     current.moving = true;
     setIsolated(false);
-  }, [step, reset, reduced]);
+  }, [step, reset, reduced, highlightKey]);
 
   function adjust(kind: "left" | "right" | "up" | "down" | "in" | "out") {
     const current = runtime.current;
@@ -364,8 +371,14 @@ export default function AssemblyScene({
         ref={host}
         className="assembly-canvas"
         role="img"
-        aria-label={`Detailed generic fluid-dispenser assembly. Highlighted part: ${modelNodes[step.model_node_id]?.label ?? "unknown"}`}
+        aria-label={`Detailed generic fluid-dispenser assembly. Highlighted ${highlightIds && highlightIds.length > 1 ? "parts" : "part"}: ${
+          (highlightIds ?? [step.model_node_id])
+            .map((id) => modelNodes[id as keyof typeof modelNodes]?.label)
+            .filter(Boolean)
+            .join(", ") || "unknown"
+        }`}
         data-node-id={step.model_node_id}
+        data-highlight-ids={highlightKey}
         data-camera-preset={step.camera_preset}
         data-highlighted={step.highlight !== "none"}
         data-reduced-motion={reduced}

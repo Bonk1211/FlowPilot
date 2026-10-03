@@ -703,3 +703,28 @@ test("mechanism components come from the assessment for every hypothesis", async
     await navigate(page, "Investigation");
   }
 });
+
+test("mechanism highlights every component of the hypothesis and explains the selected one", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  const hypothesis = incident.assessment?.hypotheses[0];
+  expect(hypothesis).toBeTruthy();
+  await page.goto(`/incidents/${incident.id}/simulation`);
+  await page.getByRole("button", { name: "2D schematic", exact: true }).click();
+  const figure = page.locator(".prototype-diagram");
+  await expect(figure.locator('[data-highlighted="true"]')).toHaveCount(
+    hypothesis?.component_ids.length ?? 0,
+  );
+  const list = page.getByLabel("Components in this mechanism", { exact: true });
+  const buttons = list.getByRole("button");
+  await buttons.first().focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(buttons.nth(1)).toBeFocused();
+  await expect(buttons.nth(1)).toHaveAttribute("aria-pressed", "true");
+  const name = (await buttons.nth(1).textContent()) ?? "";
+  await expect(
+    page.getByRole("group", { name: `Role of ${name}`, exact: true }),
+  ).toBeVisible();
+});

@@ -1065,6 +1065,17 @@
   border-color: var(--selection-active);
   color: var(--text-selection);
 }
+.incident-component-role {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-left: 3px solid var(--selection-active);
+  background: var(--surface-measurement);
+  border-radius: var(--radius-control);
+}
+.incident-component-role p {
+  margin: 0;
+}
 .incident-mechanism-text details {
   border-top: 1px solid var(--border-default);
 }

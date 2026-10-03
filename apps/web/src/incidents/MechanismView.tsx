@@ -10,7 +10,11 @@ import {
 import type { ProcedureStep } from "@flowpilot/contracts";
 import { Cube, Path } from "@phosphor-icons/react";
 import { ProcedureDiagram } from "../prototype/ProcedureDiagram";
-import { modelNodes, type ModelNodeId } from "../prototype/model";
+import {
+  modelNodeDetails,
+  modelNodes,
+  type ModelNodeId,
+} from "../prototype/model";
 import "../components/viewer.css";
 
 const AssemblyScene = lazy(() => import("../components/AssemblyScene"));
@@ -104,6 +108,7 @@ export function MechanismView({
     update();
     return () => query.removeEventListener("change", update);
   }, []);
+  const highlightIds = nodes.length ? nodes : undefined;
   const node =
     part && nodes.includes(part) ? part : (nodes[0] ?? "substrate_tray");
   const step = useMemo<ProcedureStep>(
@@ -170,9 +175,13 @@ export function MechanismView({
             </p>
           )}
           {twoD || failed ? (
-            <ProcedureDiagram step={step} />
+            <ProcedureDiagram step={step} highlightIds={highlightIds} />
           ) : (
-            <SceneBoundary fallback={<ProcedureDiagram step={step} />}>
+            <SceneBoundary
+              fallback={
+                <ProcedureDiagram step={step} highlightIds={highlightIds} />
+              }
+            >
               <Suspense
                 fallback={<p role="status">Loading illustrative assembly…</p>}
               >
@@ -180,6 +189,7 @@ export function MechanismView({
                   step={step}
                   reset={reset}
                   reduced={reduced}
+                  highlightIds={highlightIds}
                   onFailure={() => setFailed(true)}
                   onInteract={() => undefined}
                 />
@@ -240,17 +250,50 @@ export function MechanismView({
               <div
                 className="incident-component-list"
                 aria-label="Components in this mechanism"
+                onKeyDown={(event) => {
+                  const step =
+                    event.key === "ArrowRight" || event.key === "ArrowDown"
+                      ? 1
+                      : event.key === "ArrowLeft" || event.key === "ArrowUp"
+                        ? -1
+                        : 0;
+                  if (!step) return;
+                  event.preventDefault();
+                  const next =
+                    nodes[
+                      (nodes.indexOf(node) + step + nodes.length) % nodes.length
+                    ];
+                  setPart(next);
+                  event.currentTarget
+                    .querySelector<HTMLElement>(`[data-component="${next}"]`)
+                    ?.focus();
+                }}
               >
                 {nodes.map((id) => (
                   <button
                     key={id}
+                    data-component={id}
                     aria-pressed={node === id}
+                    tabIndex={node === id ? 0 : -1}
                     onClick={() => setPart(id)}
                   >
                     {modelNodes[id].label}
                   </button>
                 ))}
               </div>
+              {modelNodeDetails[node] && (
+                <div
+                  className="incident-component-role"
+                  role="group"
+                  aria-label={`Role of ${modelNodes[node].label}`}
+                >
+                  <strong>{modelNodes[node].label}</strong>
+                  <p>{modelNodeDetails[node].function}</p>
+                  <p className="incident-caption">
+                    {modelNodeDetails[node].connection}
+                  </p>
+                </div>
+              )}
               {unmapped.length > 0 && (
                 <p className="incident-caption">
                   Not in the schematic: {unmapped.join(", ")}.
