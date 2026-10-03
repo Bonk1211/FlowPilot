@@ -968,3 +968,32 @@ test("every incident page gives controls and images accessible names and unique 
     expect(problems, `${feature.label}: ${problems.join(", ")}`).toEqual([]);
   }
 });
+
+test("application activity is listed apart from the evidence timeline", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/evidence`);
+  const timelineCount = incident.evidence?.length ?? 0;
+  await expect(
+    page
+      .getByRole("list", { name: "Evidence timeline", exact: true })
+      .locator(".incident-event"),
+  ).toHaveCount(timelineCount);
+  await page.getByText("Application activity", { exact: true }).click();
+  const activity = page.getByRole("list", {
+    name: "Application activity",
+    exact: true,
+  });
+  await expect(activity.getByRole("listitem")).toHaveCount(
+    incident.history?.length ?? 0,
+  );
+  await expect(activity).toContainText("Advance replay");
+  await expect(activity).toContainText("demo:technician");
+  await expect(
+    page
+      .getByRole("list", { name: "Evidence timeline", exact: true })
+      .locator(".incident-event"),
+  ).toHaveCount(timelineCount);
+});

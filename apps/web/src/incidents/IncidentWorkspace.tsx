@@ -950,8 +950,11 @@ function IncidentWorkspaceContent({
                               className="incident-source-tools"
                               name="evidence-tools"
                             >
-                              <summary>
-                                <UploadSimple aria-hidden="true" /> Source files
+                              <summary title="Source files">
+                                <UploadSimple aria-hidden="true" />{" "}
+                                <span className="incident-narrow-label">
+                                  Source files
+                                </span>
                               </summary>
                               <div className="incident-source-drawer">
                                 <AddEvidence
@@ -969,6 +972,7 @@ function IncidentWorkspaceContent({
                           </>
                         }
                         evidence={incident.evidence ?? []}
+                        activity={incident.history}
                         selectedId={eventId}
                         onSelect={setSelectedEvent}
                         busy={busy || !canEdit}

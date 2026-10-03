@@ -8,6 +8,7 @@ import {
 import {
   incidentFetch,
   type EvidenceInput,
+  type Incident,
   type IncidentEvidence,
 } from "./api";
 import { displayTime } from "./time";
@@ -17,6 +18,7 @@ import {
 } from "./EvidenceTimeline";
 import { useTimelinePlayback } from "./useTimelinePlayback";
 import { StatusChip } from "./StatusChip";
+import { ApplicationActivity } from "./ApplicationActivity";
 
 function imageUrl(value?: string | null) {
   if (!value) return null;
@@ -297,8 +299,10 @@ export function EvidenceExplorer({
   busy,
   closed,
   actions,
+  activity = [],
 }: {
   actions?: ReactNode;
+  activity?: Incident["history"];
   evidence: IncidentEvidence[];
   selectedId: string | null;
   onSelect: (id: string) => void;
@@ -348,12 +352,14 @@ export function EvidenceExplorer({
             <span>
               {layout === "horizontal" ? (
                 <>
-                  <span className="eyebrow">
-                    Event {selectedIndex + 1} of {total}
+                  <span className="incident-detail-meta">
+                    <span className="eyebrow">
+                      Event {selectedIndex + 1} of {total}
+                    </span>
+                    <StatusChip
+                      kind={selected.synthetic ? "simulated" : "observed"}
+                    />
                   </span>
-                  <StatusChip
-                    kind={selected.synthetic ? "simulated" : "observed"}
-                  />
                   <strong>{selected.label}</strong>
                   <span className="incident-caption">
                     {displayTime(selected.event_time)}
@@ -517,6 +523,7 @@ export function EvidenceExplorer({
               </p>
             </div>
           </details>
+          <ApplicationActivity activity={activity ?? []} />
           {actions}
         </div>
       </div>
