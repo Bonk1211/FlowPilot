@@ -19,6 +19,7 @@ import {
 } from "@phosphor-icons/react";
 import {
   Background,
+  BaseEdge,
   Controls,
   Handle,
   MarkerType,
@@ -30,6 +31,7 @@ import {
   useNodesInitialized,
   useStore,
   type Edge,
+  type EdgeProps,
   type Node,
   type NodeProps,
   type FitViewOptions,
@@ -44,6 +46,8 @@ import { CausalReasoning } from "./CausalReasoning";
 import { InvestigationConversation } from "./InvestigationConversation";
 import { LiveTimeline } from "./LiveTimeline";
 import type { InvestigationProgressMode } from "./InvestigationProgress";
+import { investigationLayout } from "./investigationLayout";
+import { responseNodeId, responseStatement } from "./investigationResponses";
 import "@xyflow/react/dist/style.css";
 import "./InvestigationGraph.css";
 
@@ -53,6 +57,7 @@ const stages = {
   evidence: { label: "Evidence", height: 128 },
   decision: { label: "Decision", height: 200 },
   check: { label: "Check", height: 116 },
+  statement: { label: "Response", height: 124 },
   clarify: { label: "Clarify", height: 132 },
   review: { label: "Review", height: 108 },
 };
@@ -114,7 +119,6 @@ type ChartNode = Node<
     title: string;
     prompt: string;
     status: string;
-    answer?: string;
     inspected?: boolean;
     spotlight?: boolean;
     processing?: boolean;
@@ -164,7 +168,7 @@ function StageShape({ stage }: { stage: Stage }) {
           y="2"
           width="276"
           height={height - 4}
-          rx={stage === "check" ? 5 : height / 2}
+          rx={stage === "check" || stage === "statement" ? 5 : height / 2}
         />
       )}
     </svg>
@@ -185,12 +189,18 @@ function StageNode({ data }: NodeProps<ChartNode>) {
         {data.processing
           ? "Agent working…"
           : data.spotlight
-          ? "Spotlight · answer here"
-          : start
-            ? "Incident opened"
-            : data.status === "active"
-              ? "Current step"
-              : data.status}
+            ? data.stage === "review"
+              ? "Review step"
+              : "Spotlight · answer here"
+            : start
+              ? "Incident opened"
+              : data.status === "active"
+                ? "Current step"
+                : data.status === "deferred"
+                  ? "Set aside"
+                  : data.stage === "statement"
+                    ? responseStatus(data.status)
+                    : data.status}
       </span>
       {!start && (
         <Handle
@@ -204,7 +214,7 @@ function StageNode({ data }: NodeProps<ChartNode>) {
         type="button"
         className="flowchart-shape nodrag nopan"
         style={{ height }}
-        aria-label={`${data.questionType ? `${questionTypes[data.questionType].label} · ` : ""}${stages[data.stage].label} · ${data.status}: ${data.prompt}`}
+        aria-label={`${data.questionType ? `${questionTypes[data.questionType].label} · ` : ""}${stages[data.stage].label} · ${data.stage === "statement" ? responseStatus(data.status) : data.status === "deferred" ? "Set aside" : data.status}: ${data.prompt}`}
         aria-pressed={start ? undefined : data.inspected}
         title={data.prompt}
         onClick={data.onInspect}
@@ -230,13 +240,61 @@ function StageNode({ data }: NodeProps<ChartNode>) {
           style={{ top: height + 28, bottom: "auto" }}
         />
       )}
-      <span className="flowchart-node-answer" title={data.answer}>
-        {data.answer ? `Recorded: ${data.answer}` : ""}
-      </span>
+      <span className="flowchart-node-answer" />
     </div>
   );
 }
 const nodeTypes = { stage: StageNode };
+type RelationshipEdge = Edge<{ junctionY: number }, "relationship">;
+
+function RelationshipConnector({
+  sourceX,
+  sourceY,
+  targetX,
+  targetY,
+  data,
+  id,
+  markerEnd,
+  style,
+  label,
+  labelStyle,
+  labelBgStyle,
+  labelBgPadding,
+  labelBgBorderRadius,
+}: EdgeProps<RelationshipEdge>) {
+  const junctionY = data?.junctionY ?? (sourceY + targetY) / 2;
+  return (
+    <BaseEdge
+      id={id}
+      markerEnd={markerEnd}
+      style={style}
+      label={label}
+      labelStyle={labelStyle}
+      labelBgStyle={labelBgStyle}
+      labelBgPadding={labelBgPadding}
+      labelBgBorderRadius={labelBgBorderRadius}
+      path={`M ${sourceX} ${sourceY} V ${junctionY} H ${targetX} V ${targetY}`}
+      labelX={targetX}
+      labelY={(junctionY + targetY) / 2}
+    />
+  );
+}
+const edgeTypes = { relationship: RelationshipConnector };
+
+function responseStatus(status: string) {
+  return status === "confirmed"
+    ? "Recorded response"
+    : status === "unknown"
+      ? "Information unknown"
+      : status === "clarified"
+        ? "Clarified response"
+        : status === "superseded"
+          ? "Earlier response"
+          : status === "clarification"
+            ? "Needs clarification"
+            : "Awaiting confirmation";
+}
+
 function GraphControls({
   current,
   selected,
@@ -316,12 +374,20 @@ function GraphControls({
     if (!initialized || !focusId || lastFocused.current === frame) return;
     const node = getNodes().find((item) => item.id === focusId);
     if (!node) return;
-    // Keep the new question and its sibling choices together as the path grows.
-    const parent = getEdges().find((edge) => edge.target === focusId)?.source;
+    // Frame this question's family rather than unrelated branches at the same depth.
+    const connections = getEdges();
+    const parent = connections.find((edge) => edge.target === focusId)?.source;
+    const family = new Set(
+      connections
+        .filter((edge) => edge.source === parent)
+        .map((edge) => edge.target),
+    );
     const neighbors = getNodes().filter((item) =>
       narrow
         ? item.id === focusId
-        : item.position.y === node.position.y || item.id === parent,
+        : item.id === focusId ||
+          (item.data.status !== "deferred" &&
+            (family.has(item.id) || item.id === parent)),
     );
     void fitView({
       nodes: neighbors,
@@ -471,6 +537,38 @@ export function InvestigationGraph({
     (node) => earlierPaths || node.status !== "superseded",
   );
   const currentId = graph.active_node_id ?? latest?.recommended_id ?? null;
+  const clarifiedAnswers = new Set(
+    visibleNodes
+      .filter(
+        (node) =>
+          node.status === "answered" &&
+          node.clarification_for &&
+          ["confirmed", "unknown"].includes(
+            currentAnswer(node.id)?.status ?? "",
+          ),
+      )
+      .map((node) => node.clarification_for),
+  );
+  const deferredIds = new Set(
+    graph.expansions
+      .filter(
+        (expansion) =>
+          !expansion.superseded &&
+          expansion.child_ids.some((id) =>
+            visibleNodes.some(
+              (node) => node.id === id && node.status === "answered",
+            ),
+          ),
+      )
+      .flatMap((expansion) => expansion.child_ids)
+      .filter((id) =>
+        visibleNodes.some(
+          (node) =>
+            node.id === id &&
+            (node.status === "proposed" || node.status === "blocked"),
+        ),
+      ),
+  );
   const detail =
     visibleNodes.find((node) => node.id === detailId) ??
     visibleNodes.find((node) => node.id === currentId) ??
@@ -567,6 +665,12 @@ export function InvestigationGraph({
   }
 
   function responseControls(node: InvestigationNode) {
+    if (deferredIds.has(node.id))
+      return (
+        <p className="investigation-node-hint">
+          Set aside · the flow continues from the recorded answer.
+        </p>
+      );
     const answer = currentAnswer(node.id);
     const draft = drafts[node.id];
     const editable = node.status === "active" || editing === node.id;
@@ -740,15 +844,20 @@ export function InvestigationGraph({
   }
 
   function content(node: InvestigationNode, interactive = true) {
+    const status = deferredIds.has(node.id) ? "deferred" : node.status;
     const answer = currentAnswer(node.id);
     const draft = drafts[node.id];
     const questionType = questionTypeFor(node);
     return (
       <article
-        className={`investigation-node is-${node.status} nodrag nopan nowheel`}
+        className={`investigation-node is-${status} nodrag nopan nowheel`}
         data-question-type={questionType}
-        style={questionStyle(questionType)}
-        aria-label={`${node.status}: ${node.prompt}`}
+        style={
+          status === "deferred"
+            ? ({ "--question-color": "var(--slate-300)" } as CSSProperties)
+            : questionStyle(questionType)
+        }
+        aria-label={`${status === "deferred" ? "Set aside" : status}: ${node.prompt}`}
       >
         <div className="investigation-node-meta">
           <span className={`investigation-stage-mark stage-${stageFor(node)}`}>
@@ -757,7 +866,13 @@ export function InvestigationGraph({
               ? "Synthetic check"
               : stages[stageFor(node)].label}
           </span>
-          <span>{node.status === "active" ? "Current step" : node.status}</span>
+          <span>
+            {status === "active"
+              ? "Current step"
+              : status === "deferred"
+                ? "Set aside"
+                : status}
+          </span>
         </div>
         {questionType && (
           <p className="question-purpose">
@@ -783,6 +898,9 @@ export function InvestigationGraph({
         {answer && (
           <div className="investigation-node-answer">
             <strong>Recorded answer · {answer.status}</strong>
+            <p>
+              {responseStatement(node, answer, clarifiedAnswers.has(answer.id))}
+            </p>
             <p>
               {answer.text || answer.choice || "Unknown"}
               {answer.notes ? ` — ${answer.notes}` : ""}
@@ -813,26 +931,63 @@ export function InvestigationGraph({
     );
   }
 
-  const positions = new Map<string, { x: number; y: number }>();
-  const occupied = new Map<number, Set<number>>();
-  const siblings = new Map<string, number>();
-  const nodes: ChartNode[] = visibleNodes.map((node) => {
-    const parent = node.parent_id ? positions.get(node.parent_id) : undefined;
-    const family = node.parent_id ?? "start";
-    const index = siblings.get(family) ?? 0;
-    siblings.set(family, index + 1);
-    const y = parent ? parent.y + 300 : 140;
-    let x =
-      (parent?.x ?? 0) + Math.ceil(index / 2) * 280 * (index % 2 ? -1 : 1);
-    const row = occupied.get(y) ?? new Set<number>();
-    while (row.has(x)) x += 280;
-    row.add(x);
-    occupied.set(y, row);
-    positions.set(node.id, { x, y });
+  const responses = graph.answers.flatMap((answer) => {
+    const node = visibleNodes.find((item) => item.id === answer.node_id);
+    if (!node || (!earlierPaths && superseded.has(answer.id))) return [];
+    return [
+      {
+        id: responseNodeId(answer.id),
+        node,
+        answer,
+        status:
+          superseded.has(answer.id) || node.status === "superseded"
+            ? "superseded"
+            : clarifiedAnswers.has(answer.id) &&
+                ["pending", "clarification"].includes(answer.status)
+              ? "clarified"
+              : answer.status,
+        text: responseStatement(node, answer, clarifiedAnswers.has(answer.id)),
+      },
+    ];
+  });
+  const responseIds = new Set(responses.map((response) => response.id));
+  const chartParent = (node: InvestigationNode) =>
+    node.parent_answer_id &&
+    responseIds.has(responseNodeId(node.parent_answer_id))
+      ? responseNodeId(node.parent_answer_id)
+      : (node.parent_id ?? "flow-start");
+  const positions = investigationLayout(
+    [
+      {
+        id: "flow-start",
+        status: "start",
+        height: (stages.start.height * 240) / 280 + 56,
+      },
+      ...visibleNodes.map((node) => ({
+        ...node,
+        parent_id: chartParent(node),
+        height: (stages[stageFor(node)].height * 240) / 280 + 56,
+        gapAfter: 72,
+      })),
+      ...responses.map((response) => ({
+        id: response.id,
+        parent_id: response.node.id,
+        status: response.status,
+        height: (stages.statement.height * 240) / 280 + 56,
+        gapAfter: 72,
+      })),
+    ],
+    currentId,
+    new Set(
+      graph.expansions
+        .filter((expansion) => !expansion.superseded)
+        .map((expansion) => expansion.recommended_id),
+    ),
+  );
+  const questionNodes: ChartNode[] = visibleNodes.map((node) => {
+    const { x, y } = positions.get(node.id)!;
     const stage = stageFor(node);
     const title = questionTitles[node.target_fact] ?? node.prompt;
-    const answer = currentAnswer(node.id);
-    const recorded = answer?.confirmed_value ?? answer?.choice ?? answer?.text;
     return {
       id: node.id,
       type: "stage",
@@ -844,11 +999,14 @@ export function InvestigationGraph({
         stage,
         title: `${node.clarification_for ? "Clarify: " : ""}${title.length > 90 ? `${title.slice(0, 87)}…` : title}`,
         prompt: node.prompt,
-        status: node.status,
-        answer: recorded?.replaceAll("_", " "),
+        status: deferredIds.has(node.id) ? "deferred" : node.status,
         inspected: node.id === detail?.id,
-        spotlight: node.id === (detailId ?? currentId),
-        processing: !!activity && node.id === (detailId ?? currentId),
+        spotlight:
+          !deferredIds.has(node.id) && node.id === (detailId ?? currentId),
+        processing:
+          !deferredIds.has(node.id) &&
+          !!activity &&
+          node.id === (detailId ?? currentId),
         questionType: questionTypeFor(node),
         onInspect: () => inspect(node),
       },
@@ -859,6 +1017,29 @@ export function InvestigationGraph({
       ariaLabel: `${node.status}: ${node.prompt}`,
     };
   });
+  const responseNodes: ChartNode[] = responses.map((response) => {
+    const { x, y } = positions.get(response.id)!;
+    return {
+      id: response.id,
+      type: "stage",
+      position: { x, y },
+      width: 240,
+      height: (stages.statement.height * 240) / 280 + 56,
+      measured: dimensions[response.id],
+      data: {
+        stage: "statement",
+        title: response.text,
+        prompt: response.text,
+        status: response.status,
+        onInspect: () => inspect(response.node),
+      },
+      draggable: false,
+      selectable: true,
+      focusable: false,
+      ariaLabel: `${responseStatus(response.status)}: ${response.text}`,
+    };
+  });
+  const nodes = [...questionNodes, ...responseNodes];
   nodes.unshift({
     id: "flow-start",
     type: "stage",
@@ -877,28 +1058,39 @@ export function InvestigationGraph({
     focusable: false,
   });
   const spotlightNode = nodes.find((node) => node.data.spotlight);
-  const edges: Edge[] = visibleNodes.map((node) => {
-    const answer = graph.answers.find(
-      (item) => item.id === node.parent_answer_id,
-    );
-    const value = answer?.confirmed_value ?? answer?.choice;
-    const followed = node.id === currentId || node.status === "answered";
-    const questionType = questionTypeFor(node);
-    const color = questionType
-      ? `var(--question-${questionType})`
-      : "var(--slate-500)";
+  function connect(
+    target: string,
+    source: string,
+    followed: boolean,
+    deferred: boolean,
+    label?: string,
+    active = false,
+  ): RelationshipEdge {
+    if (!positions.has(source)) source = "flow-start";
+    const parent = positions.get(source)!;
+    const primary = positions.get(target)!.x === parent.x;
+    const color = deferred
+      ? "var(--slate-300)"
+      : primary || followed
+        ? "var(--text-secondary)"
+        : "var(--slate-500)";
     return {
-      id: `edge-${node.id}`,
-      source: node.parent_id ?? "flow-start",
-      target: node.id,
-      label: node.clarification_for
-        ? "Needs clarification"
-        : value
-          ? value.replaceAll("_", " ")
-          : undefined,
-      type: "smoothstep",
+      id: `edge-${target}`,
+      source,
+      target,
+      label: deferred
+        ? undefined
+        : !primary && !followed
+          ? "Alternative"
+          : label,
+      type: "relationship",
+      data: { junctionY: parent.junctionY },
       markerEnd: { type: MarkerType.ArrowClosed, width: 18, height: 18, color },
-      className: node.status === "active" ? "flowchart-edge-current" : "",
+      className: deferred
+        ? "flowchart-edge-deferred"
+        : active
+          ? "flowchart-edge-current"
+          : "",
       style: {
         stroke: color,
         strokeWidth: followed ? 2.5 : 1.5,
@@ -915,7 +1107,46 @@ export function InvestigationGraph({
       selectable: false,
       focusable: false,
     };
-  });
+  }
+  const edges: RelationshipEdge[] = [
+    ...visibleNodes.map((node) =>
+      connect(
+        node.id,
+        chartParent(node),
+        node.id === currentId || node.status === "answered",
+        deferredIds.has(node.id),
+        node.clarification_for
+          ? "Clarify response"
+          : node.parent_answer_id
+            ? node.kind === "review" || node.kind === "escalate"
+              ? "Review"
+              : "Continue"
+            : undefined,
+        node.status === "active",
+      ),
+    ),
+    ...responses.map((response) =>
+      connect(
+        response.id,
+        response.node.id,
+        response.status !== "superseded",
+        response.status === "superseded",
+        response.answer.status === "confirmed"
+          ? (
+              response.answer.confirmed_value ?? response.answer.choice
+            )?.replaceAll("_", " ")
+          : response.answer.status === "unknown"
+            ? "Unknown"
+            : "Saved",
+      ),
+    ),
+  ];
+  // Alternative connectors share the trunk; draw the followed path over them.
+  edges.sort(
+    (a, b) =>
+      Number(a.style?.strokeDasharray === undefined) -
+      Number(b.style?.strokeDasharray === undefined),
+  );
   const waiting = graph.answers.some(
     (answer: InvestigationAnswer) =>
       answer.status === "pending" &&
@@ -1259,7 +1490,7 @@ export function InvestigationGraph({
     >
       <div className="investigation-graph-heading">
         <div>
-          <p className="eyebrow">Question by question</p>
+          <p className="eyebrow">Response flow</p>
           <h2>Investigation path</h2>
         </div>
         <div className="investigation-view-actions">
@@ -1358,14 +1589,21 @@ export function InvestigationGraph({
         className="investigation-shape-legend"
         aria-label="Flowchart shape key"
       >
-        {(["review", "evidence", "decision", "check", "clarify"] as const).map(
-          (stage) => (
-            <span key={stage} className={`stage-${stage}`}>
-              <StageShape stage={stage} />
-              {stage === "review" ? "Start / review" : stages[stage].label}
-            </span>
-          ),
-        )}
+        {(
+          [
+            "review",
+            "evidence",
+            "decision",
+            "statement",
+            "check",
+            "clarify",
+          ] as const
+        ).map((stage) => (
+          <span key={stage} className={`stage-${stage}`}>
+            <StageShape stage={stage} />
+            {stage === "review" ? "Start / review" : stages[stage].label}
+          </span>
+        ))}
       </div>
       <InvestigationConversation
         incident={incident}
@@ -1417,6 +1655,21 @@ export function InvestigationGraph({
                     : " · start"}
                 </p>
                 {content(node)}
+                {responses
+                  .filter((response) => response.node.id === node.id)
+                  .map((response) => (
+                    <article
+                      key={response.id}
+                      className={`investigation-statement is-${response.status}`}
+                      aria-label={responseStatus(response.status)}
+                    >
+                      <span>{responseStatus(response.status)}</span>
+                      <p>{response.text}</p>
+                      <button type="button" onClick={() => inspect(node)}>
+                        Inspect saved response
+                      </button>
+                    </article>
+                  ))}
               </li>
             ))}
           </ol>
@@ -1465,6 +1718,7 @@ export function InvestigationGraph({
                   });
                 }}
                 nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
                 fitView
                 fitViewOptions={{ maxZoom: 1, padding: 0.1 }}
                 minZoom={0.2}

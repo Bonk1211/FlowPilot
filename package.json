@@ -17,19 +17,19 @@
     "dev:api": "uv run uvicorn flowpilot.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir apps/api/src",
     "dev:web": "npm run dev --workspace @flowpilot/web",
     "db:migrate": "uv run alembic -c apps/api/alembic.ini upgrade head",
+    "rag:index": "uv run python scripts/index-s932-reference.py",
     "build": "npm run build --workspace @flowpilot/web",
     "lint": "eslint . && uv run ruff check apps/api && uv run ruff format --check apps/api",
     "typecheck": "npm run typecheck --workspace @flowpilot/web",
     "test": "npm run test:reference && npm run test:api",
-    "test:reference": "node --experimental-strip-types --test test/industryEventLog.test.mjs test/incidentApi.test.mjs test/knowledgeGraph.test.mjs test/voice.test.mjs",
+    "test:reference": "node --experimental-strip-types --test test/industryEventLog.test.mjs test/knowledgeGraph.test.mjs test/voice.test.mjs test/incidentApi.test.mjs test/investigationLayout.test.mjs test/investigationResponses.test.mjs",
     "test:api": "uv run pytest",
     "test:e2e": "playwright test",
     "test:timing": "playwright test --config playwright.timing.config.ts",
     "contracts:generate": "node scripts/contracts.mjs",
     "contracts:check": "node scripts/contracts.mjs --check",
     "check": "npm run lint && npm run typecheck && npm test && npm run contracts:check && npm run build",
-    "vision:setup": "uv run python scripts/setup-vision.py",
-    "rag:index": "uv run python scripts/index-s932-reference.py"
+    "vision:setup": "uv run python scripts/setup-vision.py"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

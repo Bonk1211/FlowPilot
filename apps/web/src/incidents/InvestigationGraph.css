@@ -318,6 +318,60 @@
   --shape-fill: var(--surface-workspace);
   --shape-text: var(--text-muted);
 }
+.flowchart-node.is-deferred {
+  --shape-fill: var(--surface-workspace);
+  --shape-stroke: var(--slate-300);
+  --shape-text: var(--text-muted);
+}
+.flowchart-node.is-deferred svg * {
+  stroke-dasharray: 4 4;
+}
+.flowchart-node.is-deferred .react-flow__handle {
+  background: var(--slate-300);
+}
+.flowchart-node.stage-statement {
+  --shape-fill: var(--surface-workspace);
+  --shape-stroke: var(--slate-500);
+}
+.flowchart-node.stage-statement.is-confirmed {
+  --shape-fill: var(--green-100);
+  --shape-stroke: var(--green-700);
+}
+.flowchart-node.stage-statement.is-pending,
+.flowchart-node.stage-statement.is-clarification {
+  --shape-fill: var(--amber-100);
+  --shape-stroke: var(--amber-800);
+}
+.flowchart-node.stage-statement.is-superseded {
+  --shape-text: var(--text-muted);
+}
+.investigation-statement {
+  margin-top: 12px;
+  padding: 16px;
+  border: 1px solid var(--slate-500);
+  border-radius: var(--radius-control);
+  background: var(--surface-workspace);
+}
+.investigation-statement.is-confirmed {
+  border-color: var(--green-700);
+  background: var(--green-100);
+}
+.investigation-statement.is-pending,
+.investigation-statement.is-clarification {
+  border-color: var(--amber-800);
+  background: var(--amber-100);
+}
+.investigation-statement > span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.investigation-statement > p {
+  font-weight: 600;
+}
+.investigation-node.is-deferred {
+  background: var(--surface-workspace);
+  border-color: var(--slate-300);
+}
 .flowchart-node-status,
 .flowchart-node-answer {
   display: block;
@@ -355,6 +409,10 @@
 .flowchart-node.is-answered .flowchart-node-answer {
   color: var(--green-700);
   font-weight: 600;
+}
+.flowchart-node-answer:not(:empty) {
+  position: relative;
+  background: var(--surface-measurement);
 }
 .investigation-graph .flowchart-shape {
   position: relative;
@@ -453,6 +511,14 @@
   font-weight: 600;
   line-height: 1.3;
   text-wrap: balance;
+}
+.stage-statement .flowchart-shape-text > strong {
+  display: block;
+  overflow: visible;
+  -webkit-line-clamp: unset;
+  font-size: 15px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
 }
 .flowchart-node .react-flow__handle {
   width: 4px;
