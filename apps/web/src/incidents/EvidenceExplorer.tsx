@@ -19,6 +19,7 @@ import {
 import { useTimelinePlayback } from "./useTimelinePlayback";
 import { StatusChip } from "./StatusChip";
 import { ApplicationActivity } from "./ApplicationActivity";
+import { timelineEvents, timelineExplanation } from "./timeline";
 
 function imageUrl(value?: string | null) {
   if (!value) return null;
@@ -292,7 +293,7 @@ function CorrectionForm({
 }
 
 export function EvidenceExplorer({
-  evidence,
+  incident,
   selectedId,
   onSelect,
   onCorrect,
@@ -303,7 +304,7 @@ export function EvidenceExplorer({
 }: {
   actions?: ReactNode;
   activity?: Incident["history"];
-  evidence: IncidentEvidence[];
+  incident: Incident;
   selectedId: string | null;
   onSelect: (id: string) => void;
   onCorrect: (
@@ -314,6 +315,8 @@ export function EvidenceExplorer({
   busy: boolean;
   closed: boolean;
 }) {
+  const evidence = incident.evidence ?? [];
+  const events = timelineEvents(incident);
   const [collapsedId, setCollapsedId] = useState<string | null>(null);
   const { playing, setPlaying, reduced } = useTimelinePlayback();
   const choose = (id: string) => {
@@ -329,6 +332,9 @@ export function EvidenceExplorer({
   );
   const active = evidence.filter((item) => !superseded.has(item.id));
   const selected = evidence.find((item) => item.id === selectedId);
+  const finding = events.find(
+    (item) => item.id === selectedId && item.observation,
+  );
   const renderDetail = ({
     layout,
     index: selectedIndex,
@@ -442,6 +448,70 @@ export function EvidenceExplorer({
             )}
           </div>
         </>
+      ) : finding?.observation ? (
+        <>
+          <div className="incident-detail-meta">
+            <span className="eyebrow">
+              Event {selectedIndex + 1} of {total} · Recorded finding
+            </span>
+            <StatusChip kind={finding.synthetic ? "simulated" : "observed"} />
+          </div>
+          <h3>{finding.label}</h3>
+          <p className="incident-caption">
+            Recorded · {displayTime(finding.event_time)}
+          </p>
+          {finding.superseded && (
+            <p className="incident-muted">
+              Superseded / earlier finding · retained for review.
+            </p>
+          )}
+          {finding.node && (
+            <p>
+              <strong>Question:</strong> {finding.node.prompt}
+            </p>
+          )}
+          <p>
+            <strong>Recorded answer:</strong>{" "}
+            {finding.answer?.text ||
+              finding.observation.result.replaceAll("_", " ")}
+          </p>
+          <p>{timelineExplanation(finding)}</p>
+          {finding.observation.notes && <p>{finding.observation.notes}</p>}
+          <dl className="incident-facts">
+            <div>
+              <dt>Source</dt>
+              <dd>
+                {finding.answer ? "Confirmed answer" : "Recorded observation"} ·{" "}
+                {finding.observation.id}
+              </dd>
+            </div>
+            <div>
+              <dt>Recorded by</dt>
+              <dd>
+                {finding.observation.author ?? "Investigation participant"}
+              </dd>
+            </div>
+            <div>
+              <dt>Timing</dt>
+              <dd>
+                This is when the observation was recorded. The occurrence time
+                is not established.
+              </dd>
+            </div>
+          </dl>
+          {!!finding.observation.evidence_ids?.length && (
+            <div
+              className="investigation-detail-evidence"
+              aria-label="Finding sources"
+            >
+              {finding.observation.evidence_ids?.map((id) => (
+                <button key={id} type="button" onClick={() => select(id)}>
+                  {evidence.find((item) => item.id === id)?.label ?? id}
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       ) : (
         <p className="incident-muted">
           {evidence.length
@@ -528,7 +598,7 @@ export function EvidenceExplorer({
         </div>
       </div>
       <EvidenceTimeline
-        evidence={evidence}
+        events={events}
         selectedId={selectedId}
         onSelect={choose}
         playing={playing}

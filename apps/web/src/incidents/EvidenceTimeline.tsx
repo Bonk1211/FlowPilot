@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CaretRight,
+  ChatCircle,
   Clock,
   FileText,
   Image,
@@ -12,6 +13,7 @@ import {
 } from "@phosphor-icons/react";
 import type { IncidentEvidence } from "./api";
 import { displayTime } from "./time";
+import type { TimelineEvent } from "./timeline";
 
 export type TimelineDetailContext = {
   layout: "horizontal" | "vertical";
@@ -41,7 +43,7 @@ const flags: Record<IncidentEvidence["role"], string> = {
 };
 
 export function EvidenceTimeline({
-  evidence,
+  events,
   selectedId,
   onSelect,
   playing,
@@ -49,7 +51,7 @@ export function EvidenceTimeline({
   reduced,
   renderDetail,
 }: {
-  evidence: IncidentEvidence[];
+  events: TimelineEvent[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   playing: boolean;
@@ -101,16 +103,9 @@ export function EvidenceTimeline({
     });
     observer.observe(list);
     return () => observer.disconnect();
-  }, [selectedId, layout, evidence.length, reduced]);
-  const superseded = new Set(
-    evidence.map((item) => item.supersedes_id).filter(Boolean),
-  );
-  const selected = evidence.find((item) => item.id === selectedId);
-  const sortTime = (item: IncidentEvidence) =>
-    item.event_time && /(Z|[+-]\d{2}:\d{2})$/i.test(item.event_time)
-      ? Date.parse(item.event_time)
-      : Infinity;
-  const ordered = [...evidence].sort((a, b) => sortTime(a) - sortTime(b));
+  }, [selectedId, layout, events.length, reduced]);
+  const selected = events.find((item) => item.id === selectedId);
+  const ordered = events;
   const selectedIndex = ordered.findIndex((item) => item.id === selectedId);
   const nextId = ordered[selectedIndex + 1]?.id;
   const atPenultimate = selectedIndex >= ordered.length - 2;
@@ -135,7 +130,10 @@ export function EvidenceTimeline({
     <>
       <div className="incident-timeline-toolbar">
         <h3>
-          <Clock aria-hidden="true" /> Source events
+          <Clock aria-hidden="true" />{" "}
+          {events.some((item) => item.observation)
+            ? "Events & findings"
+            : "Source events"}
         </h3>
         <div
           className="incident-view-toggle"
@@ -218,7 +216,9 @@ export function EvidenceTimeline({
       </div>
       <p className="incident-timeline-caption">
         UTC · Sequence spacing, not elapsed time · Undated records last.
-        {evidence.some((item) => item.time_uncertain) &&
+        {events.some((item) => item.observation) &&
+          " Answers use recorded time."}
+        {events.some((item) => item.time_uncertain) &&
           " Timing uncertain: order is provisional."}
         {playing && " Playing · 3 seconds per event"}
       </p>
@@ -274,8 +274,11 @@ export function EvidenceTimeline({
                     : "incident-event"
                 }
               >
-                <span className="incident-event-flag">{flags[item.role]}</span>
+                <span className="incident-event-flag">
+                  {item.observation ? "Recorded finding" : flags[item.role]}
+                </span>
                 <span className="incident-event-time">
+                  {item.observation && "Recorded · "}
                   {displayTime(item.event_time)}
                 </span>
                 <span className="incident-event-dot" aria-hidden="true">
@@ -285,6 +288,8 @@ export function EvidenceTimeline({
                   <span className="incident-event-icon">
                     {item.status !== "collected" ? (
                       <WarningCircle aria-hidden="true" />
+                    ) : item.observation ? (
+                      <ChatCircle aria-hidden="true" />
                     ) : item.kind === "image" ? (
                       <Image aria-hidden="true" />
                     ) : (
@@ -297,7 +302,7 @@ export function EvidenceTimeline({
                       {item.status !== "collected"
                         ? `${item.status[0].toUpperCase()}${item.status.slice(1)} · not assumed normal`
                         : `${item.synthetic ? "Simulated" : "Observed"} · ${item.status}`}
-                      {superseded.has(item.id) ? " · Superseded" : ""}
+                      {item.superseded ? " · Superseded / earlier finding" : ""}
                     </span>
                     {item.time_uncertain && <span>Timing uncertain</span>}
                   </span>

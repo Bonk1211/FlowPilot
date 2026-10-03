@@ -1017,7 +1017,7 @@ function IncidentWorkspaceContent({
                             </details>
                           </>
                         }
-                        evidence={incident.evidence ?? []}
+                        incident={incident}
                         activity={incident.history}
                         selectedId={eventId}
                         onSelect={setSelectedEvent}

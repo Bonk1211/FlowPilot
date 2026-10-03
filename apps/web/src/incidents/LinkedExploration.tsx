@@ -5,6 +5,7 @@ import { StatusChip } from "./StatusChip";
 import { MechanismView } from "./MechanismView";
 import { displayTime } from "./time";
 import { useTimelinePlayback } from "./useTimelinePlayback";
+import { timelineEvents } from "./timeline";
 
 type Link = {
   hypothesisId: string;
@@ -94,7 +95,7 @@ export function LinkedExploration({
       <div className="incident-linked-layout">
         <div className="incident-linked-evidence">
           <EvidenceTimeline
-            evidence={evidence}
+            events={timelineEvents({ evidence })}
             selectedId={selectedEventId}
             onSelect={onSelectEvent}
             playing={playing}
