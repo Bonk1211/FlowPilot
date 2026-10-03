@@ -622,6 +622,13 @@
 .incident-event.selected .incident-event-card {
   border-color: var(--selection-active);
 }
+.incident-timeline > li[data-missing] .incident-event-card {
+  border-style: dashed;
+  background: var(--surface-muted);
+}
+.incident-timeline > li[data-missing] .incident-event-dot {
+  border-style: dashed;
+}
 .incident-event.selected .incident-event-card {
   box-shadow: inset 0 3px var(--selection-active);
 }

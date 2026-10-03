@@ -808,3 +808,29 @@ test("two mechanisms can be compared by shared and distinct components", async (
     .click();
   await expect(page.getByLabel("Mechanism A", { exact: true })).toHaveCount(0);
 });
+
+test("timeline marks uncollected sources instead of treating them as normal", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/evidence`);
+  const timeline = page.getByRole("list", {
+    name: "Evidence timeline",
+    exact: true,
+  });
+  const missing = timeline.locator("li[data-missing]");
+  await expect(missing).toHaveCount(
+    (incident.evidence ?? []).filter((item) => item.status !== "collected")
+      .length,
+  );
+  const pm = missing.filter({ hasText: "PM record unavailable" });
+  await expect(pm).toContainText("Unavailable · not assumed normal");
+  await expect(pm).not.toContainText("Observed");
+  await expect(pm).not.toContainText("Simulated");
+  await expect(
+    timeline
+      .locator("li:not([data-missing])")
+      .filter({ hasText: "Last-known-good coverage" }),
+  ).toContainText("collected");
+});

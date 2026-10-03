@@ -8,6 +8,7 @@ import {
   Image,
   Pause,
   Play,
+  WarningCircle,
 } from "@phosphor-icons/react";
 import type { IncidentEvidence } from "./api";
 import { displayTime } from "./time";
@@ -231,7 +232,11 @@ export function EvidenceTimeline({
           }}
         >
           {ordered.map((item, index) => (
-            <li key={item.id} data-past={index < selectedIndex}>
+            <li
+              key={item.id}
+              data-past={index < selectedIndex}
+              data-missing={item.status !== "collected" || undefined}
+            >
               <button
                 aria-pressed={selectedId === item.id}
                 tabIndex={
@@ -256,7 +261,9 @@ export function EvidenceTimeline({
                 </span>
                 <span className="incident-event-card">
                   <span className="incident-event-icon">
-                    {item.kind === "image" ? (
+                    {item.status !== "collected" ? (
+                      <WarningCircle aria-hidden="true" />
+                    ) : item.kind === "image" ? (
                       <Image aria-hidden="true" />
                     ) : (
                       <FileText aria-hidden="true" />
@@ -265,8 +272,9 @@ export function EvidenceTimeline({
                   <span className="incident-event-text">
                     <strong>{item.label}</strong>
                     <span>
-                      {item.synthetic ? "Simulated" : "Observed"} ·{" "}
-                      {item.status}
+                      {item.status !== "collected"
+                        ? `${item.status[0].toUpperCase()}${item.status.slice(1)} · not assumed normal`
+                        : `${item.synthetic ? "Simulated" : "Observed"} · ${item.status}`}
                       {superseded.has(item.id) ? " · Superseded" : ""}
                     </span>
                     {item.time_uncertain && <span>Timing uncertain</span>}
