@@ -40,7 +40,7 @@ import {
 import { EvidenceExplorer } from "./EvidenceExplorer";
 import { displayTime } from "./time";
 import { MechanismView } from "./MechanismView";
-import { LinkedExploration } from "./LinkedExploration";
+import { MonitoringDashboard } from "./MonitoringDashboard";
 import { InvestigationPanel } from "./InvestigationPanel";
 import { InvestigationGraph } from "./InvestigationGraph";
 import { IncidentReview } from "./IncidentReview";
@@ -393,6 +393,8 @@ function IncidentWorkspaceContent({
     (item) => item.incident_revision === historicalRevision,
   );
   const assessment = snapshot?.assessment ?? incident?.assessment ?? null;
+  const monitoringPage =
+    route.page === "investigation" && !assessment && !progressMode;
   const hypothesisId = assessment
     ? assessment.hypotheses.some((item) => item.id === selectedHypothesis)
       ? selectedHypothesis
@@ -434,7 +436,7 @@ function IncidentWorkspaceContent({
 
   return (
     <div
-      className={`incident-app${incident ? " incident-workspace" : ""}${canvasPage ? " incident-timeline-page" : ""}${investigationCanvas ? " incident-investigation-page" : ""}`}
+      className={`incident-app${incident ? " incident-workspace" : ""}${canvasPage ? " incident-timeline-page" : ""}${investigationCanvas ? " incident-investigation-page" : ""}${monitoringPage ? " incident-monitoring-page" : ""}`}
     >
       <a className="skip-link" href="#main">
         Skip to main content
@@ -819,7 +821,7 @@ function IncidentWorkspaceContent({
               </aside>
               <div className="incident-feature-content">
                 <header
-                  className={`incident-feature-heading${investigationCanvas ? " sr-only" : ""}`}
+                  className={`incident-feature-heading${investigationCanvas || monitoringPage ? " sr-only" : ""}`}
                 >
                   <h2 ref={featureHeading} tabIndex={-1}>
                     {route.page
@@ -827,9 +829,13 @@ function IncidentWorkspaceContent({
                       : "Page not found"}
                   </h2>
                   <p>
-                    {route.page
-                      ? incidentPages[route.page].description
-                      : "This incident page does not exist. Choose a feature from the navigation to continue."}
+                    {route.page === "investigation" &&
+                    !assessment &&
+                    !progressMode
+                      ? "Monitor process conditions, follow an alarm and investigate the available evidence."
+                      : route.page
+                        ? incidentPages[route.page].description
+                        : "This incident page does not exist. Choose a feature from the navigation to continue."}
                   </p>
                 </header>
                 {route.invalid && (
@@ -863,7 +869,15 @@ function IncidentWorkspaceContent({
                       className="incident-investigation-workspace"
                       aria-label="Investigation workspace"
                     >
-                      <div hidden={investigationCanvas}>
+                      {!assessment && !progressMode && (
+                        <MonitoringDashboard
+                          key={`monitoring-${incident.id}`}
+                          incident={incident}
+                          disabled={busy || !canEdit || !!closed}
+                          onAnalyze={() => perform({ action: "analyze" })}
+                        />
+                      )}
+                      <div hidden={investigationCanvas || !assessment}>
                         <div className="incident-action-bar">
                           <div className="incident-actions">
                             {!closed && (
@@ -922,18 +936,6 @@ function IncidentWorkspaceContent({
                           </label>
                         </div>
                       </div>
-                      {!assessment && (
-                        <p className="incident-investigation-intro">
-                          A partial incident package is ready.{" "}
-                          <a
-                            href={incidentPageUrl(incident.id, "evidence")}
-                            onClick={followLink}
-                          >
-                            Collect and inspect evidence
-                          </a>{" "}
-                          before choosing the next investigation step.
-                        </p>
-                      )}
                       {analysisError && !investigationCanvas && (
                         <p className="incident-notice" role="alert">
                           {analysisError}
@@ -1004,25 +1006,7 @@ function IncidentWorkspaceContent({
                             }
                           />
                         ) : null}
-                        {route.page === "investigation" && (
-                          <LinkedExploration
-                            evidence={incident.evidence ?? []}
-                            assessment={assessment}
-                            selectedEventId={eventId}
-                            onSelectEvent={setSelectedEvent}
-                            hypothesisId={hypothesisId}
-                            onSelectHypothesis={setSelectedHypothesis}
-                            revision={
-                              snapshot?.incident_revision ?? incident.revision
-                            }
-                            evidenceHref={incidentPageUrl(
-                              incident.id,
-                              "evidence",
-                            )}
-                            onOpenEvidence={followLink}
-                          />
-                        )}
-                        <p className="incident-page-next">
+                        <p className="incident-page-next" hidden={!assessment}>
                           <a
                             href={incidentPageUrl(incident.id, "simulation")}
                             onClick={followLink}

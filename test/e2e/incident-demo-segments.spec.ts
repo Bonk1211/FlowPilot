@@ -67,33 +67,15 @@ test("demo segments 2 and 3 follow the script and its claims hold", async ({
   await page.getByRole("button", { name: "Exit full screen" }).click();
   const candidates = page.getByLabel("Candidate mechanisms", { exact: true });
   await expect(candidates.getByRole("button")).toHaveCount(3);
-  const board = page.getByRole("region", {
-    name: "Evidence and mechanism",
-    exact: true,
-  });
-  await board
-    .getByRole("button", { name: /Falling mass with a stable recorded/ })
+  await candidates
+    .getByRole("button", { name: /Unstable fluid delivery/ })
     .click();
-  const links = board.getByRole("list", {
-    name: "Hypotheses that cite this event",
-    exact: true,
-  });
-  await expect(links.getByRole("listitem")).toHaveCount(4);
-  await links
-    .getByRole("button", { name: "Conflicts with Unstable fluid delivery" })
-    .click();
+  await goToFeature(page, "Simulation");
   await expect(
-    board
+    page
       .getByLabel("Components in this mechanism", { exact: true })
       .getByRole("button"),
   ).toHaveText(["BFS bottle", "BFS pressure", "Pickup tube", "Fluid QD"]);
-  await expect(
-    board.getByText("Inferred", { exact: false }).first(),
-  ).toBeVisible();
-  await expect(
-    board.getByText("Simulated", { exact: false }).first(),
-  ).toBeVisible();
-  await goToFeature(page, "Simulation");
   await page
     .getByRole("button", { name: "Compare mechanisms", exact: true })
     .click();

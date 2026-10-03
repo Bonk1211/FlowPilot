@@ -117,6 +117,9 @@ test("incident replay preserves the early handoff, branches, exports and survive
   );
   await page.emulateMedia({ reducedMotion: "reduce" });
   await graph.getByRole("button", { name: "Fit chart" }).click();
+  await graph
+    .getByRole("button", { name: "Expand explanation bubble" })
+    .click();
   await graph.locator(".investigation-graph-context > summary").click();
   await graph.screenshot({
     path: testInfo.outputPath("graph-review.png"),
@@ -382,7 +385,12 @@ test("synthetic simulation follows the selected mechanism and preserves its save
   page,
 }, testInfo) => {
   await startReplay(page);
+  await goToFeature(page, "Evidence");
+  await page
+    .getByRole("button", { name: "Incident details", exact: true })
+    .click();
   await expect(page.getByText("Manual mode", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Close incident details" }).click();
   await analyzeReplay(page);
   await goToFeature(page, "Evidence");
   const scrubber = page.getByRole("slider", {

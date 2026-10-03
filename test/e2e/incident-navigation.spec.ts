@@ -731,52 +731,29 @@ test("mechanism highlights every component of the hypothesis and explains the se
   ).toBeVisible();
 });
 
-test("investigation board links a selected event to the hypotheses that cite it and their components", async ({
+test("investigation keeps the evidence timeline and mechanism on their dedicated pages", async ({
   page,
   request,
 }) => {
   const incident = await replay(request);
   await page.goto(`/incidents/${incident.id}/investigation`);
   await page.getByRole("button", { name: "Exit full screen" }).click();
-  const board = page.getByRole("region", {
-    name: "Evidence and mechanism",
-    exact: true,
-  });
-  await board
-    .getByRole("button", { name: /Falling mass with a stable recorded/ })
+  await expect(
+    page.getByRole("region", { name: "Evidence and mechanism", exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByLabel("Candidate mechanisms", { exact: true })
+    .getByRole("button", { name: /Unstable fluid delivery/ })
     .click();
-  const links = board.getByRole("list", {
-    name: "Hypotheses that cite this event",
-    exact: true,
-  });
-  await expect(links).toContainText("Supports Fluid-path restriction");
-  await expect(links).toContainText("Conflicts with Unstable fluid delivery");
-  await expect(board.getByRole("status")).toContainText(
-    "Conflicts with Unstable fluid delivery",
-  );
-  const components = board.getByLabel("Components in this mechanism", {
-    exact: true,
-  });
-  await expect(components.getByRole("button")).toHaveText([
-    "Pickup tube",
-    "Feed tube",
-    "Fluid QD",
-    "Nozzle",
-  ]);
-  await links
-    .getByRole("button", { name: "Conflicts with Unstable fluid delivery" })
-    .click();
-  await expect(components.getByRole("button")).toHaveText([
-    "BFS bottle",
-    "BFS pressure",
-    "Pickup tube",
-    "Fluid QD",
-  ]);
   await navigate(page, "Simulation");
   await expect(
     page
-      .getByRole("heading", { name: "Unstable fluid delivery", level: 3 })
-      .first(),
+      .getByLabel("Components in this mechanism", { exact: true })
+      .getByRole("button"),
+  ).toHaveText(["BFS bottle", "BFS pressure", "Pickup tube", "Fluid QD"]);
+  await navigate(page, "Evidence");
+  await expect(
+    page.getByRole("heading", { name: "Evidence & timeline", exact: true }),
   ).toBeVisible();
 });
 
@@ -838,7 +815,7 @@ test("timeline marks uncollected sources instead of treating them as normal", as
   ).toContainText("collected");
 });
 
-test("investigation board stays usable without WebGL", async ({
+test("the simulation mechanism stays usable without WebGL", async ({
   page,
   request,
 }) => {
@@ -853,86 +830,17 @@ test("investigation board stays usable without WebGL", async ({
   });
   const incident = await replay(request);
   const hypothesis = incident.assessment?.hypotheses[0];
-  await page.goto(`/incidents/${incident.id}/investigation`);
-  await page.getByRole("button", { name: "Exit full screen" }).click();
-  const board = page.getByRole("region", {
-    name: "Evidence and mechanism",
+  await page.goto(`/incidents/${incident.id}/simulation`);
+  const mechanism = page.getByRole("region", {
+    name: "Mechanism explorer",
     exact: true,
   });
   await expect(
-    board.getByRole("status").filter({ hasText: "3D unavailable" }),
+    mechanism.getByRole("status").filter({ hasText: "3D unavailable" }),
   ).toBeVisible();
   await expect(
-    board.locator('.prototype-diagram [data-highlighted="true"]'),
+    mechanism.locator('.prototype-diagram [data-highlighted="true"]'),
   ).toHaveCount(hypothesis?.component_ids.length ?? 0);
-  await board.getByRole("button", { name: /Last-known-good coverage/ }).click();
-  await expect(
-    board.getByRole("region", { name: "Selected event", exact: true }),
-  ).toContainText("Last-known-good coverage");
-});
-
-test("investigation board works from the keyboard with reduced motion", async ({
-  page,
-  request,
-}) => {
-  await page.emulateMedia({ reducedMotion: "reduce" });
-  const incident = await replay(request);
-  await page.goto(`/incidents/${incident.id}/investigation`);
-  await page.getByRole("button", { name: "Exit full screen" }).click();
-  const board = page.getByRole("region", {
-    name: "Evidence and mechanism",
-    exact: true,
-  });
-  await expect(
-    board.getByRole("button", { name: "Play timeline", exact: true }),
-  ).toBeDisabled();
-  const scrubber = board.getByRole("slider", {
-    name: "Explore source events",
-    exact: false,
-  });
-  await scrubber.focus();
-  await scrubber.press("Home");
-  const detail = board.getByRole("region", {
-    name: "Selected event",
-    exact: true,
-  });
-  await expect(detail).toContainText("Event 1 of");
-  await scrubber.press("ArrowRight");
-  await expect(detail).toContainText("Event 2 of");
-  await page.keyboard.press("Tab");
-  await expect(
-    board.getByRole("button", { name: "Next event", exact: true }),
-  ).toBeFocused();
-  await page.keyboard.press("Enter");
-  await expect(detail).toContainText("Event 3 of");
-  const links = board.getByRole("list", {
-    name: "Hypotheses that cite this event",
-    exact: true,
-  });
-  await links.getByRole("button").first().focus();
-  await page.keyboard.press("Enter");
-  await expect(links.getByRole("button").first()).toHaveAttribute(
-    "aria-pressed",
-    "true",
-  );
-});
-
-test("investigation board fits a phone without horizontal scroll", async ({
-  page,
-  request,
-}) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  const incident = await replay(request);
-  await page.goto(`/incidents/${incident.id}/investigation`);
-  await page.getByRole("button", { name: "Exit full screen" }).click();
-  await expect(
-    page.getByRole("region", { name: "Evidence and mechanism", exact: true }),
-  ).toBeVisible();
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBeTruthy();
 });
 
 test("every incident page gives controls and images accessible names and unique ids", async ({
