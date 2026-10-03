@@ -53,6 +53,8 @@
   --question-verification: var(--green-700);
   --question-unclassified: var(--slate-600);
   --graph-case: var(--blue-600);
+  --graph-reference: var(--teal-700);
+  --graph-section: var(--teal-600);
   --graph-symptom: var(--amber-800);
   --graph-component: var(--slate-600);
   --graph-hypothesis: var(--violet-600);

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowLeft,
   ArrowsClockwise,
@@ -15,6 +15,7 @@ import type {
   Case,
   KnowledgeEntry,
   LibraryOverview,
+  SourcePassage,
 } from "@flowpilot/contracts";
 import {
   draftKnowledge,
@@ -25,6 +26,7 @@ import {
 } from "./api";
 import { ApplicationFrame } from "./components/ApplicationFrame";
 import { KnowledgeGraph } from "./components/KnowledgeGraph";
+import { graphConnectivity } from "./knowledgeGraph";
 import { KnowledgeReview } from "./components/KnowledgeReview";
 import { humanize, knowledgeState } from "./presentation";
 import "./knowledge.css";
@@ -33,6 +35,7 @@ const initial = new URLSearchParams(window.location.search);
 export function LearningDatabase() {
   const [overview, setOverview] = useState<LibraryOverview | null>(null);
   const [q, setQ] = useState("");
+  const [layer, setLayer] = useState("all");
   const [status, setStatus] = useState("all");
   const [process, setProcess] = useState("");
   const [symptom, setSymptom] = useState("");
@@ -138,6 +141,8 @@ export function LearningDatabase() {
     return () => window.removeEventListener("focus", refresh);
   }, [refresh]);
   const choose = useCallback((id: string) => {
+    if (id.startsWith("case:"))
+      setLayer((current) => (current === "reference" ? "all" : current));
     setRequestedVersion(undefined);
     setDetailRequest((n) => n + 1);
     setDetailLoading(id.startsWith("case:"));
@@ -158,8 +163,55 @@ export function LearningDatabase() {
   }, []);
   const node = overview?.graph.nodes.find((n) => n.id === selected);
   const edge = overview?.graph.edges.find((e) => e.id === selected);
-  const related = node?.case_ids ?? (edge ? [edge.case_id] : []);
+  const edgeSource = overview?.graph.nodes.find(
+    (item) => item.id === edge?.source,
+  );
+  const related =
+    node?.case_ids ??
+    (edge?.case_id ? [edge.case_id] : (edgeSource?.case_ids ?? []));
+  const topicReferences = node
+    ? (overview?.graph.edges
+        .filter(
+          (item) => item.source_type === "reference" && item.target === node.id,
+        )
+        .flatMap(
+          (item) =>
+            overview.graph.nodes
+              .find((value) => value.id === item.source)
+              ?.sources?.filter((value) => value.id === item.citation) ?? [],
+        ) ?? [])
+    : [];
+  const references = node?.sources?.length
+    ? node.sources
+    : edge?.source_type === "reference"
+      ? (edgeSource?.sources?.filter((item) => item.id === edge.citation) ?? [])
+      : [...new Map(topicReferences.map((item) => [item.id, item])).values()];
+  const graph = useMemo(() => {
+    const original = overview?.graph;
+    if (!original || layer === "all") return original;
+    const edges = original.edges.filter((item) =>
+      layer === "reference"
+        ? item.source_type === "reference"
+        : item.source_type !== "reference",
+    );
+    const connected = new Set(
+      edges.flatMap((item) => [item.source, item.target]),
+    );
+    return {
+      edges,
+      nodes: original.nodes.filter((item) =>
+        layer === "reference"
+          ? item.source_type === "reference" || connected.has(item.id)
+          : item.source_type !== "reference",
+      ),
+    };
+  }, [overview, layer]);
+  const connectivity = useMemo(
+    () => graphConnectivity(overview?.graph ?? { nodes: [], edges: [] }),
+    [overview],
+  );
   function showRecords(nextStatus: string) {
+    setLayer("experience");
     setQ("");
     setProcess("");
     setSymptom("");
@@ -191,13 +243,28 @@ export function LearningDatabase() {
               Learning Database
               <span className="learning-title-dot" aria-hidden="true" />
             </h1>
-            <p>Every case adds context. Reviewed experience guides the next.</p>
+            <p>
+              Explore reference knowledge and case experience through shared
+              topics.
+            </p>
           </div>
           <div
             className="learning-counts"
             aria-label="Database totals"
             aria-busy={loading}
           >
+            <button
+              className="learning-stat stat-reference"
+              onClick={() => {
+                choose("");
+                setLayer("reference");
+              }}
+              aria-label="Show reference knowledge"
+            >
+              <FileText aria-hidden="true" />
+              <strong>{overview?.reference_passages ?? "—"}</strong>
+              <span>Reference passages</span>
+            </button>
             <button
               className="learning-stat"
               onClick={() => showRecords("all")}
@@ -281,8 +348,22 @@ export function LearningDatabase() {
           <aside className="learning-browser" aria-label="Database browser">
             <div className="learning-pane-heading">
               <p className="eyebrow">01 / Find</p>
-              <h2>Case records</h2>
+              <h2>Knowledge sources</h2>
             </div>
+            <label>
+              Knowledge layers
+              <select
+                value={layer}
+                onChange={(event) => {
+                  choose("");
+                  setLayer(event.target.value);
+                }}
+              >
+                <option value="all">References + experience</option>
+                <option value="reference">Reference knowledge</option>
+                <option value="experience">Case experience</option>
+              </select>
+            </label>
             <label className="learning-search">
               <span>Search database</span>
               <span>
@@ -291,13 +372,14 @@ export function LearningDatabase() {
                   type="search"
                   value={q}
                   onChange={(event) => setQ(event.target.value)}
-                  placeholder="Symptom, lesson or case"
+                  placeholder="Topic, reference or case"
                 />
               </span>
             </label>
             <label>
               Experience status
               <select
+                disabled={layer === "reference"}
                 value={status}
                 onChange={(event) => setStatus(event.target.value)}
               >
@@ -345,51 +427,87 @@ export function LearningDatabase() {
                 </select>
               </label>
             </details>
+            {layer !== "experience" && (
+              <section
+                className="learning-reference-browser"
+                aria-label="Reference documents"
+              >
+                <h3>References · {overview?.reference_documents ?? 0}</h3>
+                {overview?.graph.nodes
+                  .filter((item) => item.kind === "Reference document")
+                  .map((item) => (
+                    <button
+                      className="graph-list-button"
+                      key={item.id}
+                      aria-pressed={selected === item.id}
+                      onClick={() => choose(item.id)}
+                    >
+                      <span className="knowledge-state draft">
+                        {humanize(
+                          item.sources?.[0]?.approval_status ?? "unverified",
+                        )}
+                      </span>
+                      <strong>{item.label}</strong>
+                      <span>
+                        {item.sources?.length ?? 0} passages ·{" "}
+                        {item.indexed_passages ?? 0} indexed
+                      </span>
+                    </button>
+                  ))}
+                {!overview?.reference_documents && !loading && (
+                  <p>No references registered yet.</p>
+                )}
+              </section>
+            )}
+            {layer !== "reference" && <h3>Case experience</h3>}
             <p className="learning-result-count" role="status">
               {loading
                 ? "Updating database view…"
-                : `${overview?.total_matching ?? 0} matching record groups`}
+                : layer === "reference"
+                  ? `${graph?.nodes.filter((item) => item.kind === "Reference section").length ?? 0} matching reference sections`
+                  : `${overview?.total_matching ?? 0} matching record groups`}
             </p>
             <ul className="learning-case-list">
-              {overview?.cases.map((item) => (
-                <li key={item.id}>
-                  <button
-                    className="graph-list-button"
-                    aria-pressed={
-                      caseId === item.id ||
-                      (source?.investigation.id === item.id && !!directEntry)
-                    }
-                    onClick={() => choose(`case:${item.id}`)}
-                  >
-                    <span
-                      className={`knowledge-state ${item.knowledge_status}`}
+              {layer !== "reference" &&
+                overview?.cases.map((item) => (
+                  <li key={item.id}>
+                    <button
+                      className="graph-list-button"
+                      aria-pressed={
+                        caseId === item.id ||
+                        (source?.investigation.id === item.id && !!directEntry)
+                      }
+                      onClick={() => choose(`case:${item.id}`)}
                     >
-                      {knowledgeState(item.knowledge_status)}
-                    </span>
-                    <strong>{item.title}</strong>
-                    <span>
-                      {item.symptoms.map(humanize).join(" · ") ||
-                        "Symptom not yet recorded"}
-                    </span>
-                    {item.group_size > 1 && (
-                      <span>
-                        {item.group_size} equivalent simulated records
+                      <span
+                        className={`knowledge-state ${item.knowledge_status}`}
+                      >
+                        {knowledgeState(item.knowledge_status)}
                       </span>
-                    )}
-                    <div className="case-record-meta">
-                      <span className="mono">{item.id.slice(-8)}</span>
-                      <time>
-                        {new Date(item.updated_at).toLocaleDateString(
-                          undefined,
-                          { month: "short", day: "numeric" },
-                        )}
-                      </time>
-                    </div>
-                  </button>
-                </li>
-              ))}
+                      <strong>{item.title}</strong>
+                      <span>
+                        {item.symptoms.map(humanize).join(" · ") ||
+                          "Symptom not yet recorded"}
+                      </span>
+                      {item.group_size > 1 && (
+                        <span>
+                          {item.group_size} equivalent simulated records
+                        </span>
+                      )}
+                      <div className="case-record-meta">
+                        <span className="mono">{item.id.slice(-8)}</span>
+                        <time>
+                          {new Date(item.updated_at).toLocaleDateString(
+                            undefined,
+                            { month: "short", day: "numeric" },
+                          )}
+                        </time>
+                      </div>
+                    </button>
+                  </li>
+                ))}
             </ul>
-            {overview?.truncated && (
+            {layer !== "reference" && overview?.truncated && (
               <button
                 className="secondary"
                 disabled={limit >= 100}
@@ -400,15 +518,18 @@ export function LearningDatabase() {
                   : "Load more records"}
               </button>
             )}
-            <p className="learning-footnote">
-              One case is one record. Equivalent simulated experiences are
-              grouped; counts are not success probabilities.
-            </p>
+            {layer !== "reference" && (
+              <p className="learning-footnote">
+                One case is one record. Equivalent simulated experiences are
+                grouped; counts are not success probabilities.
+              </p>
+            )}
           </aside>
           <section className="learning-map" aria-label="Learning graph">
-            {overview?.graph.nodes.length ? (
+            {graph?.nodes.length ? (
               <KnowledgeGraph
-                graph={overview.graph}
+                graph={graph}
+                connectivity={connectivity}
                 selected={selected}
                 onSelect={choose}
               />
@@ -418,20 +539,22 @@ export function LearningDatabase() {
                 <h2>
                   {loading
                     ? "Loading your database…"
-                    : overview?.saved_cases
+                    : overview?.saved_cases || overview?.reference_documents
                       ? "No records match these filters"
                       : "Your experience starts with a case"}
                 </h2>
                 <p>
-                  {overview?.saved_cases
+                  {overview?.saved_cases || overview?.reference_documents
                     ? "Adjust the search or filters to explore recorded connections."
                     : "Saved investigations will appear here. Confirmed findings become drafts for review before AI reuse."}
                 </p>
-                {!overview?.saved_cases && !loading && (
-                  <a className="primary" href="/">
-                    Start an investigation
-                  </a>
-                )}
+                {!overview?.saved_cases &&
+                  !overview?.reference_documents &&
+                  !loading && (
+                    <a className="primary" href="/">
+                      Start an investigation
+                    </a>
+                  )}
               </div>
             )}
           </section>
@@ -443,6 +566,12 @@ export function LearningDatabase() {
               </div>
               <FileText aria-hidden="true" />
             </div>
+            {node && (
+              <p className="reference-limitation" aria-label="Node connections">
+                {connectivity.get(node.id)?.connections ?? 0} unique connections
+                in the current search. Node size reflects these connections.
+              </p>
+            )}
             {detailError && (
               <p role="alert" className="knowledge-warning">
                 {detailError}{" "}
@@ -511,7 +640,9 @@ export function LearningDatabase() {
                 <h2>{node?.label ?? edge?.relation}</h2>
                 <p>
                   {node?.detail ??
-                    "This connection retains the case and evidence that support it."}
+                    (edge?.source_type === "reference"
+                      ? "This connection cites reference text associated with a shared topic."
+                      : "This connection retains the case and evidence that support it.")}
                 </p>
                 {edge && (
                   <>
@@ -521,11 +652,50 @@ export function LearningDatabase() {
                     <p className="mono">{edge.citation}</p>
                     <p>
                       Evidence:{" "}
-                      {edge.evidence_ids.join(", ") || "Process context only"}
+                      {edge.source_type === "reference"
+                        ? "Reference text association"
+                        : edge.evidence_ids.join(", ") ||
+                          "Process context only"}
                     </p>
+                    {edge.matched_text && (
+                      <p>
+                        Matched phrase: <strong>{edge.matched_text}</strong>.
+                        This topic connection does not confirm a cause.
+                      </p>
+                    )}
                   </>
                 )}
-                <h3>Related investigations</h3>
+                {node?.kind === "Reference document" && (
+                  <section aria-label="Reference sections">
+                    <h3>Explore sections</h3>
+                    {overview?.graph.edges
+                      .filter((item) => item.source === node.id)
+                      .map((item) => (
+                        <button
+                          className="graph-list-button"
+                          key={item.id}
+                          onClick={() => choose(item.target)}
+                        >
+                          {
+                            overview.graph.nodes.find(
+                              (value) => value.id === item.target,
+                            )?.label
+                          }
+                        </button>
+                      ))}
+                  </section>
+                )}
+                {!!references.length && (
+                  <ReferenceDetails
+                    sources={references}
+                    indexed={
+                      node?.source_type === "reference"
+                        ? node.indexed_passages
+                        : undefined
+                    }
+                  />
+                )}
+                {!!related.length && <h3>Related investigations</h3>}
                 {related.map((id) => (
                   <button
                     className="graph-list-button"
@@ -545,8 +715,8 @@ export function LearningDatabase() {
                 <p className="eyebrow">Follow a connection</p>
                 <h2>The story behind each node.</h2>
                 <p>
-                  Select a case, symptom or relationship to explore its evidence
-                  and review status.
+                  Select a reference section, case, shared topic or relationship
+                  to explore its sources and review status.
                 </p>
                 <ol className="inspector-guide">
                   <li>
@@ -587,5 +757,74 @@ export function LearningDatabase() {
         </div>
       </main>
     </ApplicationFrame>
+  );
+}
+
+function ReferenceDetails({
+  sources,
+  indexed,
+}: {
+  sources: SourcePassage[];
+  indexed?: number;
+}) {
+  const groups = new Map<string, SourcePassage[]>();
+  for (const source of sources) {
+    const key = `${source.document_id}:${source.revision}`;
+    groups.set(key, [...(groups.get(key) ?? []), source]);
+  }
+  if (groups.size > 1)
+    return (
+      <>
+        {[...groups].map(([key, group]) => (
+          <ReferenceDetails key={key} sources={group} />
+        ))}
+      </>
+    );
+  const first = sources[0];
+  return (
+    <section className="reference-inspector" aria-label="Reference evidence">
+      <span
+        className={`knowledge-state ${first.approval_status === "approved" ? "published" : "draft"}`}
+      >
+        {humanize(first.approval_status)}
+      </span>
+      <dl className="knowledge-facts">
+        <div>
+          <dt>Source</dt>
+          <dd>{first.title}</dd>
+        </div>
+        <div>
+          <dt>Revision</dt>
+          <dd>{first.revision}</dd>
+        </div>
+        <div>
+          <dt>Authority</dt>
+          <dd>{humanize(first.authority)}</dd>
+        </div>
+        <div>
+          <dt>Location</dt>
+          <dd>{first.file_path}</dd>
+        </div>
+        <div>
+          <dt>Scope</dt>
+          <dd>{first.configurations.join(" · ")}</dd>
+        </div>
+        {indexed !== undefined && (
+          <div>
+            <dt>Index</dt>
+            <dd>{indexed} indexed passages</dd>
+          </div>
+        )}
+      </dl>
+      <p className="reference-limitation">{first.limitation}</p>
+      <h3>Exact reference passages</h3>
+      {sources.map((source) => (
+        <details key={source.id}>
+          <summary>{source.section}</summary>
+          <blockquote>{source.passage}</blockquote>
+          <p className="mono">{source.id}</p>
+        </details>
+      ))}
+    </section>
   );
 }

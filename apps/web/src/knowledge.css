@@ -36,6 +36,7 @@
   display: flex;
   gap: 10px;
   flex-shrink: 0;
+  flex-wrap: wrap;
 }
 .learning-counts div {
   display: grid;
@@ -705,6 +706,57 @@
 }
 .shape-circle {
   border-radius: 50%;
+}
+.shape-document {
+  border-radius: 2px;
+  width: 12px;
+  height: 14px;
+  border-top: 3px solid var(--teal-400);
+}
+.shape-section {
+  width: 13px;
+  height: 9px;
+}
+.learning-reference-browser {
+  margin-top: 16px;
+  padding-block: 12px;
+  border-block: 1px solid var(--border-default);
+}
+.learning-reference-browser h3,
+.learning-browser > h3 {
+  font-size: 13px;
+}
+.learning-reference-browser .graph-list-button {
+  display: grid;
+  gap: 6px;
+  padding: 12px 8px;
+  overflow-wrap: anywhere;
+}
+.learning-reference-browser .knowledge-state {
+  justify-self: start;
+}
+.reference-inspector {
+  margin-top: 16px;
+}
+.reference-inspector blockquote {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 10px 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--graph-reference);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.reference-inspector details {
+  margin-block: 10px;
+}
+.reference-inspector summary {
+  cursor: pointer;
+  padding-block: 8px;
+}
+.reference-limitation {
+  color: var(--text-secondary);
+  font-size: 12px;
 }
 .shape-diamond {
   transform: rotate(45deg);

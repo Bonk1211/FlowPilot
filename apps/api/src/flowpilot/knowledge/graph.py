@@ -1,5 +1,7 @@
 """A sourced graph projection; shared nodes are associations, never causal proof."""
 
+import re
+
 from sqlalchemy import select
 
 from flowpilot.knowledge.models import (
@@ -62,6 +64,10 @@ def overview(session, q="", status="all", process="", symptom="", limit=40):
                 + " ".join(active_symptoms)
                 + " "
                 + (version.content.lesson if version else "")
+                + " "
+                + item.process
+                + " "
+                + " ".join(c.label for c in case.ranking)
             ).casefold()
             or (status != "all" and state != status)
             or (process and process != item.process)
@@ -93,6 +99,7 @@ def overview(session, q="", status="all", process="", symptom="", limit=40):
             for i in visible
         ]
     )
+    documents, passages = add_references(session, graph, cases, q, process)
     return LibraryOverview(
         saved_cases=len(cases),
         reusable_experiences=len(published),
@@ -102,6 +109,8 @@ def overview(session, q="", status="all", process="", symptom="", limit=40):
         graph=graph,
         total_matching=len(items),
         truncated=len(items) > limit,
+        reference_documents=documents,
+        reference_passages=passages,
     )
 
 
@@ -110,7 +119,14 @@ def build_graph(rows):
 
     def node(id, kind, label, detail, case_id, href=None):
         if id not in nodes:
-            nodes[id] = KnowledgeNode(id=id, kind=kind, label=label, detail=detail, href=href)
+            nodes[id] = KnowledgeNode(
+                id=id,
+                kind=kind,
+                label=label,
+                detail=detail,
+                href=href,
+                source_type="experience" if kind == "Case" else "shared",
+            )
         if case_id not in nodes[id].case_ids:
             nodes[id].case_ids.append(case_id)
 
@@ -202,3 +218,181 @@ def build_graph(rows):
                 ["inspection", "verification_passed", "recovery_checks"],
             )
     return KnowledgeGraph(nodes=list(nodes.values()), edges=edges)
+
+
+def add_references(session, graph, cases, query, process):
+    from flowpilot.incidents.diagnostic import SourcePassage, is_s932
+    from flowpilot.incidents.knowledge import (
+        IncidentSourceDocument,
+        SourceDocumentRecord,
+        applicable_sources,
+    )
+    from flowpilot.incidents.rag import DOCUMENT_ID, INDEX_ID, RagIndexRecord
+
+    latest = {}
+    documents = [
+        IncidentSourceDocument.model_validate(row.payload)
+        for row in session.scalars(select(SourceDocumentRecord))
+    ]
+    for document in sorted(documents, key=lambda value: value.created_at):
+        latest[document.content.document_id] = document.id
+    index = session.get(RagIndexRecord, INDEX_ID)
+    manifest = index.payload if index else {}
+    sources = [
+        SourcePassage.model_validate(value.model_dump(mode="json"))
+        for value in applicable_sources(process, session=session)
+        if value.source_id == latest[value.document_id]
+        and (
+            not process
+            or value.applicable
+            or (value.document_id == DOCUMENT_ID and is_s932(process))
+        )
+    ]
+    totals = len({source.source_id for source in sources}), len(sources)
+    sources.sort(
+        key=lambda source: (
+            source.document_id,
+            tuple(int(part) for part in re.findall(r"\d+", source.section.split(" ", 1)[0])),
+        )
+    )
+    if not process:
+        for source in sources:
+            source.limitation = source.limitation.replace(
+                "Configuration does not exactly match this source revision.",
+                "Choose a process to assess configuration applicability.",
+            )
+    groups = {}
+    for source in sources:
+        if (
+            query.casefold()
+            not in " ".join(
+                (source.title, source.section, source.passage, source.document_id)
+            ).casefold()
+        ):
+            continue
+        groups.setdefault(source.source_id, []).append(source)
+    concepts = [
+        node for node in graph.nodes if node.kind in {"Component", "Symptom", "Possible cause"}
+    ]
+    case_processes = {case.investigation.id: case.investigation.process for case in cases}
+    for source_id, passages in groups.items():
+        source = passages[0]
+        document_id = f"reference:{source_id}"
+        graph.nodes.append(
+            KnowledgeNode(
+                id=document_id,
+                kind="Reference document",
+                label=source.title,
+                detail=f"{source.revision} · {source.authority.replace('_', ' ')} · "
+                f"{source.approval_status.replace('_', ' ')}",
+                source_type="reference",
+                sources=passages,
+                indexed_passages=sum(
+                    manifest.get("source_id") == source.source_id
+                    and p.id.rsplit(":", 1)[-1] in manifest.get("documents", {})
+                    for p in passages
+                ),
+            )
+        )
+        sections = {}
+        for passage in passages:
+            number = passage.section.split(" ", 1)[0].rstrip(".")
+            # The importer retains subsections. Group their passages under major sections
+            # to keep this map legible as the reference grows.
+            section = number.split(".", 1)[0] if number[:1].isdigit() else passage.section
+            sections.setdefault(section, []).append(passage)
+        for section, excerpts in sections.items():
+            node_id = f"{document_id}:{section}"
+            first = excerpts[0]
+            label = (
+                first.section
+                if first.section.split(" ", 1)[0].rstrip(".") == section
+                else (f"{section} · {first.section.split(' ', 1)[-1]}")
+            )
+            node = KnowledgeNode(
+                id=node_id,
+                kind="Reference section",
+                label=label,
+                source_type="reference",
+                detail=f"{len(excerpts)} passages · {source.approval_status.replace('_', ' ')}",
+                sources=excerpts,
+                indexed_passages=sum(
+                    manifest.get("source_id") == source.source_id
+                    and p.id.rsplit(":", 1)[-1] in manifest.get("documents", {})
+                    for p in excerpts
+                ),
+            )
+            graph.nodes.append(node)
+            graph.edges.append(
+                KnowledgeEdge(
+                    id=f"{node_id}:contains",
+                    source=document_id,
+                    target=node_id,
+                    relation="contains reference passages",
+                    citation=first.id,
+                    evidence_ids=[],
+                    status=first.approval_status,
+                    case_id="",
+                    source_type="reference",
+                )
+            )
+            for concept in concepts:
+                compatible = any(
+                    " ".join(case_processes.get(case_id, "").casefold().split())
+                    in {" ".join(value.casefold().split()) for value in source.configurations}
+                    or (
+                        source.document_id == DOCUMENT_ID
+                        and is_s932(case_processes.get(case_id, ""))
+                    )
+                    for case_id in concept.case_ids
+                )
+                pattern = topic_pattern(concept)
+                if not compatible or pattern is None:
+                    continue
+                match = next(
+                    (
+                        (p, found)
+                        for p in excerpts
+                        if (found := re.search(pattern, p.passage, re.I))
+                    ),
+                    None,
+                )
+                if match is None:
+                    continue
+                passage, term = match
+                node.case_ids = sorted(set(node.case_ids + concept.case_ids))
+                graph.edges.append(
+                    KnowledgeEdge(
+                        id=f"{node_id}:topic:{concept.id}",
+                        source=node_id,
+                        target=concept.id,
+                        relation="mentions topic",
+                        citation=passage.id,
+                        evidence_ids=[],
+                        status="topic_match",
+                        case_id="",
+                        source_type="reference",
+                        matched_text=term.group(),
+                    )
+                )
+    return totals
+
+
+def topic_pattern(node):
+    # ponytail: inspectable text associations for the current S932 vocabulary;
+    # replace with reviewed concept tags when importing more equipment families.
+    label = node.label.casefold()
+    if node.kind == "Component" and "nozzle" in label:
+        return r"\bnozzles?\b"
+    if node.kind == "Symptom" and "coverage" in label:
+        return r"\b(?:incomplete|insufficient|poor|uneven|partial) coverage\b"
+    if node.kind == "Possible cause":
+        if "restriction" in label:
+            return r"\b(?:restriction|restricted|obstruction)\b"
+        if "bfs" in label:
+            return r"\bBFS\b|\bfluid[- ]pressure\b"
+        if "alignment" in label:
+            return r"\balignment\b|\brecipe\b"
+        if "material" in label:
+            return r"\bmaterial condition\b|\bviscosity\b|\bidle\b|\bpurge\b"
+    return None

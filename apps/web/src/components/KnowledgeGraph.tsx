@@ -5,6 +5,7 @@ import cytoscape, {
   type Css,
 } from "cytoscape";
 import type { KnowledgeGraph as Graph } from "@flowpilot/contracts";
+import type { graphConnectivity } from "../knowledgeGraph";
 import {
   ArrowsOut,
   MagnifyingGlassPlus,
@@ -19,6 +20,18 @@ const nodeTypes: {
   shape: Css.NodeShape;
   glyph: string;
 }[] = [
+  {
+    kind: "Reference document",
+    token: "reference",
+    shape: "round-rectangle",
+    glyph: "document",
+  },
+  {
+    kind: "Reference section",
+    token: "section",
+    shape: "rectangle",
+    glyph: "section",
+  },
   { kind: "Case", token: "case", shape: "round-rectangle", glyph: "case" },
   { kind: "Symptom", token: "symptom", shape: "diamond", glyph: "diamond" },
   { kind: "Component", token: "component", shape: "hexagon", glyph: "hexagon" },
@@ -35,10 +48,12 @@ const nodeTypes: {
 
 export function KnowledgeGraph({
   graph,
+  connectivity,
   selected,
   onSelect,
 }: {
   graph: Graph;
+  connectivity: ReturnType<typeof graphConnectivity>;
   selected: string;
   onSelect: (id: string) => void;
 }) {
@@ -53,8 +68,6 @@ export function KnowledgeGraph({
       style: {
         shape: type.shape,
         "background-color": color(`--graph-${type.token}`),
-        width: type.kind === "Case" ? 46 : 30,
-        height: type.kind === "Case" ? 35 : 30,
       },
     }));
     const cy = cytoscape({
@@ -63,6 +76,10 @@ export function KnowledgeGraph({
         ...graph.nodes.map((node) => ({
           data: {
             ...node,
+            size: connectivity.get(node.id)?.size ?? 34,
+            height:
+              (connectivity.get(node.id)?.size ?? 34) *
+              (node.kind === "Case" ? 0.78 : 1),
             display:
               node.kind === "Case"
                 ? node.id.slice(-4).toUpperCase()
@@ -82,13 +99,14 @@ export function KnowledgeGraph({
         boundingBox: {
           x1: 0,
           y1: 0,
-          w: Math.max(220, container.current.clientWidth - 140),
-          h: Math.max(150, container.current.clientHeight - 100),
+          w: Math.max(720, container.current.clientWidth - 140),
+          h: Math.max(560, container.current.clientHeight - 100),
         },
         // Labels must stay legible on a projector, so keep nodes apart enough
         // that the fit zoom does not have to shrink the map to read it.
-        nodeRepulsion: () => 5200,
-        idealEdgeLength: () => 88,
+        nodeRepulsion: () => 11000,
+        idealEdgeLength: (edge) =>
+          96 + Math.max(edge.source().data("size"), edge.target().data("size")),
         componentSpacing: 110,
         nodeOverlap: 24,
         nodeDimensionsIncludeLabels: true,
@@ -111,8 +129,8 @@ export function KnowledgeGraph({
             "text-background-opacity": 1,
             "text-background-padding": "3px",
             "text-background-shape": "roundrectangle",
-            width: 21,
-            height: 21,
+            width: "data(size)",
+            height: "data(height)",
             "border-width": 2,
             "border-color": color("--surface-document"),
           },
@@ -144,6 +162,18 @@ export function KnowledgeGraph({
         {
           selector: 'edge[status = "hypothesis"]',
           style: { "line-style": "dashed" },
+        },
+        {
+          selector: 'edge[source_type = "reference"]',
+          style: {
+            "line-color": color("--graph-reference"),
+            "target-arrow-color": color("--graph-reference"),
+            opacity: 0.5,
+          },
+        },
+        {
+          selector: 'edge[status = "topic_match"]',
+          style: { "line-style": "dotted" },
         },
         { selector: "node.dim", style: { opacity: 0.35, "z-index": 1 } },
         { selector: "node.active", style: { "z-index": 10 } },
@@ -180,7 +210,7 @@ export function KnowledgeGraph({
       instance.current = null;
       cy.destroy();
     };
-  }, [graph, onSelect]);
+  }, [graph, connectivity, onSelect]);
   useEffect(() => {
     const cy = instance.current;
     if (!cy) return;
@@ -259,19 +289,26 @@ export function KnowledgeGraph({
         aria-label={`Knowledge graph with ${graph.nodes.length} nodes. Use the node and relationship lists below for keyboard access.`}
       />
       <div className="graph-legend" aria-label="Node type legend">
-        {nodeTypes.map((type) => (
-          <span key={type.kind} data-kind={type.kind}>
-            <i
-              className={`node-swatch shape-${type.glyph}`}
-              style={{ backgroundColor: `var(--graph-${type.token})` }}
-              aria-hidden="true"
-            />
-            {type.kind}
-          </span>
-        ))}
+        {nodeTypes
+          .filter((type) => graph.nodes.some((node) => node.kind === type.kind))
+          .map((type) => (
+            <span key={type.kind} data-kind={type.kind}>
+              <i
+                className={`node-swatch shape-${type.glyph}`}
+                style={{ backgroundColor: `var(--graph-${type.token})` }}
+                aria-hidden="true"
+              />
+              {type.kind}
+            </span>
+          ))}
         <p>
-          <i className="legend-dashed" aria-hidden="true" /> Dashed links are
-          hypotheses. Colors identify types, not review status.
+          Size shows unique connections in the current search; larger nodes
+          connect more knowledge.
+        </p>
+        <p>
+          <i className="legend-dashed" aria-hidden="true" /> Dashed: hypotheses
+          · dotted: reference topic matches. Source status is shown in the
+          inspector.
         </p>
       </div>
       <div className="graph-accessible-slot">
@@ -284,6 +321,9 @@ export function KnowledgeGraph({
                 <button
                   className="graph-list-button"
                   aria-pressed={node.id === selected}
+                  title={`${connectivity.get(node.id)?.connections ?? 0} unique connections`}
+                  data-connections={connectivity.get(node.id)?.connections ?? 0}
+                  data-node-size={connectivity.get(node.id)?.size ?? 34}
                   onClick={() => onSelect(node.id)}
                 >
                   {node.kind}: {node.label}
