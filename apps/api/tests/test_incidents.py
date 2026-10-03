@@ -350,3 +350,16 @@ def test_manual_analysis_and_new_observations_preserve_escalation(client):
     assert incident["assessment"] is not None
     assert incident["escalated"] and incident["status"] == "review"
     assert incident["waiting_for"] == "engineer"
+
+
+def test_saved_report_includes_mini_doe_comparisons(client):
+    incident = analyzed(client)
+    report = service.report_markdown(service.get_incident(incident["id"]))
+    assert "Suggested mini DOE / troubleshooting comparisons" in report
+    for check in incident["assessment"]["checks"]:
+        plan = check["mini_experiment"]
+        assert plan["baseline"] in report
+        assert plan["comparison"] in report
+        assert plan["repeat_plan"] in report
+        assert check["measured_response"] in report
+    assert "not completed tests or approved equipment operations" in report

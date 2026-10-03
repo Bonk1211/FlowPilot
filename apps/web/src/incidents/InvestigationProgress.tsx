@@ -3,9 +3,14 @@ import type { Incident } from "@flowpilot/contracts";
 import "./InvestigationProgress.css";
 
 export type InvestigationProgressMode =
-  "analysis" | "answer" | "conversation" | "queued" | "updating";
+  "analysis" | "answer" | "conversation" | "queued" | "updating" | "experiment";
 
 const activity = {
+  experiment: {
+    title: "Designing your experiment",
+    detail:
+      "Checking the investigation context and assembling the baseline, comparison, and measurements for Simulation.",
+  },
   analysis: {
     title: "Analyzing current evidence",
     detail:

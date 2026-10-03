@@ -1994,6 +1994,7 @@ export interface components {
             measured_response: string;
             /** Method */
             method: string;
+            mini_experiment?: components["schemas"]["MiniExperiment"] | null;
             /**
              * Mode
              * @default replay
@@ -4058,6 +4059,22 @@ export interface components {
              * @default 360
              */
             width: number;
+        };
+        /**
+         * MiniExperiment
+         * @description A suggested comparison of records, not an executed or approved equipment test.
+         */
+        MiniExperiment: {
+            /** Baseline */
+            baseline: string;
+            /** Comparison */
+            comparison: string;
+            /** Factor */
+            factor: string;
+            /** Held Constant */
+            held_constant: string[];
+            /** Repeat Plan */
+            repeat_plan: string;
         };
         /** MockApproval */
         MockApproval: {

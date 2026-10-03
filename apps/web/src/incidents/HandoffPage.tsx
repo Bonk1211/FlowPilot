@@ -8,6 +8,7 @@ import {
 } from "./api";
 import { useIncidentAccess } from "./AccessPanel";
 import { CommunicationPanel } from "./CommunicationPanel";
+import { TroubleshootingMap } from "./TroubleshootingMap";
 
 export function HandoffPage({
   incident,
@@ -34,6 +35,7 @@ export function HandoffPage({
         </div>
       </div>
       <div className="incident-inline">
+        <TroubleshootingMap incident={incident} />
         <span className="incident-tag">{draftStatus}</span>
         <span className="incident-caption">
           Version {incident.handoff.version} · based on revision{" "}

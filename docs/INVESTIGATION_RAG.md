@@ -59,6 +59,26 @@ Retrieved passages accompany the existing investigation evidence in Gemini's
 structured generation request. Replies preserve passage citations, which the user
 can inspect in the explanation sidebar and the Markdown incident report.
 
+Follow-up questions default to `gemini-3.5-flash-lite` with low thinking and an
+eight-second response budget (`FLOWPILOT_INCIDENT_QUESTION_TIMEOUT_SECONDS`).
+The budget includes retrieval and generation. Retrieval may use at most half
+that budget, or its configured timeout if shorter, so generation still has time
+when reference search is slow. Conversation uses the same shared budget policy
+with `FLOWPILOT_REASONING_TIMEOUT_SECONDS`. Interactive generation makes one
+provider attempt; the application deadline applies even when the SDK transport
+timeout is longer. Expiry retains eligible baseline questions and saved answers.
+Set `FLOWPILOT_INCIDENT_QUESTION_MODEL=gemini-3.8-flash` and
+`FLOWPILOT_INCIDENT_GENERATION_THINKING=medium` to favor deeper reasoning;
+increase the response budget explicitly if needed.
+
+On 3 October 2026, one live synthetic replay generation with the previous
+3.8 Flash/medium configuration and successful retrieval took 25.096 seconds.
+Three runs with the faster configuration took 6.485, 5.968 and 6.007 seconds;
+all returned locally validated questions, while reference retrieval timed out
+and generation used the supplied incident evidence. These are generation timings
+on the development machine, excluding browser rendering and optional Jev calls,
+and are not production latency or diagnostic-quality guarantees.
+
 The generator can propose record-only questions beyond the original fact catalogue
 with stable `reference_*` fact names and canonical Observed / Not observed / Unknown
 choices. They must cite a retrieved passage, reference existing records, obey

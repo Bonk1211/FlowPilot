@@ -2504,6 +2504,16 @@
             "title": "Method",
             "type": "string"
           },
+          "mini_experiment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MiniExperiment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "mode": {
             "const": "replay",
             "default": "replay",
@@ -8100,6 +8110,44 @@
           "passed"
         ],
         "title": "Measurement",
+        "type": "object"
+      },
+      "MiniExperiment": {
+        "additionalProperties": false,
+        "description": "A suggested comparison of records, not an executed or approved equipment test.",
+        "properties": {
+          "baseline": {
+            "title": "Baseline",
+            "type": "string"
+          },
+          "comparison": {
+            "title": "Comparison",
+            "type": "string"
+          },
+          "factor": {
+            "title": "Factor",
+            "type": "string"
+          },
+          "held_constant": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Held Constant",
+            "type": "array"
+          },
+          "repeat_plan": {
+            "title": "Repeat Plan",
+            "type": "string"
+          }
+        },
+        "required": [
+          "factor",
+          "baseline",
+          "comparison",
+          "held_constant",
+          "repeat_plan"
+        ],
+        "title": "MiniExperiment",
         "type": "object"
       },
       "MockApproval": {

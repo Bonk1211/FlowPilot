@@ -686,6 +686,35 @@ def report_markdown(incident: Incident, communications=(), experiments=()) -> st
     from flowpilot.incidents.graph import report_lines
 
     lines.extend(report_lines(incident))
+    if incident.assessment:
+        lines.extend(["", "## Suggested mini DOE / troubleshooting comparisons", ""])
+        lines.append(
+            "Compare existing records one factor at a time. These are suggested plans, "
+            "not completed tests or approved equipment operations."
+        )
+        for check in incident.assessment.checks:
+            plan = check.mini_experiment
+            if not plan or not check.eligible:
+                continue
+            lines.extend(
+                [
+                    "",
+                    f"### {check.title}",
+                    f"Distinguishes: {', '.join(check.distinguishes)}.",
+                    f"Factor: {plan.factor}",
+                    f"A / baseline: {plan.baseline}",
+                    f"B / comparison: {plan.comparison}",
+                    f"Hold constant: {'; '.join(plan.held_constant)}.",
+                    f"Measure: {check.measured_response}",
+                    f"Repeat / uncertainty: {plan.repeat_plan}",
+                    *[
+                        f"- If {outcome.label.lower()}: {outcome.interpretation}"
+                        for outcome in check.expected_outcomes
+                    ],
+                    f"Stop: {'; '.join(check.stopping_conditions)}",
+                    f"Sources: {', '.join(check.source_refs)}.",
+                ]
+            )
     if incident.conversation:
         lines.extend(["", "## Investigation conversation", ""])
         for turn in incident.conversation:

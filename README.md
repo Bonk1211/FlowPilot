@@ -6,7 +6,7 @@ The S932 / DJ-2200 / BFS workflow now runs as a complete mock demonstration: pro
 
 Each incident has separate [feature pages](docs/S932_INCIDENT_WORKSPACE.md#feature-pages) for Investigation, Evidence, Simulation, Experiments, Handoff, Knowledge and Review, with shared incident context and bookmarkable URLs.
 
-The investigation includes a [conversation bar and optional ElevenLabs voice input](docs/INVESTIGATION_VOICE.md). Hands-free mode sends speech during pauses, spotlights the question being discussed, and lets technicians confirm interpreted answers by voice. Agent replies remain text.
+The investigation includes a [conversation bar and optional ElevenLabs voice input](docs/INVESTIGATION_VOICE.md). Hands-free mode sends speech during pauses, reads agent replies aloud, spotlights the question being discussed, and lets technicians confirm interpreted answers by voice. Manual dictation and typed conversations keep text-only replies.
 
 Existing v1/v2 cases remain available at `/legacy` and their saved `/?case=...` links. Epoxy cases remain read-only. Controlled operating procedures and real-machine validation are still pending.
 

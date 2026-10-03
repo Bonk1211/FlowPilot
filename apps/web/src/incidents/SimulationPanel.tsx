@@ -4,6 +4,7 @@ import { incidentJson, type Incident } from "./api";
 import { useIncidentAccess } from "./AccessPanel";
 import "./simulation.css";
 import { StatusChip } from "./StatusChip";
+import type { InvestigationExperiment } from "./investigationExperiment";
 
 const scenarios = {
   restriction: "Fluid-path restriction",
@@ -134,6 +135,9 @@ export function SimulationPanel({
   selectedEvidenceId,
   onRefresh,
   busy,
+  experiment,
+  experimentRequested,
+  onReturnToInvestigation,
 }: {
   incident: Incident;
   selectedHypothesis: string | null;
@@ -141,6 +145,9 @@ export function SimulationPanel({
   selectedEvidenceId: string | null;
   onRefresh: () => Promise<void>;
   busy: boolean;
+  experiment: InvestigationExperiment | null;
+  experimentRequested: boolean;
+  onReturnToInvestigation: () => void;
 }) {
   const access = useIncidentAccess();
   const canEdit = access.mode === "demo" || access.permissions.includes("edit");
@@ -148,7 +155,9 @@ export function SimulationPanel({
   const [severity, setSeverity] = useState(0.7);
   const [delivery, setDelivery] = useState(1);
   const [material, setMaterial] = useState(1);
-  const [context, setContext] = useState<string[] | null>(null);
+  const [context, setContext] = useState<string[] | null>(
+    () => experiment?.node.evidence_ids ?? null,
+  );
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
   const [freshRun, setFreshRun] = useState<SimulationRun | null>(null);
   const [saving, setSaving] = useState(false);
@@ -211,6 +220,66 @@ export function SimulationPanel({
         examples. These normalized controls do not change machine settings or
         identify a cause.
       </p>
+      {experimentRequested && (
+        <section
+          className="simulation-investigation-context"
+          aria-label="Experiment from investigation"
+        >
+          {experiment ? (
+            <>
+              <p className="eyebrow">
+                Continue the investigation · mini experiment
+              </p>
+              <h3>{experiment.check.title}</h3>
+              <p>
+                <strong>From your response:</strong> {experiment.node.prompt} —{" "}
+                {experiment.node.choices?.find(
+                  (choice) =>
+                    choice.value === experiment.answer.confirmed_value,
+                )?.label ?? experiment.answer.confirmed_value}
+              </p>
+              <p>{experiment.check.purpose}</p>
+              {experiment.check.mini_experiment && (
+                <details>
+                  <summary>
+                    Comparison plan · baseline, controls and measured response
+                  </summary>
+                  <p>
+                    <strong>A · Baseline:</strong>{" "}
+                    {experiment.check.mini_experiment.baseline}
+                  </p>
+                  <p>
+                    <strong>B · Comparison:</strong>{" "}
+                    {experiment.check.mini_experiment.comparison}
+                  </p>
+                  <p>
+                    <strong>Hold constant:</strong>{" "}
+                    {experiment.check.mini_experiment.held_constant.join("; ")}
+                  </p>
+                  <p>
+                    <strong>Measure:</strong>{" "}
+                    {experiment.check.measured_response}
+                  </p>
+                  <p>{experiment.check.mini_experiment.repeat_plan}</p>
+                </details>
+              )}
+              <p className="incident-caption">
+                Use the simulation to explore the candidate mechanism, then
+                return to the investigation with the comparison. Saved
+                simulations remain modelling context.
+              </p>
+            </>
+          ) : (
+            <p>
+              The source response or test is no longer current. Return to the
+              investigation to choose an updated experiment.
+            </p>
+          )}
+          <button type="button" onClick={onReturnToInvestigation}>
+            Return to investigation
+          </button>
+        </section>
+      )}
       {error && (
         <p role="alert" className="incident-simulation-error">
           {error}
@@ -225,7 +294,7 @@ export function SimulationPanel({
         </p>
       )}
       {notice && <p role="status">{notice}</p>}
-      <details className="incident-simulation-controls">
+      <details className="incident-simulation-controls" open={!!experiment}>
         <summary>Explore and save a simulated response</summary>
         <form
           onSubmit={async (event) => {

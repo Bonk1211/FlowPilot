@@ -55,6 +55,10 @@ import {
 import { HandoffPage } from "./HandoffPage";
 import { KnowledgeRegistry } from "./KnowledgeRegistry";
 import { SimulationPanel } from "./SimulationPanel";
+import {
+  resolveInvestigationExperiment,
+  type InvestigationExperiment,
+} from "./investigationExperiment";
 import { ExperimentsPanel } from "./ExperimentsPanel";
 import {
   incidentPages,
@@ -395,11 +399,28 @@ function IncidentWorkspaceContent({
   const assessment = snapshot?.assessment ?? incident?.assessment ?? null;
   const monitoringPage =
     route.page === "investigation" && !assessment && !progressMode;
+  const simulationExperiment = incident
+    ? resolveInvestigationExperiment(
+        incident,
+        route.experimentCheckId,
+        route.experimentAnswerId,
+      )
+    : null;
   const hypothesisId = assessment
     ? assessment.hypotheses.some((item) => item.id === selectedHypothesis)
       ? selectedHypothesis
-      : (assessment.hypotheses[0]?.id ?? null)
+      : (simulationExperiment?.check.hypothesis_id ??
+        assessment.hypotheses[0]?.id ??
+        null)
     : selectedHypothesis;
+  function openExperiment(experiment: InvestigationExperiment) {
+    if (!incident) return;
+    setSelectedHypothesis(experiment.check.hypothesis_id);
+    setHistoricalRevision(null);
+    navigate(
+      `${incidentPageUrl(incident.id, "simulation")}?${new URLSearchParams({ check: experiment.check.id, from: experiment.answer.id })}`,
+    );
+  }
   const closed = incident?.status === "closed";
   const incidentId = incident?.id;
   const refreshSaved = useCallback(async () => {
@@ -419,6 +440,24 @@ function IncidentWorkspaceContent({
     (item) =>
       !snapshot ||
       Date.parse(item.recorded_at) <= Date.parse(snapshot.created_at),
+  );
+  const simulationPanel = incident && (
+    <SimulationPanel
+      key={`${incident.id}:${route.experimentCheckId ?? ""}:${route.experimentAnswerId ?? ""}`}
+      incident={incident}
+      experiment={simulationExperiment}
+      experimentRequested={
+        !!(route.experimentCheckId || route.experimentAnswerId)
+      }
+      onReturnToInvestigation={() =>
+        navigate(incidentPageUrl(incident.id, "investigation"))
+      }
+      selectedHypothesis={hypothesisId}
+      onSelectHypothesis={setSelectedHypothesis}
+      selectedEvidenceId={eventId}
+      onRefresh={refreshSaved}
+      busy={busy || historicalRevision !== null}
+    />
   );
 
   useEffect(() => {
@@ -972,6 +1011,7 @@ function IncidentWorkspaceContent({
                           onOpenTimeline={() =>
                             navigate(incidentPageUrl(incident.id, "evidence"))
                           }
+                          onOpenExperiment={openExperiment}
                         />
                       )}
                       <div hidden={investigationCanvas}>
@@ -1104,6 +1144,7 @@ function IncidentWorkspaceContent({
                     mode={route.page === "simulation" ? "visible" : "hidden"}
                   >
                     <section aria-label="Simulation workspace">
+                      {simulationExperiment && simulationPanel}
                       <MechanismView
                         hypotheses={assessment?.hypotheses}
                         hypothesisId={hypothesisId}
@@ -1120,14 +1161,7 @@ function IncidentWorkspaceContent({
                             ?.label ?? selectedObservation?.check_id
                         }
                       />
-                      <SimulationPanel
-                        incident={incident}
-                        selectedHypothesis={hypothesisId}
-                        onSelectHypothesis={setSelectedHypothesis}
-                        selectedEvidenceId={eventId}
-                        onRefresh={refreshSaved}
-                        busy={busy || historicalRevision !== null}
-                      />
+                      {!simulationExperiment && simulationPanel}
                     </section>
                   </Activity>
                 )}

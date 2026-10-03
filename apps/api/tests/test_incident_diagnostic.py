@@ -109,6 +109,31 @@ def test_unavailable_measurements_are_not_normal_and_known_fields_are_prefilled(
     assert all(item.missing_evidence for item in assessment.hypotheses)
 
 
+def test_mini_experiments_are_suggested_comparisons_and_survive_saved_snapshots():
+    from flowpilot.incidents.diagnostic import DiagnosticAssessment
+
+    assessment = analyze(evidence(), [], "S932")
+    restored = DiagnosticAssessment.model_validate_json(assessment.model_dump_json())
+    assert len(restored.checks) == 3
+    for check in restored.checks:
+        plan = check.mini_experiment
+        assert plan.baseline and plan.comparison and plan.factor and plan.repeat_plan
+        assert len(plan.held_constant) == 3
+        assert check.operational_allowed is False
+        assert {item.value for item in check.expected_outcomes} == {
+            "supported",
+            "contradicted",
+            "inconclusive",
+        }
+    legacy = assessment.model_dump()
+    for check in legacy["checks"]:
+        check.pop("mini_experiment")
+    assert all(
+        check.mini_experiment is None
+        for check in DiagnosticAssessment.model_validate(legacy).checks
+    )
+
+
 def test_material_branch_can_lead_without_claiming_repair_or_release():
     outcomes = [
         result("delivery_review", "contradicted"),

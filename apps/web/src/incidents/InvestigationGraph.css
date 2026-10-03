@@ -276,6 +276,20 @@
   --shape-fill: var(--white);
   --shape-stroke: var(--slate-700);
 }
+.flowchart-node.stage-experiment {
+  --shape-fill: var(--teal-50, #edf8f4);
+  --shape-stroke: var(--teal-700);
+}
+.flowchart-node.stage-experiment .flowchart-shape-text small {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--teal-700);
+  font-weight: 600;
+}
+.investigation-response .investigation-experiment-link {
+  margin-top: 8px;
+  color: var(--teal-700);
+}
 .flowchart-node.stage-review,
 .flowchart-node.stage-clarify {
   --shape-fill: var(--amber-100);

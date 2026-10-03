@@ -134,3 +134,17 @@
     font-size: 24px;
   }
 }
+.simulation-investigation-context {
+  padding: 20px;
+  margin-block: 20px;
+  border: 1px solid var(--teal-700);
+  border-radius: var(--radius-control);
+  background: var(--surface-document);
+  overflow-wrap: anywhere;
+}
+.simulation-investigation-context h3 {
+  margin-top: 8px;
+}
+.simulation-investigation-context > button {
+  margin-top: 12px;
+}

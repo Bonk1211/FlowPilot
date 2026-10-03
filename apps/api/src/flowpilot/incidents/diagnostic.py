@@ -91,6 +91,16 @@ class ExpectedOutcome(Contract):
     interpretation: str
 
 
+class MiniExperiment(Contract):
+    """A suggested comparison of records, not an executed or approved equipment test."""
+
+    factor: str
+    baseline: str
+    comparison: str
+    held_constant: list[str]
+    repeat_plan: str
+
+
 class DiagnosticCheck(Contract):
     id: str
     title: str
@@ -108,6 +118,7 @@ class DiagnosticCheck(Contract):
     mode: Literal["replay"] = "replay"
     operational_allowed: bool = False
     blocked_reason: str
+    mini_experiment: MiniExperiment | None = None
 
 
 class DiagnosticNextStep(Contract):
@@ -305,6 +316,41 @@ CHECKS = (
 UNKNOWN = {"unknown", "not measured", "not available", "unavailable", "unsure", ""}
 
 
+MINI_EXPERIMENTS = {
+    "delivery_review": MiniExperiment(
+        factor="Recorded delivery condition",
+        baseline="Select a last-good delivery trace and its matching mass or coverage record.",
+        comparison="Compare a first-bad trace at the same process stage. Look for a delivery "
+        "change aligned with the loss of mass or coverage.",
+        held_constant=["Tool and fluid path", "Material / lot", "Recipe and sample timing"],
+        repeat_plan="Check a second independent matched pair if available. Record disagreement "
+        "or missing transient data as inconclusive; do not infer a pressure limit.",
+    ),
+    "restriction_review": MiniExperiment(
+        factor="Recorded fluid-path condition",
+        baseline="Select a documented clear-path finding with its matching coverage record.",
+        comparison="Compare the suspect path finding and response. Use existing inspection "
+        "or maintenance records to locate the affected pickup, connection, tube or nozzle.",
+        held_constant=["Delivery condition", "Material / lot", "Recipe and inspection method"],
+        repeat_plan="Seek an independent inspection or matched record confirming the location. "
+        "If delivery or material also changed, keep the comparison inconclusive.",
+    ),
+    "material_review": MiniExperiment(
+        factor="Recorded material or idle condition",
+        baseline="Select a known-good material-condition record and corresponding response.",
+        comparison="Compare one recorded difference: material batch, condition or idle interval. "
+        "Check whether mass or coverage follows that difference.",
+        held_constant=[
+            "Tool and fluid path",
+            "Delivery condition",
+            "Recipe and measurement method",
+        ],
+        repeat_plan="Check another comparable pair for the same direction of response. "
+        "If batch and idle history changed together, their effects remain unresolved.",
+    ),
+}
+
+
 def check_catalog(configuration: str) -> list[DiagnosticCheck]:
     return [
         DiagnosticCheck(
@@ -344,6 +390,7 @@ def check_catalog(configuration: str) -> list[DiagnosticCheck]:
             blocked_reason=(
                 "Physical execution blocked: no applicable approved operating method supplied."
             ),
+            mini_experiment=MINI_EXPERIMENTS[key],
         )
         for key, title, hypothesis, purpose, response in CHECKS
     ]
@@ -850,29 +897,6 @@ async def _adaptive_task(incident, fingerprint, task, payload, schema, system, g
         return fallback("Gemini is blocked by the configured incident data policy.")
     if generate is None and not settings.gemini_api_key:
         return fallback("Gemini key is not configured; the declared offline path is retained.")
-    if task in {"conversation", "questions"}:
-        from flowpilot.incidents import rag
-
-        retrieved, metadata.retrieval = await rag.retrieve(
-            incident, payload.get("utterance", incident.symptom), settings
-        )
-        payload["retrieved_sources"] = [source.model_dump(mode="json") for source in retrieved]
-        payload["retrieval"] = metadata.retrieval.model_dump(mode="json")
-        previous_sources = payload.get("sources", [])
-        if payload.get("assessment"):
-            previous_sources = payload["assessment"]["sources"]
-            payload["assessment"]["sources"] = []
-        payload["sources"] = [
-            source for source in previous_sources if source["document_id"] != rag.DOCUMENT_ID
-        ]
-        if incident.assessment:
-            incident.assessment.sources = list(
-                {
-                    source.id: source for source in [*incident.assessment.sources, *retrieved]
-                }.values()
-            )
-    if len(json.dumps(payload, ensure_ascii=False)) > 50_000:
-        return fallback("Adaptive input exceeds the 50 KB limit.")
     try:
         timeout = (
             settings.incident_question_timeout_seconds
@@ -880,6 +904,42 @@ async def _adaptive_task(incident, fingerprint, task, payload, schema, system, g
             else settings.reasoning_timeout_seconds
         )
         async with asyncio.timeout(timeout):
+            if task in {"conversation", "questions"}:
+                from flowpilot.incidents import rag
+
+                # Reserve at least half the interactive budget for generating the response.
+                retrieval_settings = settings.model_copy(
+                    update={
+                        "incident_rag_timeout_seconds": min(
+                            settings.incident_rag_timeout_seconds, timeout / 2
+                        )
+                    }
+                )
+                retrieved, metadata.retrieval = await rag.retrieve(
+                    incident, payload.get("utterance", incident.symptom), retrieval_settings
+                )
+                payload["retrieved_sources"] = [
+                    source.model_dump(mode="json") for source in retrieved
+                ]
+                payload["retrieval"] = metadata.retrieval.model_dump(mode="json")
+                previous_sources = payload.get("sources", [])
+                if payload.get("assessment"):
+                    previous_sources = payload["assessment"]["sources"]
+                    payload["assessment"]["sources"] = []
+                payload["sources"] = [
+                    source
+                    for source in previous_sources
+                    if source["document_id"] != rag.DOCUMENT_ID
+                ]
+                if incident.assessment:
+                    incident.assessment.sources = list(
+                        {
+                            source.id: source
+                            for source in [*incident.assessment.sources, *retrieved]
+                        }.values()
+                    )
+            if len(json.dumps(payload, ensure_ascii=False)) > 50_000:
+                return fallback("Adaptive input exceeds the 50 KB limit.")
             if generate is not None:
                 result = schema.model_validate(await generate(copy.deepcopy(payload), schema))
             else:
@@ -887,7 +947,11 @@ async def _adaptive_task(incident, fingerprint, task, payload, schema, system, g
                 from google.genai import types
 
                 async with genai.Client(
-                    api_key=settings.gemini_api_key.get_secret_value()
+                    api_key=settings.gemini_api_key.get_secret_value(),
+                    http_options=types.HttpOptions(
+                        timeout=max(10000, int(timeout * 1000)),
+                        retry_options=types.HttpRetryOptions(attempts=1),
+                    ),
                 ).aio as client:
                     response = await client.models.generate_content(
                         model=model,
@@ -914,7 +978,9 @@ async def _adaptive_task(incident, fingerprint, task, payload, schema, system, g
         metadata.fallback_reason = None
         return result, metadata
     except TimeoutError:
-        return fallback("Gemini timed out; the saved answer is preserved.")
+        return fallback(
+            "Gemini response budget expired; the saved answer and baseline are preserved."
+        )
     except (ValueError, TypeError):
         return fallback("Gemini output failed schema validation; the saved answer is preserved.")
     except Exception as error:

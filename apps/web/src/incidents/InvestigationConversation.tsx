@@ -5,6 +5,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { RealtimeConnection } from "@elevenlabs/client";
 import {
   ChatCircle,
   ArrowUp,
@@ -13,6 +14,10 @@ import {
   Microphone,
   PaperPlaneTilt,
   Stop,
+  SpeakerHigh,
+  Sparkle,
+  Check,
+  ArrowCounterClockwise,
 } from "@phosphor-icons/react";
 import type {
   ConversationRequest,
@@ -73,6 +78,8 @@ export function InvestigationConversation({
     "off" | "connecting" | "listening"
   >("off");
   const [handsFree, setHandsFree] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const [spokenRange, setSpokenRange] = useState<[number, number] | null>(null);
   const [voiceTranscript, setVoiceTranscript] = useState("");
   const [elapsed, setElapsed] = useState(0);
   const startedAt = useRef(0);
@@ -83,7 +90,9 @@ export function InvestigationConversation({
   }, [sending, onSendingChange]);
   const [error, setError] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
-  const connection = useRef<{ close: () => void } | null>(null);
+  const connection = useRef<RealtimeConnection | null>(null);
+  const speech = useRef<SpeechSynthesisUtterance | null>(null);
+  const speechTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const session = useRef(0);
   const queue = useRef<Utterance[]>([]);
   const processing = useRef(false);
@@ -101,6 +110,7 @@ export function InvestigationConversation({
   const interim = useRef("");
   const mode = useRef(false);
   const history = useRef<HTMLDivElement>(null);
+  const replyElement = useRef<HTMLDivElement>(null);
   const container = useRef<HTMLDivElement>(null);
   const connectTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const waveform = useRef<HTMLDivElement>(null);
@@ -152,6 +162,7 @@ export function InvestigationConversation({
 
   function stop() {
     session.current += 1;
+    stopSpeaking();
     if (connectTimeout.current) clearTimeout(connectTimeout.current);
     connection.current?.close();
     connection.current = null;
@@ -166,15 +177,7 @@ export function InvestigationConversation({
 
   useEffect(() => {
     function release() {
-      if (connectTimeout.current) clearTimeout(connectTimeout.current);
-      session.current += 1;
-      connection.current?.close();
-      connection.current = null;
-      setVoiceState("off");
-      const text = interim.current;
-      interim.current = "";
-      if (text.trim()) setDraft((saved) => `${saved} ${text}`.trim());
-      setPartial("");
+      stopVoice();
     }
     function hide() {
       if (document.hidden) {
@@ -193,6 +196,10 @@ export function InvestigationConversation({
   useEffect(() => {
     history.current?.scrollTo({ top: history.current.scrollHeight });
   }, [incident.conversation?.length, historyOpen]);
+  useEffect(() => {
+    if (handsFree && voiceState === "listening")
+      replyElement.current?.scrollIntoView({ block: "nearest" });
+  }, [incident.conversation?.length, handsFree, voiceState]);
   useEffect(() => {
     if (voiceState !== "listening") return;
     const timer = setInterval(() => {
@@ -216,6 +223,7 @@ export function InvestigationConversation({
         now - audioLevel.current.at < 700 ? audioLevel.current.value : 0;
       level +=
         (target - level) * (1 - Math.exp(-delta / (target > level ? 60 : 180)));
+      container.current?.style.setProperty("--voice-level", level.toFixed(3));
       phase += delta * (0.002 + level * 0.012);
       bars.forEach((bar, index) => {
         const wave = (Math.sin(phase + index * 0.8) + 1) / 2;
@@ -230,6 +238,84 @@ export function InvestigationConversation({
     return () => cancelAnimationFrame(frame);
   }, [voiceState]);
 
+  function stopSpeaking() {
+    if (speechTimeout.current) clearTimeout(speechTimeout.current);
+    speechTimeout.current = null;
+    if (speech.current) {
+      speech.current.onstart = null;
+      speech.current.onend = null;
+      speech.current.onerror = null;
+      speech.current.onboundary = null;
+      speech.current = null;
+      window.speechSynthesis.cancel();
+    }
+    if (connection.current?.isMuted) connection.current.unmute();
+    setSpeaking(false);
+    setSpokenRange(null);
+  }
+
+  function speakReply(text: string) {
+    if (
+      !mode.current ||
+      !connection.current ||
+      current.current.readOnly ||
+      document.hidden
+    )
+      return;
+    if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
+      setError(
+        "Spoken replies are unavailable in this browser. You can keep dictating and read replies on screen.",
+      );
+      return;
+    }
+    stopSpeaking();
+    try {
+      // Keep the Scribe connection alive with silence so it cannot hear its own reply.
+      connection.current.mute();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = document.documentElement.lang || "en";
+      speech.current = utterance;
+      setSpeaking(true);
+      const fail = () => {
+        if (speech.current !== utterance) return;
+        stopSpeaking();
+        setError(
+          "The spoken reply could not play. Read it on screen; listening has resumed.",
+        );
+      };
+      // Recover the microphone if the browser never starts or finishes playback.
+      speechTimeout.current = setTimeout(fail, 10000);
+      utterance.onstart = () => {
+        if (speech.current !== utterance) return;
+        if (speechTimeout.current) clearTimeout(speechTimeout.current);
+        speechTimeout.current = setTimeout(
+          fail,
+          Math.max(15000, text.length * 150),
+        );
+      };
+      utterance.onerror = fail;
+      utterance.onboundary = (event) => {
+        if (speech.current !== utterance || event.name !== "word") return;
+        const start = event.charIndex;
+        const length =
+          event.charLength || text.slice(start).match(/^\S+/)?.[0].length || 0;
+        setSpokenRange([start, start + length]);
+      };
+      utterance.onend = () => {
+        if (speech.current !== utterance) return;
+        if (speechTimeout.current) clearTimeout(speechTimeout.current);
+        // Let the speaker's final audio clear before accepting another utterance.
+        speechTimeout.current = setTimeout(stopSpeaking, 250);
+      };
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      stopSpeaking();
+      setError(
+        "The spoken reply could not play. Read it on screen; listening has resumed.",
+      );
+    }
+  }
+
   async function drain() {
     if (processing.current || current.current.disabled) return;
     processing.current = true;
@@ -239,6 +325,8 @@ export function InvestigationConversation({
       while (queue.current.length) {
         const utterance = queue.current[0];
         if (current.current.disabled) break;
+        const replySession =
+          mode.current && connection.current ? session.current : null;
         let updated: Incident;
         try {
           updated = await converseWithInvestigation(
@@ -268,6 +356,8 @@ export function InvestigationConversation({
         if (target) current.current.onSpotlight(target);
         queue.current.shift();
         failed.current = null;
+        if (last?.id === utterance.turn_id && replySession === session.current)
+          speakReply(last.reply);
       }
     } catch (cause) {
       failed.current = queue.current[0] ?? null;
@@ -306,6 +396,7 @@ export function InvestigationConversation({
     nodeId?: string | null,
   ) {
     if (!text.trim()) return;
+    if (inputMode === "text" && mode.current) stopSpeaking();
     if (text.length > 2000) {
       setDraft(text);
       setError(
@@ -362,9 +453,21 @@ export function InvestigationConversation({
           autoGainControl: false,
         },
       });
+      let sessionReady = false;
+      let microphoneReady = false;
+      function markListening() {
+        if (session.current !== id || !sessionReady || !microphoneReady) return;
+        if (connectTimeout.current) clearTimeout(connectTimeout.current);
+        startedAt.current = Date.now();
+        setVoiceState("listening");
+      }
       const sendAudio = live.send.bind(live);
       live.send = (data) => {
         if (session.current === id) {
+          if (!microphoneReady) {
+            microphoneReady = true;
+            markListening();
+          }
           audioLevel.current = {
             value: pcmAudioLevel(data.audioBase64),
             at: performance.now(),
@@ -381,20 +484,17 @@ export function InvestigationConversation({
         stop();
       }, 15000);
       live.on(RealtimeEvents.SESSION_STARTED, () => {
-        if (connectTimeout.current) clearTimeout(connectTimeout.current);
-        if (session.current === id) {
-          startedAt.current = Date.now();
-          setVoiceState("listening");
-        }
+        sessionReady = true;
+        markListening();
       });
       live.on(RealtimeEvents.PARTIAL_TRANSCRIPT, ({ text }) => {
-        if (session.current !== id) return;
+        if (session.current !== id || speech.current) return;
         speechSpotlight.current ??= current.current.spotlight?.id ?? null;
         interim.current = text;
         setPartial(text);
       });
       live.on(RealtimeEvents.COMMITTED_TRANSCRIPT, ({ text }) => {
-        if (session.current !== id || !text.trim()) return;
+        if (session.current !== id || speech.current || !text.trim()) return;
         setPartial("");
         interim.current = "";
         setVoiceTranscript(text);
@@ -445,153 +545,308 @@ export function InvestigationConversation({
   const turns = incident.conversation ?? [];
   const latest = turns.at(-1);
   const listening = voiceState !== "off";
+  const liveHandsFree = listening && handsFree;
+  const EvidenceContainer = liveHandsFree ? "details" : "div";
+  const voicePhase =
+    voiceState === "connecting"
+      ? "connecting"
+      : speaking
+        ? "speaking"
+        : sending || progressMode
+          ? "thinking"
+          : latest?.status === "pending" && !partial
+            ? "confirming"
+            : "listening";
+  const sessionHeading = {
+    connecting: "Let's get connected.",
+    listening: partial ? "I'm listening…" : "Tell me what you see.",
+    thinking: "Working through that.",
+    speaking: "Here's what I found.",
+    confirming: "Did I get that right?",
+  }[voicePhase];
+  const sessionHint = {
+    connecting: "Allow microphone access to start your conversation.",
+    listening: "Speak naturally. A pause sends your answer.",
+    thinking: "Your observation is being checked against the investigation.",
+    speaking: "Microphone paused. Tap Talk now to take your turn.",
+    confirming: "Say “confirm” or “cancel”, or choose below.",
+  }[voicePhase];
   const voiceText = handsFree
     ? partial || voiceTranscript
     : [draft, partial].filter(Boolean).join(" ");
   const evidence = (incident.evidence ?? [])
     .filter((item) => item.status === "collected")
     .slice(0, 3);
+  const reply = latest && (
+    <div
+      className="conversation-reply"
+      ref={replyElement}
+      role="status"
+      aria-live={liveHandsFree && speaking ? "off" : "polite"}
+    >
+      <div className="conversation-reply-heading">
+        <strong>
+          {liveHandsFree ? (
+            <>
+              <Sparkle aria-hidden="true" /> FlowPilot
+            </>
+          ) : (
+            "Troubleshooting agent"
+          )}
+        </strong>
+        {liveHandsFree && (
+          <button
+            type="button"
+            aria-label="Replay last reply"
+            className="hands-free-replay"
+            disabled={
+              speaking || disabled || sending || voiceState !== "listening"
+            }
+            onClick={() => speakReply(latest.reply)}
+          >
+            <SpeakerHigh aria-hidden="true" /> Replay
+          </button>
+        )}
+      </div>
+      <p>
+        {liveHandsFree && speaking && spokenRange ? (
+          <>
+            {latest.reply.slice(0, spokenRange[0])}
+            <mark>{latest.reply.slice(...spokenRange)}</mark>
+            {latest.reply.slice(spokenRange[1])}
+          </>
+        ) : (
+          latest.reply
+        )}
+      </p>
+      {!!latest.sources?.length && (
+        <button type="button" onClick={onShowSources}>
+          View references · {latest.sources.length}
+        </button>
+      )}
+      {latest.status === "pending" && (
+        <div className="conversation-confirm">
+          <button
+            type="button"
+            disabled={disabled || sending}
+            onClick={() => enqueue("confirm", "text")}
+          >
+            {liveHandsFree && <Check aria-hidden="true" />}
+            Confirm answer
+          </button>
+          <button
+            type="button"
+            disabled={disabled || sending}
+            onClick={() => enqueue("cancel", "text")}
+          >
+            {liveHandsFree && <ArrowCounterClockwise aria-hidden="true" />}
+            Correct me
+          </button>
+        </div>
+      )}
+    </div>
+  );
+  const conversationHistory = historyOpen && (
+    <div
+      className="conversation-history"
+      ref={history}
+      role="log"
+      aria-label="Conversation history"
+    >
+      {turns.map((turn) => (
+        <div key={turn.id}>
+          <p>
+            <strong>You · {turn.input_mode}</strong>
+            <br />
+            {turn.text}
+          </p>
+          <p>
+            <strong>Agent</strong>
+            <br />
+            {turn.reply}
+          </p>
+          {!!turn.node_ids?.length && (
+            <div className="conversation-node-links">
+              {turn.node_ids?.map((id) => (
+                <button type="button" key={id} onClick={() => onSpotlight(id)}>
+                  View question
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+  const evidencePanel = !!evidence.length && (
+    <EvidenceContainer className="voice-evidence">
+      {liveHandsFree && (
+        <summary>
+          <File aria-hidden="true" /> {evidence.length} evidence items
+        </summary>
+      )}
+      <div className="voice-evidence-chips" aria-label="Investigation evidence">
+        {evidence.map((item) => (
+          <button
+            type="button"
+            key={item.id}
+            title={item.label}
+            aria-label={`Inspect ${item.label}`}
+            onClick={() => onSelectEvidence(item.id)}
+          >
+            {item.kind === "image" ? (
+              <ImageIcon aria-hidden="true" />
+            ) : (
+              <File aria-hidden="true" />
+            )}
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </div>
+    </EvidenceContainer>
+  );
   return (
     <div
       ref={container}
-      className={`investigation-conversation${listening ? " is-voice" : ""}`}
+      className={`investigation-conversation${listening ? " is-voice" : ""}${liveHandsFree ? " is-hands-free" : ""}`}
+      data-voice-phase={liveHandsFree ? voicePhase : undefined}
       aria-label="Troubleshooting conversation"
     >
       {listening && (
         <div className="voice-message-heading">
-          <strong>Voice message</strong>
+          <strong>
+            {liveHandsFree ? (
+              <>
+                <Sparkle aria-hidden="true" /> Hands-free session
+              </>
+            ) : (
+              "Voice message"
+            )}
+          </strong>
           <span className="voice-message-time">
             <span aria-hidden="true" className="voice-listening-dot" />
-            {voiceState === "connecting" ? "Connecting" : "Listening"}
+            {voiceState === "connecting"
+              ? "Connecting"
+              : speaking
+                ? "Speaking"
+                : liveHandsFree && voicePhase === "thinking"
+                  ? "Thinking"
+                  : "Listening"}
             <span aria-hidden="true">·</span>
             <time
               role="timer"
               aria-live="off"
-              aria-label={`${elapsed} seconds recording`}
+              aria-label={`${elapsed} seconds ${liveHandsFree ? "in session" : "recording"}`}
             >
               {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, "0")}
             </time>
           </span>
         </div>
       )}
-      {progressMode ? (
+      {liveHandsFree && (
+        <div className="hands-free-stage">
+          <div className="hands-free-orb" aria-hidden="true">
+            <span className="hands-free-orb-ring" />
+            <span className="hands-free-orb-core">
+              {speaking ? (
+                <SpeakerHigh />
+              ) : voicePhase === "thinking" ? (
+                <Sparkle />
+              ) : voicePhase === "confirming" ? (
+                <Check />
+              ) : (
+                <Microphone />
+              )}
+            </span>
+          </div>
+          <div className="hands-free-stage-copy">
+            <div className="hands-free-steps" aria-label="Conversation stages">
+              {["Listen", "Think", "Reply"].map((step, index) => (
+                <span
+                  key={step}
+                  aria-current={
+                    index ===
+                    (voicePhase === "speaking"
+                      ? 2
+                      : voicePhase === "thinking"
+                        ? 1
+                        : 0)
+                      ? "step"
+                      : undefined
+                  }
+                >
+                  {step}
+                </span>
+              ))}
+            </div>
+            <h3>{sessionHeading}</h3>
+            <p>{sessionHint}</p>
+            {speaking && (
+              <button
+                type="button"
+                className="hands-free-interrupt"
+                aria-label="Interrupt reply"
+                onClick={stopSpeaking}
+              >
+                <Microphone aria-hidden="true" /> Talk now{" "}
+                <span>Interrupt reply</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      {progressMode && !liveHandsFree ? (
         <InvestigationProgress
           incident={incident}
           mode={progressMode}
           compact
         />
       ) : (
-        latest && (
-          <div className="conversation-reply" role="status">
-            <strong>Troubleshooting agent</strong>
-            <p>{latest.reply}</p>
-            {!!latest.sources?.length && (
-              <button type="button" onClick={onShowSources}>
-                View references · {latest.sources.length}
-              </button>
-            )}
-            {latest.status === "pending" && (
-              <div className="conversation-confirm">
-                <button
-                  type="button"
-                  disabled={disabled || sending}
-                  onClick={() => enqueue("confirm", "text")}
-                >
-                  Confirm answer
-                </button>
-                <button
-                  type="button"
-                  disabled={disabled || sending}
-                  onClick={() => enqueue("cancel", "text")}
-                >
-                  Correct me
-                </button>
-              </div>
-            )}
-          </div>
-        )
+        !liveHandsFree && reply
       )}
-      {historyOpen && (
-        <div
-          className="conversation-history"
-          ref={history}
-          role="log"
-          aria-label="Conversation history"
-        >
-          {turns.map((turn) => (
-            <div key={turn.id}>
-              <p>
-                <strong>You · {turn.input_mode}</strong>
-                <br />
-                {turn.text}
-              </p>
-              <p>
-                <strong>Agent</strong>
-                <br />
-                {turn.reply}
-              </p>
-              {!!turn.node_ids?.length && (
-                <div className="conversation-node-links">
-                  {turn.node_ids?.map((id) => (
-                    <button
-                      type="button"
-                      key={id}
-                      onClick={() => onSpotlight(id)}
-                    >
-                      View question
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      {!liveHandsFree && conversationHistory}
       {!listening && !progressMode && answerControls}
       {listening ? (
         <div className="voice-message-body">
-          <p
-            className="voice-message-transcript"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            {voiceText ||
-              (voiceState === "connecting"
-                ? "Getting your microphone ready…"
-                : "Tell me what you're seeing on the machine…")}
-          </p>
-          <div ref={waveform} className="voice-waveform" aria-hidden="true">
-            {[
-              24, 29, 23, 30, 38, 26, 31, 27, 40, 28, 34, 25, 39, 32, 28, 26,
-              33, 24, 15, 27, 40, 28, 26, 38, 24, 30, 25, 32,
-            ].map((height, index) => (
-              <span key={index} style={{ height }} />
-            ))}
-          </div>
-          <div className="voice-message-tray">
-            {!!evidence.length && (
-              <div
-                className="voice-evidence-chips"
-                aria-label="Investigation evidence"
+          <div className={liveHandsFree ? "hands-free-turns" : undefined}>
+            {liveHandsFree && conversationHistory}
+            <div className="voice-input-turn">
+              {liveHandsFree && (
+                <div className="voice-turn-label">
+                  <span>You</span>
+                  <span>
+                    {partial
+                      ? "Hearing you live"
+                      : voiceTranscript
+                        ? "Sent"
+                        : "Your microphone is on"}
+                  </span>
+                </div>
+              )}
+              <p
+                className="voice-message-transcript"
+                aria-live="polite"
+                aria-atomic="true"
               >
-                {evidence.map((item) => (
-                  <button
-                    type="button"
-                    key={item.id}
-                    title={item.label}
-                    aria-label={`Inspect ${item.label}`}
-                    onClick={() => onSelectEvidence(item.id)}
-                  >
-                    {item.kind === "image" ? (
-                      <ImageIcon aria-hidden="true" />
-                    ) : (
-                      <File aria-hidden="true" />
-                    )}
-                    <span>{item.label}</span>
-                  </button>
+                {voiceText ||
+                  (voiceState === "connecting"
+                    ? "Getting your microphone ready…"
+                    : "Tell me what you're seeing on the machine…")}
+              </p>
+              <div ref={waveform} className="voice-waveform" aria-hidden="true">
+                {[
+                  24, 29, 23, 30, 38, 26, 31, 27, 40, 28, 34, 25, 39, 32, 28,
+                  26, 33, 24, 15, 27, 40, 28, 26, 38, 24, 30, 25, 32,
+                ].map((height, index) => (
+                  <span key={index} style={{ height }} />
                 ))}
               </div>
-            )}
+            </div>
+            {liveHandsFree && reply}
+            {liveHandsFree && evidencePanel}
+          </div>
+          <div className="voice-message-tray">
+            {!liveHandsFree && evidencePanel}
             <div className="voice-message-controls">
               <button
                 type="button"
@@ -602,34 +857,37 @@ export function InvestigationConversation({
                 <span>
                   <Stop aria-hidden="true" />
                 </span>
-                Tap to stop
+                {liveHandsFree ? "End session" : "Tap to stop"}
               </button>
               <button
                 type="button"
                 role="switch"
                 aria-checked={handsFree}
                 className="voice-hands-free"
-                disabled={disabled}
+                disabled={readOnly}
                 onClick={() => {
                   mode.current = !handsFree;
                   setHandsFree(!handsFree);
+                  if (handsFree) stopSpeaking();
                 }}
               >
                 <span>Hands-free</span>
               </button>
-              <button
-                type="button"
-                className="voice-send"
-                aria-label="Send voice message"
-                disabled={
-                  disabled ||
-                  sending ||
-                  ![draft, partial].some((text) => text.trim())
-                }
-                onClick={() => sendVoice()}
-              >
-                <ArrowUp aria-hidden="true" />
-              </button>
+              {!liveHandsFree && (
+                <button
+                  type="button"
+                  className="voice-send"
+                  aria-label="Send voice message"
+                  disabled={
+                    disabled ||
+                    sending ||
+                    ![draft, partial].some((text) => text.trim())
+                  }
+                  onClick={() => sendVoice()}
+                >
+                  <ArrowUp aria-hidden="true" />
+                </button>
+              )}
             </div>
           </div>
           <button
@@ -709,17 +967,19 @@ export function InvestigationConversation({
         </form>
       )}
       <p className="conversation-status" role="status">
-        {voiceState === "listening"
-          ? handsFree
-            ? "Listening · pauses send automatically · say ‘confirm my answer’, ‘cancel’ or ‘stop listening’"
-            : "Dictating · say ‘send message’, ‘confirm my answer’ or ‘stop listening’"
-          : progressMode
-            ? "The chart and timeline will refresh when analysis is ready."
-            : voiceState === "connecting"
-              ? "Connecting to ElevenLabs…"
-              : handsFree
-                ? "Hands-free paused · press Voice to resume"
-                : "Type or dictate · answers can follow any eligible question"}
+        {speaking
+          ? "Speaking · microphone paused · tap Talk now to interrupt"
+          : voiceState === "listening"
+            ? handsFree
+              ? "Listening · pauses send automatically · say ‘confirm my answer’, ‘cancel’ or ‘stop listening’"
+              : "Dictating · say ‘send message’, ‘confirm my answer’ or ‘stop listening’"
+            : progressMode
+              ? "The chart and timeline will refresh when analysis is ready."
+              : voiceState === "connecting"
+                ? "Connecting to ElevenLabs…"
+                : handsFree
+                  ? "Hands-free paused · press Voice to resume"
+                  : "Type or dictate · answers can follow any eligible question"}
       </p>
       {error && (
         <p className="conversation-error" role="alert">

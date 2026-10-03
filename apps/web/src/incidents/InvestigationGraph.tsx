@@ -9,6 +9,7 @@ import {
   ArrowsIn,
   ArrowsOut,
   Check,
+  Flask,
   Crosshair,
   ChatCircle,
   CaretRight,
@@ -45,9 +46,15 @@ import type { IncidentCommand } from "./api";
 import { CausalReasoning } from "./CausalReasoning";
 import { InvestigationConversation } from "./InvestigationConversation";
 import { LiveTimeline } from "./LiveTimeline";
+import { TroubleshootingMap } from "./TroubleshootingMap";
+import { ExperimentPreview } from "./ExperimentPreview";
 import type { InvestigationProgressMode } from "./InvestigationProgress";
 import { investigationLayout } from "./investigationLayout";
 import { responseNodeId, responseStatement } from "./investigationResponses";
+import {
+  suggestInvestigationExperiment,
+  type InvestigationExperiment,
+} from "./investigationExperiment";
 import "@xyflow/react/dist/style.css";
 import "./InvestigationGraph.css";
 
@@ -57,6 +64,7 @@ const stages = {
   evidence: { label: "Evidence", height: 128 },
   decision: { label: "Decision", height: 200 },
   check: { label: "Check", height: 116 },
+  experiment: { label: "Mini experiment", height: 184 },
   statement: { label: "Response", height: 124 },
   clarify: { label: "Clarify", height: 132 },
   review: { label: "Review", height: 108 },
@@ -168,7 +176,11 @@ function StageShape({ stage }: { stage: Stage }) {
           y="2"
           width="276"
           height={height - 4}
-          rx={stage === "check" || stage === "statement" ? 5 : height / 2}
+          rx={
+            ["check", "statement", "experiment"].includes(stage)
+              ? 5
+              : height / 2
+          }
         />
       )}
     </svg>
@@ -230,9 +242,10 @@ function StageNode({ data }: NodeProps<ChartNode>) {
             </span>
           )}
           <strong>{data.title}</strong>
+          {data.stage === "experiment" && <small>Preview experiment →</small>}
         </span>
       </button>
-      {data.stage !== "review" && (
+      {data.stage !== "review" && data.stage !== "experiment" && (
         <Handle
           type="source"
           position={Position.Bottom}
@@ -467,6 +480,7 @@ export function InvestigationGraph({
   onSelectHypothesis,
   onSelectEvidence,
   onOpenTimeline,
+  onOpenExperiment,
   onUpdated,
   progressMode,
   progressError,
@@ -481,6 +495,7 @@ export function InvestigationGraph({
   onSelectHypothesis: (id: string) => void;
   onSelectEvidence: (id: string) => void;
   onOpenTimeline: () => void;
+  onOpenExperiment: (experiment: InvestigationExperiment) => void;
   onUpdated: (incident: Incident) => void;
   progressMode: InvestigationProgressMode | null;
   progressError: string;
@@ -500,6 +515,8 @@ export function InvestigationGraph({
     }
   });
   const [textView, setTextView] = useState(false);
+  const [previewExperiment, setPreviewExperiment] =
+    useState<InvestigationExperiment | null>(null);
   const [whyHowOpen, setWhyHowOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelWidth, setPanelWidth] = useState(368);
@@ -574,6 +591,10 @@ export function InvestigationGraph({
     visibleNodes.find((node) => node.id === currentId) ??
     visibleNodes[visibleNodes.length - 1];
   const hypotheses = incident.assessment?.hypotheses ?? [];
+  const experiment = suggestInvestigationExperiment(incident);
+  const experimentId = experiment
+    ? `experiment-${experiment.answer.id}-${experiment.check.id}`
+    : null;
   const hypothesis =
     hypotheses.find((item) => item.id === selectedHypothesisId) ??
     hypotheses[0];
@@ -839,6 +860,17 @@ export function InvestigationGraph({
         >
           Evidence & why this question
         </button>
+        {experiment && node.id === currentId && (
+          <button
+            type="button"
+            className="investigation-experiment-link"
+            disabled={!!activity}
+            onClick={() => setPreviewExperiment(experiment)}
+          >
+            <Flask aria-hidden="true" />
+            Preview mini experiment
+          </button>
+        )}
       </div>
     );
   }
@@ -848,6 +880,13 @@ export function InvestigationGraph({
     const answer = currentAnswer(node.id);
     const draft = drafts[node.id];
     const questionType = questionTypeFor(node);
+    const check =
+      node.kind === "check"
+        ? incident.assessment?.checks.find(
+            (check) => check.id === node.target_fact,
+          )
+        : undefined;
+    const experiment = check?.mini_experiment;
     return (
       <article
         className={`investigation-node is-${status} nodrag nopan nowheel`}
@@ -883,6 +922,30 @@ export function InvestigationGraph({
         )}
         <h3>{node.prompt}</h3>
         {explain && <p>{node.why}</p>}
+        {experiment && (
+          <details className="investigation-mini-experiment" open>
+            <summary>Mini DOE · suggested comparison</summary>
+            <p>
+              <strong>Compare:</strong> {experiment.factor}
+            </p>
+            <p>
+              <strong>A · Baseline:</strong> {experiment.baseline}
+            </p>
+            <p>
+              <strong>B · Comparison:</strong> {experiment.comparison}
+            </p>
+            <p>
+              <strong>Hold constant:</strong>{" "}
+              {experiment.held_constant.join("; ")}
+            </p>
+            <p>
+              <strong>Measure:</strong> {check?.measured_response}
+            </p>
+            <p>
+              <strong>Repeat / uncertainty:</strong> {experiment.repeat_plan}
+            </p>
+          </details>
+        )}
         {explain &&
           draft?.choice &&
           node.choices?.find((choice) => choice.value === draft.choice)
@@ -963,6 +1026,17 @@ export function InvestigationGraph({
         status: "start",
         height: (stages.start.height * 240) / 280 + 56,
       },
+      ...(experiment && experimentId
+        ? [
+            {
+              id: experimentId,
+              parent_id: responseNodeId(experiment.answer.id),
+              status: "suggested",
+              height: (stages.experiment.height * 240) / 280 + 56,
+              gapAfter: 72,
+            },
+          ]
+        : []),
       ...visibleNodes.map((node) => ({
         ...node,
         parent_id: chartParent(node),
@@ -978,11 +1052,12 @@ export function InvestigationGraph({
       })),
     ],
     currentId,
-    new Set(
-      graph.expansions
+    new Set([
+      ...(experimentId ? [experimentId] : []),
+      ...graph.expansions
         .filter((expansion) => !expansion.superseded)
         .map((expansion) => expansion.recommended_id),
-    ),
+    ]),
   );
   const questionNodes: ChartNode[] = visibleNodes.map((node) => {
     const { x, y } = positions.get(node.id)!;
@@ -1040,6 +1115,25 @@ export function InvestigationGraph({
     };
   });
   const nodes = [...questionNodes, ...responseNodes];
+  if (experiment && experimentId)
+    nodes.push({
+      id: experimentId,
+      type: "stage",
+      position: positions.get(experimentId)!,
+      width: 240,
+      height: (stages.experiment.height * 240) / 280 + 56,
+      measured: dimensions[experimentId],
+      data: {
+        stage: "experiment",
+        title: `Explore ${hypotheses.find((item) => item.id === experiment.check.hypothesis_id)?.title.toLowerCase() ?? "possible causes"}`,
+        prompt: `Preview mini experiment: ${experiment.check.title}`,
+        status: "suggested",
+        onInspect: () => setPreviewExperiment(experiment),
+      },
+      draggable: false,
+      selectable: true,
+      focusable: false,
+    });
   nodes.unshift({
     id: "flow-start",
     type: "stage",
@@ -1109,6 +1203,19 @@ export function InvestigationGraph({
     };
   }
   const edges: RelationshipEdge[] = [
+    ...(experiment && experimentId
+      ? [
+          {
+            ...connect(
+              experimentId,
+              responseNodeId(experiment.answer.id),
+              false,
+              false,
+            ),
+            label: "Compare possibilities",
+          },
+        ]
+      : []),
     ...visibleNodes.map((node) =>
       connect(
         node.id,
@@ -1488,12 +1595,25 @@ export function InvestigationGraph({
         }
       }}
     >
+      {previewExperiment && (
+        <ExperimentPreview
+          incident={incident}
+          experiment={previewExperiment}
+          onCancel={() => setPreviewExperiment(null)}
+          onReady={(updated, prepared) => {
+            setPreviewExperiment(null);
+            onUpdated(updated);
+            onOpenExperiment(prepared);
+          }}
+        />
+      )}
       <div className="investigation-graph-heading">
         <div>
           <p className="eyebrow">Response flow</p>
           <h2>Investigation path</h2>
         </div>
         <div className="investigation-view-actions">
+          <TroubleshootingMap incident={incident} />
           {hypothesis && (
             <button
               type="button"
@@ -1596,6 +1716,7 @@ export function InvestigationGraph({
             "decision",
             "statement",
             "check",
+            "experiment",
             "clarify",
           ] as const
         ).map((stage) => (

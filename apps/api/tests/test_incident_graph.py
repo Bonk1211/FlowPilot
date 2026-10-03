@@ -342,7 +342,7 @@ def test_provider_handoff_requires_confirmation_and_uses_filtered_candidates(cli
     assert (
         saved.investigation.expansions[-1].decision.response.answers["next_step"].confidence == 0.1
     )
-    assert saved.investigation.expansions[-1].generation.thinking == "medium"
+    assert saved.investigation.expansions[-1].generation.thinking == "low"
     saved = gemini_only
     tasks.clear()
     asyncio.run(advance("gemini"))
@@ -454,10 +454,15 @@ def test_gemini_preference_reaches_active_question_with_correct_provenance(clien
         assert run.adapter_version == "s932-gemini-questions-2"
         assert run.response is None and run.request is None
         assert run.selected_id == "generated_timing"
-    assert saved.investigation.expansions[-1].generation.model == "gemini-3.8-flash"
+    assert saved.investigation.expansions[-1].generation.model == "gemini-3.5-flash-lite"
 
 
-def test_question_provider_receives_supported_schema_and_dedicated_model(client, monkeypatch):
+@pytest.mark.parametrize(
+    ("model", "thinking"), [("gemini-3.5-flash-lite", "low"), ("gemini-3.8-flash", "medium")]
+)
+def test_question_provider_receives_supported_schema_and_dedicated_model(
+    client, monkeypatch, model, thinking
+):
     from google import genai
 
     saved = service.get_incident(act(client, replay(client), "analyze")["id"])
@@ -476,19 +481,24 @@ def test_question_provider_receives_supported_schema_and_dedicated_model(client,
             return None
 
         async def generate_content(self, **request):
-            assert request["model"] == "gemini-3.8-flash"
+            assert request["model"] == model
             schema = request["config"].response_json_schema
             assert "maxItems" not in schema["properties"]["candidates"]
             assert (
                 "maxLength" not in schema["$defs"]["InvestigationQuestion"]["properties"]["prompt"]
             )
-            assert request["config"].thinking_config.thinking_level == "MEDIUM"
+            assert request["config"].thinking_config.thinking_level == thinking.upper()
             return SimpleNamespace(
                 text=json.dumps({"candidates": [candidate], "preferred_id": candidate["id"]}),
-                model_version="gemini-3.8-flash-test",
+                model_version=f"{model}-test",
             )
 
-    monkeypatch.setattr(genai, "Client", lambda **_: Provider())
+    def provider(**kwargs):
+        assert kwargs["http_options"].retry_options.attempts == 1
+        assert kwargs["http_options"].timeout == 10000
+        return Provider()
+
+    monkeypatch.setattr(genai, "Client", provider)
     candidates, preferred, run = asyncio.run(
         diagnostic.generate_questions(
             saved,
@@ -499,12 +509,74 @@ def test_question_provider_receives_supported_schema_and_dedicated_model(client,
                 reasoning_enabled=True,
                 gemini_api_key="test-key",
                 gemini_model="gemini-3.5-flash-lite",
+                incident_question_model=model,
+                incident_generation_thinking=thinking,
                 incident_rag_enabled=False,
             ),
         )
     )
     assert len(candidates) == 1 and preferred == "generated_timing"
-    assert run.status == "validated" and run.model_version == "gemini-3.8-flash-test"
+    assert run.status == "validated" and run.model_version == f"{model}-test"
+
+
+@pytest.mark.parametrize("slow_phase", ["retrieval", "generation", "combined"])
+def test_question_budget_includes_retrieval_and_preserves_answer_and_baseline(
+    client, monkeypatch, slow_phase
+):
+    from flowpilot.incidents import rag
+
+    saved = service.get_incident(act(client, replay(client), "analyze")["id"])
+    service.apply_action(
+        saved,
+        AnswerInvestigationAction(
+            action="answer_investigation",
+            revision=saved.revision,
+            answer_id=f"ANS-{uuid4()}",
+            node_id=saved.investigation.active_node_id,
+            choice="intermittent",
+        ),
+    )
+    assess_locally(saved)
+    answers_before = [item.model_dump() for item in saved.investigation.answers]
+    baseline = graph.baseline_candidates(saved)[0]
+    completed = []
+    calls = []
+
+    async def retrieve(incident, query, settings):
+        calls.append("retrieval")
+        assert settings.incident_rag_timeout_seconds == 0.03
+        await asyncio.sleep(
+            1 if slow_phase == "retrieval" else 0.04 if slow_phase == "combined" else 0
+        )
+        completed.append("retrieval")
+        return [], diagnostic.RetrievalRun(status="empty")
+
+    async def generate(payload, schema):
+        calls.append("generation")
+        await asyncio.sleep(0.04 if slow_phase == "combined" else 1)
+        completed.append("generation")
+        return {"candidates": [], "preferred_id": "unused"}
+
+    monkeypatch.setattr(rag, "retrieve", retrieve)
+    asyncio.run(
+        graph.advance(
+            saved,
+            coordinator.input_fingerprint(saved),
+            Settings(
+                _env_file=None,
+                reasoning_enabled=True,
+                incident_rag_enabled=True,
+                incident_question_timeout_seconds=0.06,
+            ),
+            generate,
+        )
+    )
+    assert calls == (["retrieval"] if slow_phase == "retrieval" else ["retrieval", "generation"])
+    assert "generation" not in completed
+    assert active(saved.model_dump(mode="json"))["target_fact"] == baseline.target_fact
+    assert [item.model_dump() for item in saved.investigation.answers] == answers_before
+    run = saved.investigation.expansions[-1].generation
+    assert run.status == "fallback" and "budget expired" in run.fallback_reason
 
 
 def test_rejected_preferred_question_reports_selection_fallback(client):

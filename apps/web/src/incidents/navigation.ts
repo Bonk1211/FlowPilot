@@ -43,25 +43,34 @@ export type IncidentRoute = {
   page: IncidentPage | null;
   invalid: boolean;
   visited: IncidentPage[];
+  experimentCheckId: string | null;
+  experimentAnswerId: string | null;
 };
 
 function readRoute(): Omit<IncidentRoute, "visited"> {
   const path = window.location.pathname.replace(/\/$/, "");
+  const query = new URLSearchParams(window.location.search);
+  const experiment = {
+    experimentCheckId: query.get("check"),
+    experimentAnswerId: query.get("from"),
+  };
   if (!path || path === "/incidents")
-    return { incidentId: null, page: null, invalid: false };
+    return { incidentId: null, page: null, invalid: false, ...experiment };
   const match = path.match(/^\/incidents\/([^/]+)(?:\/(.*))?$/);
-  if (!match) return { incidentId: null, page: null, invalid: true };
+  if (!match)
+    return { incidentId: null, page: null, invalid: true, ...experiment };
   let incidentId: string;
   try {
     incidentId = decodeURIComponent(match[1]);
   } catch {
-    return { incidentId: null, page: null, invalid: true };
+    return { incidentId: null, page: null, invalid: true, ...experiment };
   }
   const page = match[2] ?? "investigation";
   return {
     incidentId,
     page: Object.hasOwn(incidentPages, page) ? (page as IncidentPage) : null,
     invalid: !Object.hasOwn(incidentPages, page),
+    ...experiment,
   };
 }
 
@@ -92,7 +101,7 @@ export function useIncidentRoute() {
   }, [readLocation]);
   const navigate = useCallback(
     (path: string) => {
-      if (window.location.pathname !== path)
+      if (`${window.location.pathname}${window.location.search}` !== path)
         window.history.pushState(null, "", path);
       readLocation();
     },
@@ -110,7 +119,7 @@ export function useIncidentRoute() {
     )
       return;
     event.preventDefault();
-    navigate(event.currentTarget.pathname);
+    navigate(`${event.currentTarget.pathname}${event.currentTarget.search}`);
   }
   return { route, navigate, followLink };
 }
