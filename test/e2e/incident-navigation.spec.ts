@@ -1058,3 +1058,22 @@ test("the 3D scene is told to highlight every component of each hypothesis", asy
     await navigate(page, "Investigation");
   }
 });
+
+test("choosing the mechanism shown on the other side swaps the comparison", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/simulation`);
+  await page
+    .getByRole("button", { name: "Compare mechanisms", exact: true })
+    .click();
+  const a = page.getByLabel("Mechanism A", { exact: true });
+  const b = page.getByLabel("Mechanism B", { exact: true });
+  const first = await a.inputValue();
+  const second = await b.inputValue();
+  expect(first).not.toEqual(second);
+  await a.selectOption(second);
+  await expect(a).toHaveValue(second);
+  await expect(b).toHaveValue(first);
+});

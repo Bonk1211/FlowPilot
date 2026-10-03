@@ -62,9 +62,26 @@ export function MechanismCompare({
   const shared = a.component_ids.filter((id) => b.component_ids.includes(id));
   const onlyA = a.component_ids.filter((id) => !b.component_ids.includes(id));
   const onlyB = b.component_ids.filter((id) => !a.component_ids.includes(id));
+  // Choosing the mechanism shown on the other side swaps the two.
   const columns = [
-    { id: left, value: leftId, set: setLeftId, other: rightId, item: a },
-    { id: right, value: rightId, set: setRightId, other: leftId, item: b },
+    {
+      id: left,
+      value: leftId,
+      choose: (value: string) => {
+        if (value === rightId) setRightId(leftId);
+        setLeftId(value);
+      },
+      item: a,
+    },
+    {
+      id: right,
+      value: rightId,
+      choose: (value: string) => {
+        if (value === leftId) setLeftId(rightId);
+        setRightId(value);
+      },
+      item: b,
+    },
   ];
   return (
     <div className="incident-compare">
@@ -81,14 +98,10 @@ export function MechanismCompare({
             <select
               id={column.id}
               value={column.value}
-              onChange={(event) => column.set(event.target.value)}
+              onChange={(event) => column.choose(event.target.value)}
             >
               {hypotheses.map((hypothesis) => (
-                <option
-                  key={hypothesis.id}
-                  value={hypothesis.id}
-                  disabled={hypothesis.id === column.other}
-                >
+                <option key={hypothesis.id} value={hypothesis.id}>
                   {hypothesis.title}
                 </option>
               ))}
