@@ -776,3 +776,35 @@ test("investigation board links a selected event to the hypotheses that cite it 
       .first(),
   ).toBeVisible();
 });
+
+test("two mechanisms can be compared by shared and distinct components", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/simulation`);
+  await page
+    .getByRole("button", { name: "Compare mechanisms", exact: true })
+    .click();
+  await page
+    .getByLabel("Mechanism A", { exact: true })
+    .selectOption({ label: "Fluid-path restriction" });
+  await page
+    .getByLabel("Mechanism B", { exact: true })
+    .selectOption({ label: "Unstable fluid delivery" });
+  const cells = page
+    .getByRole("table", { name: "Components in each mechanism" })
+    .getByRole("cell");
+  await expect(cells.nth(0)).toHaveText(/Feed tube.*Nozzle/s);
+  await expect(cells.nth(1)).toHaveText(/Pickup tube.*Fluid QD/s);
+  await expect(cells.nth(2)).toHaveText(/BFS bottle.*BFS pressure/s);
+  await expect(
+    page
+      .getByRole("region", { name: "Schematic A", exact: true })
+      .getByRole("img", { name: /Highlighted parts: .*Nozzle/ }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Compare mechanisms", exact: true })
+    .click();
+  await expect(page.getByLabel("Mechanism A", { exact: true })).toHaveCount(0);
+});

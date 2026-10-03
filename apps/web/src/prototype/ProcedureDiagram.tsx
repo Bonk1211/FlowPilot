@@ -114,9 +114,11 @@ export function ProcedureDiagram({
       </figcaption>
       <p>
         2D guide ·{" "}
-        {current
-          ? `Current part: ${current.label}`
-          : "Diagram unavailable for this part; use the text instructions."}
+        {highlightIds && highlightIds.length > 1
+          ? `Highlighted parts: ${highlightedLabels}`
+          : current
+            ? `Current part: ${current.label}`
+            : "Diagram unavailable for this part; use the text instructions."}
       </p>
       <svg
         viewBox="0 0 535 445"

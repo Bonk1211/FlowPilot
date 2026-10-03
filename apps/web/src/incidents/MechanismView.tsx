@@ -9,7 +9,9 @@ import {
   type ReactNode,
 } from "react";
 import type { ProcedureStep } from "@flowpilot/contracts";
-import { Cube, Path } from "@phosphor-icons/react";
+import { Columns, Cube, Path } from "@phosphor-icons/react";
+import { MechanismCompare } from "./MechanismCompare";
+import type { DiagnosticAssessment } from "./api";
 import { ProcedureDiagram } from "../prototype/ProcedureDiagram";
 import {
   modelNodeDetails,
@@ -74,6 +76,7 @@ export function MechanismView({
   revision,
   eventLabel,
   compact = false,
+  hypotheses = [],
 }: {
   hypothesisId: string | null;
   /** Components of the selected hypothesis, as supplied by the assessment. */
@@ -82,7 +85,10 @@ export function MechanismView({
   eventLabel?: string;
   /** Hides the flow sketch so the explorer fits beside a timeline. */
   compact?: boolean;
+  /** All candidate mechanisms; two or more enable the comparison view. */
+  hypotheses?: DiagnosticAssessment["hypotheses"];
 }) {
+  const [comparing, setComparing] = useState(false);
   const headingId = useId();
   const mechanism = mechanisms[hypothesisId ?? ""];
   const componentKey = componentIds.join(",");
@@ -147,196 +153,213 @@ export function MechanismView({
           <p className="eyebrow">Understand the explanation</p>
           <h2 id={headingId}>Mechanism explorer</h2>
         </div>
-        <span className="incident-tag">Simulated · schematic v1</span>
+        <div className="incident-mechanism-actions">
+          {hypotheses.length > 1 && (
+            <button
+              className="secondary"
+              aria-pressed={comparing}
+              onClick={() => setComparing(!comparing)}
+            >
+              <Columns aria-hidden="true" />
+              Compare mechanisms
+            </button>
+          )}
+          <span className="incident-tag">Simulated · schematic v1</span>
+        </div>
       </div>
       <p className="incident-caption">
         Assessment revision {revision}
         {eventLabel ? ` · Inspecting evidence: ${eventLabel}` : ""}. Component
         highlights show a possible mechanism, not a sensor reading.
       </p>
-      <div className="incident-mechanism-layout">
-        <div className="incident-scene procedure-viewer">
-          <div className="incident-view-toggle">
-            <button
-              className="secondary"
-              aria-pressed={!twoD && !failed}
-              disabled={failed}
-              onClick={() => setTwoD(false)}
-            >
-              <Cube aria-hidden="true" />
-              3D assembly
-            </button>
-            <button
-              className="secondary"
-              aria-pressed={twoD || failed}
-              onClick={() => setTwoD(true)}
-            >
-              <Path aria-hidden="true" />
-              2D schematic
-            </button>
-          </div>
-          {failed && (
-            <p role="status">
-              3D unavailable. The schematic and investigation remain usable.
-            </p>
-          )}
-          {twoD || failed ? (
-            <ProcedureDiagram step={step} highlightIds={highlightIds} />
-          ) : (
-            <SceneBoundary
-              fallback={
-                <ProcedureDiagram step={step} highlightIds={highlightIds} />
-              }
-            >
-              <Suspense
-                fallback={<p role="status">Loading illustrative assembly…</p>}
+      {comparing && hypotheses.length > 1 ? (
+        <MechanismCompare hypotheses={hypotheses} initialId={hypothesisId} />
+      ) : (
+        <div className="incident-mechanism-layout">
+          <div className="incident-scene procedure-viewer">
+            <div className="incident-view-toggle">
+              <button
+                className="secondary"
+                aria-pressed={!twoD && !failed}
+                disabled={failed}
+                onClick={() => setTwoD(false)}
               >
-                <AssemblyScene
-                  step={step}
-                  reset={reset}
-                  reduced={reduced}
-                  highlightIds={highlightIds}
-                  onFailure={() => setFailed(true)}
-                  onInteract={() => undefined}
-                />
-              </Suspense>
-            </SceneBoundary>
-          )}
-          <div className="assembly-tools">
-            <button
-              className="secondary"
-              onClick={() => {
-                setPart(null);
-                setReset((value) => value + 1);
-              }}
-            >
-              Reset view
-            </button>
-            <span className="incident-caption">
-              {reduced
-                ? "Reduced motion enabled"
-                : "Keyboard camera controls available"}
-            </span>
-          </div>
-        </div>
-        <div className="incident-mechanism-text">
-          <span className="incident-tag">Inferred explanation</span>
-          <h3>{mechanism?.title ?? "Select a hypothesis to explore"}</h3>
-          <p>{step.instruction}</p>
-          {mechanism && (
-            <>
-              {!compact && (
-                <>
-                  <p className="mono incident-flow-path">{mechanism.path}</p>
-                  <div
-                    className="incident-flow-sketch"
-                    data-mechanism={hypothesisId}
-                    data-playing={playing && !reduced}
-                    role="img"
-                    aria-label={`Simulated qualitative illustration of ${mechanism.title.toLowerCase()}. No measured flow or timescale.`}
-                  >
-                    <span>Supply</span>
-                    <div className="incident-flow-track">
-                      <i />
-                      <i />
-                      <i />
-                      <b />
-                    </div>
-                    <span>Deposit</span>
-                  </div>
-                  <div className="incident-actions">
-                    <button
-                      disabled={reduced}
-                      onClick={() => setPlaying((value) => !value)}
-                    >
-                      {playing && !reduced
-                        ? "Pause schematic"
-                        : "Play schematic"}
-                    </button>
-                    <span className="incident-caption">
-                      Simulated pattern · no physical timescale
-                    </span>
-                  </div>
-                </>
-              )}
-              <div
-                className="incident-component-list"
-                aria-label="Components in this mechanism"
-                onKeyDown={(event) => {
-                  const step =
-                    event.key === "ArrowRight" || event.key === "ArrowDown"
-                      ? 1
-                      : event.key === "ArrowLeft" || event.key === "ArrowUp"
-                        ? -1
-                        : 0;
-                  if (!step) return;
-                  event.preventDefault();
-                  const next =
-                    nodes[
-                      (nodes.indexOf(node) + step + nodes.length) % nodes.length
-                    ];
-                  setPart(next);
-                  event.currentTarget
-                    .querySelector<HTMLElement>(`[data-component="${next}"]`)
-                    ?.focus();
+                <Cube aria-hidden="true" />
+                3D assembly
+              </button>
+              <button
+                className="secondary"
+                aria-pressed={twoD || failed}
+                onClick={() => setTwoD(true)}
+              >
+                <Path aria-hidden="true" />
+                2D schematic
+              </button>
+            </div>
+            {failed && (
+              <p role="status">
+                3D unavailable. The schematic and investigation remain usable.
+              </p>
+            )}
+            {twoD || failed ? (
+              <ProcedureDiagram step={step} highlightIds={highlightIds} />
+            ) : (
+              <SceneBoundary
+                fallback={
+                  <ProcedureDiagram step={step} highlightIds={highlightIds} />
+                }
+              >
+                <Suspense
+                  fallback={<p role="status">Loading illustrative assembly…</p>}
+                >
+                  <AssemblyScene
+                    step={step}
+                    reset={reset}
+                    reduced={reduced}
+                    highlightIds={highlightIds}
+                    onFailure={() => setFailed(true)}
+                    onInteract={() => undefined}
+                  />
+                </Suspense>
+              </SceneBoundary>
+            )}
+            <div className="assembly-tools">
+              <button
+                className="secondary"
+                onClick={() => {
+                  setPart(null);
+                  setReset((value) => value + 1);
                 }}
               >
-                {nodes.map((id) => (
-                  <button
-                    key={id}
-                    data-component={id}
-                    aria-pressed={node === id}
-                    tabIndex={node === id ? 0 : -1}
-                    onClick={() => setPart(id)}
-                  >
-                    {modelNodes[id].label}
-                  </button>
-                ))}
-              </div>
-              {modelNodeDetails[node] && (
+                Reset view
+              </button>
+              <span className="incident-caption">
+                {reduced
+                  ? "Reduced motion enabled"
+                  : "Keyboard camera controls available"}
+              </span>
+            </div>
+          </div>
+          <div className="incident-mechanism-text">
+            <span className="incident-tag">Inferred explanation</span>
+            <h3>{mechanism?.title ?? "Select a hypothesis to explore"}</h3>
+            <p>{step.instruction}</p>
+            {mechanism && (
+              <>
+                {!compact && (
+                  <>
+                    <p className="mono incident-flow-path">{mechanism.path}</p>
+                    <div
+                      className="incident-flow-sketch"
+                      data-mechanism={hypothesisId}
+                      data-playing={playing && !reduced}
+                      role="img"
+                      aria-label={`Simulated qualitative illustration of ${mechanism.title.toLowerCase()}. No measured flow or timescale.`}
+                    >
+                      <span>Supply</span>
+                      <div className="incident-flow-track">
+                        <i />
+                        <i />
+                        <i />
+                        <b />
+                      </div>
+                      <span>Deposit</span>
+                    </div>
+                    <div className="incident-actions">
+                      <button
+                        disabled={reduced}
+                        onClick={() => setPlaying((value) => !value)}
+                      >
+                        {playing && !reduced
+                          ? "Pause schematic"
+                          : "Play schematic"}
+                      </button>
+                      <span className="incident-caption">
+                        Simulated pattern · no physical timescale
+                      </span>
+                    </div>
+                  </>
+                )}
                 <div
-                  className="incident-component-role"
-                  role="group"
-                  aria-label={`Role of ${modelNodes[node].label}`}
+                  className="incident-component-list"
+                  aria-label="Components in this mechanism"
+                  onKeyDown={(event) => {
+                    const step =
+                      event.key === "ArrowRight" || event.key === "ArrowDown"
+                        ? 1
+                        : event.key === "ArrowLeft" || event.key === "ArrowUp"
+                          ? -1
+                          : 0;
+                    if (!step) return;
+                    event.preventDefault();
+                    const next =
+                      nodes[
+                        (nodes.indexOf(node) + step + nodes.length) %
+                          nodes.length
+                      ];
+                    setPart(next);
+                    event.currentTarget
+                      .querySelector<HTMLElement>(`[data-component="${next}"]`)
+                      ?.focus();
+                  }}
                 >
-                  <strong>{modelNodes[node].label}</strong>
-                  <p>{modelNodeDetails[node].function}</p>
-                  <p className="incident-caption">
-                    {modelNodeDetails[node].connection}
-                  </p>
+                  {nodes.map((id) => (
+                    <button
+                      key={id}
+                      data-component={id}
+                      aria-pressed={node === id}
+                      tabIndex={node === id ? 0 : -1}
+                      onClick={() => setPart(id)}
+                    >
+                      {modelNodes[id].label}
+                    </button>
+                  ))}
                 </div>
-              )}
-              {unmapped.length > 0 && (
-                <p className="incident-caption">
-                  Not in the schematic: {unmapped.join(", ")}.
+                {modelNodeDetails[node] && (
+                  <div
+                    className="incident-component-role"
+                    role="group"
+                    aria-label={`Role of ${modelNodes[node].label}`}
+                  >
+                    <strong>{modelNodes[node].label}</strong>
+                    <p>{modelNodeDetails[node].function}</p>
+                    <p className="incident-caption">
+                      {modelNodeDetails[node].connection}
+                    </p>
+                  </div>
+                )}
+                {unmapped.length > 0 && (
+                  <p className="incident-caption">
+                    Not in the schematic: {unmapped.join(", ")}.
+                  </p>
+                )}
+                <p>
+                  <strong>Assumptions & limits</strong>
                 </p>
-              )}
+                <p>{mechanism.assumption}</p>
+              </>
+            )}
+            <details>
+              <summary>Model scope and pneumatic paths</summary>
               <p>
-                <strong>Assumptions & limits</strong>
+                Generic geometry, qualitative relationships and illustrative
+                component highlights. Model: s932-schematic-v1. No calibrated
+                flow, pressure, spray or coverage prediction.
               </p>
-              <p>{mechanism.assumption}</p>
-            </>
-          )}
-          <details>
-            <summary>Model scope and pneumatic paths</summary>
-            <p>
-              Generic geometry, qualitative relationships and illustrative
-              component highlights. Model: s932-schematic-v1. No calibrated
-              flow, pressure, spray or coverage prediction.
-            </p>
-            <ul>
-              <li>BFS air supplies reservoir pressure.</li>
-              <li>Valve air actuates the valve.</li>
-              <li>Coaxial air supports atomization at the air cap.</li>
-            </ul>
-            <p>
-              Source: secondary S932 consolidated reference, equipment
-              architecture. Controlled originals and installed-configuration
-              validation are pending.
-            </p>
-          </details>
+              <ul>
+                <li>BFS air supplies reservoir pressure.</li>
+                <li>Valve air actuates the valve.</li>
+                <li>Coaxial air supports atomization at the air cap.</li>
+              </ul>
+              <p>
+                Source: secondary S932 consolidated reference, equipment
+                architecture. Controlled originals and installed-configuration
+                validation are pending.
+              </p>
+            </details>
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }

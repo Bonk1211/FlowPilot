@@ -170,6 +170,7 @@ export function LinkedExploration({
         </div>
         <MechanismView
           compact
+          hypotheses={assessment?.hypotheses}
           hypothesisId={hypothesisId}
           componentIds={hypothesis?.component_ids ?? []}
           revision={revision}

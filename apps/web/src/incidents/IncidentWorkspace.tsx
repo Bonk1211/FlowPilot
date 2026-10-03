@@ -1024,6 +1024,7 @@ function IncidentWorkspaceContent({
                   >
                     <section aria-label="Simulation workspace">
                       <MechanismView
+                        hypotheses={assessment?.hypotheses}
                         hypothesisId={hypothesisId}
                         componentIds={
                           assessment?.hypotheses.find(
