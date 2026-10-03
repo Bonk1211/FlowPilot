@@ -16,14 +16,14 @@
   --paper-50: #f4f4f1;
   --lab-50: #f4f7f8;
   --white: #ffffff;
-  /* Voice recording card: a fixed dark surface in the investigation canvas. */
-  --voice-background: #0d0d0d;
-  --voice-surface: #181818;
-  --voice-border: #292929;
-  --voice-text: #f5f5f5;
-  --voice-muted: #a3a3a3;
-  --voice-wave: #3b3b3b;
-  --voice-error: #fca5a5;
+  /* Voice recording card shares the workspace's light palette. */
+  --voice-background: var(--surface-document);
+  --voice-surface: var(--surface-measurement);
+  --voice-border: var(--border-default);
+  --voice-text: var(--text-primary);
+  --voice-muted: var(--text-muted);
+  --voice-wave: var(--teal-700);
+  --voice-error: var(--red-700);
   --teal-700: #006b70;
   --teal-600: #007f84;
   --teal-400: #35c4b8;

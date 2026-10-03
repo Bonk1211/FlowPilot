@@ -10,6 +10,8 @@ import {
   ArrowsOut,
   Check,
   Crosshair,
+  ChatCircle,
+  CaretRight,
   ListNumbers,
   Palette,
   SidebarSimple,
@@ -40,6 +42,8 @@ import type {
 import type { IncidentCommand } from "./api";
 import { CausalReasoning } from "./CausalReasoning";
 import { InvestigationConversation } from "./InvestigationConversation";
+import { LiveTimeline } from "./LiveTimeline";
+import type { InvestigationProgressMode } from "./InvestigationProgress";
 import "@xyflow/react/dist/style.css";
 import "./InvestigationGraph.css";
 
@@ -113,6 +117,7 @@ type ChartNode = Node<
     answer?: string;
     inspected?: boolean;
     spotlight?: boolean;
+    processing?: boolean;
     questionType?: QuestionType;
     onInspect?: () => void;
   },
@@ -171,13 +176,15 @@ function StageNode({ data }: NodeProps<ChartNode>) {
   const start = data.stage === "start";
   return (
     <div
-      className={`flowchart-node stage-${data.stage} is-${data.status}${data.inspected ? " is-inspected" : ""}${data.spotlight ? " is-spotlight" : ""}`}
+      className={`flowchart-node stage-${data.stage} is-${data.status}${data.inspected ? " is-inspected" : ""}${data.spotlight ? " is-spotlight" : ""}${data.processing ? " is-processing" : ""}`}
       data-spotlight={data.spotlight || undefined}
       data-question-type={data.questionType}
       style={questionStyle(data.questionType)}
     >
       <span className="flowchart-node-status">
-        {data.spotlight
+        {data.processing
+          ? "Agent working…"
+          : data.spotlight
           ? "Spotlight · answer here"
           : start
             ? "Incident opened"
@@ -230,7 +237,6 @@ function StageNode({ data }: NodeProps<ChartNode>) {
   );
 }
 const nodeTypes = { stage: StageNode };
-
 function GraphControls({
   current,
   selected,
@@ -261,13 +267,16 @@ function GraphControls({
     () => matchMedia("(max-width: 850px)").matches,
   );
   useEffect(() => {
-    const conversation = controlsRef.current
-      ?.closest(".investigation-graph")
-      ?.querySelector(".investigation-conversation");
-    if (!conversation) return;
-    const observer = new ResizeObserver(() =>
-      setConversationHeight(conversation.getBoundingClientRect().height),
+    const graph = controlsRef.current?.closest<HTMLElement>(
+      ".investigation-graph",
     );
+    const conversation = graph?.querySelector(".investigation-conversation");
+    if (!conversation) return;
+    const observer = new ResizeObserver(() => {
+      const height = conversation.getBoundingClientRect().height;
+      setConversationHeight(height);
+      graph?.style.setProperty("--conversation-height", `${height}px`);
+    });
     observer.observe(conversation);
     return () => observer.disconnect();
   }, []);
@@ -289,7 +298,7 @@ function GraphControls({
   // Fit within the unobscured canvas, including the floating navigation and panel.
   const padding = useMemo<FitViewOptions["padding"]>(
     () => ({
-      top: narrow ? "100px" : "160px",
+      top: narrow ? "190px" : "170px",
       right: !narrow && panelOpen ? `${visiblePanelWidth + 40}px` : "32px",
       bottom: `${conversationHeight + (narrow && panelOpen ? Math.min(height * 0.3, 200) + 100 : 100)}px`,
       left: expanded ? (narrow ? "72px" : "112px") : "32px",
@@ -387,20 +396,28 @@ export function InvestigationGraph({
   onExpandedChange,
   onAction,
   busy,
+  readOnly,
   selectedHypothesisId,
   onSelectHypothesis,
   onSelectEvidence,
+  onOpenTimeline,
   onUpdated,
+  progressMode,
+  progressError,
 }: {
   incident: Incident;
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
   onAction: (command: IncidentCommand) => Promise<void>;
   busy: boolean;
+  readOnly: boolean;
   selectedHypothesisId: string | null;
   onSelectHypothesis: (id: string) => void;
   onSelectEvidence: (id: string) => void;
+  onOpenTimeline: () => void;
   onUpdated: (incident: Incident) => void;
+  progressMode: InvestigationProgressMode | null;
+  progressError: string;
 }) {
   const graph = {
     ...incident.investigation,
@@ -418,9 +435,7 @@ export function InvestigationGraph({
   });
   const [textView, setTextView] = useState(false);
   const [whyHowOpen, setWhyHowOpen] = useState(false);
-  const [panelOpen, setPanelOpen] = useState(
-    () => !matchMedia("(max-width: 850px)").matches,
-  );
+  const [panelOpen, setPanelOpen] = useState(false);
   const [panelWidth, setPanelWidth] = useState(368);
   const panelRef = useRef<HTMLElement>(null);
   const panelDrag = useRef<{ x: number; width: number } | null>(null);
@@ -430,6 +445,7 @@ export function InvestigationGraph({
   const [detailId, setDetailId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [conversing, setConversing] = useState(false);
   const [notice, setNotice] = useState("");
   const [dimensions, setDimensions] = useState<
     Record<string, { width: number; height: number }>
@@ -437,7 +453,10 @@ export function InvestigationGraph({
   const sourcesRef = useRef<HTMLDetailsElement>(null);
   const panelToggle = useRef<HTMLButtonElement>(null);
   const expandToggle = useRef<HTMLButtonElement>(null);
-  const disabled = busy || saving;
+  const disabled = busy || saving || !!progressMode;
+  const activity = conversing
+    ? "conversation"
+    : (progressMode ?? (saving ? "updating" : null));
   const superseded = new Set(
     graph.answers.map((answer) => answer.supersedes_id),
   );
@@ -829,6 +848,7 @@ export function InvestigationGraph({
         answer: recorded?.replaceAll("_", " "),
         inspected: node.id === detail?.id,
         spotlight: node.id === (detailId ?? currentId),
+        processing: !!activity && node.id === (detailId ?? currentId),
         questionType: questionTypeFor(node),
         onInspect: () => inspect(node),
       },
@@ -932,6 +952,30 @@ export function InvestigationGraph({
   );
   const supportingDetails = (
     <div className="investigation-supporting-details">
+      {!!incident.conversation?.at(-1)?.sources?.length && (
+        <section
+          className="investigation-detail-section"
+          aria-label="Conversation references"
+          tabIndex={-1}
+        >
+          <h4>Conversation references</h4>
+          {incident.conversation.at(-1)!.sources!.map((source) => (
+            <details key={source.id} className="investigation-detail-source">
+              <summary>
+                <span>{source.section}</span>
+                <small>{source.approval_status.replaceAll("_", " ")}</small>
+              </summary>
+              <p>
+                {source.title} · {source.revision}
+              </p>
+              <blockquote>{source.passage}</blockquote>
+              <p>
+                <strong>Limitations:</strong> {source.limitation}
+              </p>
+            </details>
+          ))}
+        </section>
+      )}
       {detail && (
         <details
           ref={sourcesRef}
@@ -1190,10 +1234,10 @@ export function InvestigationGraph({
     <>
       {error && <p role="alert">{error}</p>}
       <p className="investigation-save-status" role="status" aria-live="polite">
-        {saving
-          ? "Saving your answer…"
+        {activity
+          ? "Agent working…"
           : waiting
-            ? "Answer saved. Preparing its interpretation…"
+            ? "Answer saved. Follow-up preparation is pending."
             : notice ||
               `${graph.answers.length} answers recorded · ${graph.active_node_id ? "one active step" : "review or confirmation"}`}
       </p>
@@ -1202,7 +1246,7 @@ export function InvestigationGraph({
 
   return (
     <section
-      className={`incident-card investigation-graph${textView ? "" : " is-chart"}${expanded ? " is-expanded" : ""}${panelOpen ? " has-answer-panel" : ""}`}
+      className={`incident-card investigation-graph${textView ? "" : " is-chart has-live-timeline"}${expanded ? " is-expanded" : ""}${panelOpen ? " has-answer-panel" : ""}`}
       style={{ "--answer-panel-width": `${panelWidth}px` } as CSSProperties}
       aria-label="Adaptive investigation"
       onKeyDown={(event) => {
@@ -1292,7 +1336,7 @@ export function InvestigationGraph({
             <ListNumbers aria-hidden="true" />
             <span>{textView ? "Show chart" : "Ordered text view"}</span>
           </button>
-          {!textView && incident.assessment && (
+          {!textView && (incident.assessment || expanded) && (
             <button
               ref={expandToggle}
               type="button"
@@ -1330,7 +1374,21 @@ export function InvestigationGraph({
         )}
         answerControls={!textView && detail ? responseControls(detail) : null}
         disabled={disabled}
+        readOnly={readOnly}
+        progressMode={activity}
+        progressError={error || progressError}
         onUpdated={onUpdated}
+        onSendingChange={setConversing}
+        onShowSources={() => {
+          setPanelOpen(true);
+          setWhyHowOpen(false);
+          requestAnimationFrame(() => {
+            const references = panelRef.current?.querySelector<HTMLElement>(
+              '[aria-label="Conversation references"]',
+            );
+            references?.focus();
+          });
+        }}
         onSelectEvidence={onSelectEvidence}
         onSpotlight={(id) => {
           setDetailId(id);
@@ -1380,6 +1438,7 @@ export function InvestigationGraph({
           <div className="investigation-chart-layout">
             <div
               className="investigation-canvas"
+              aria-busy={!!activity}
               aria-label="Investigation chart"
             >
               <ReactFlow<ChartNode>
@@ -1433,6 +1492,11 @@ export function InvestigationGraph({
                 <Controls showInteractive={false} showFitView={false} />
               </ReactFlow>
             </div>
+            <LiveTimeline
+              incident={incident}
+              syncing={!!activity}
+              onOpen={(id) => (id ? onSelectEvidence(id) : onOpenTimeline())}
+            />
             {detail && (
               <aside
                 ref={panelRef}
@@ -1554,7 +1618,27 @@ export function InvestigationGraph({
               </aside>
             )}
             {!panelOpen && (
-              <div className="investigation-canvas-status">{saveStatus}</div>
+              <div className="investigation-explanation-dock">
+                <button
+                  type="button"
+                  className="investigation-explanation-bubble"
+                  aria-label={
+                    showReasoning
+                      ? "Expand reasoning bubble"
+                      : "Expand explanation bubble"
+                  }
+                  aria-expanded={false}
+                  aria-controls="investigation-answer-panel"
+                  onClick={() => setPanelOpen(true)}
+                >
+                  <ChatCircle aria-hidden="true" />
+                  <span>
+                    {showReasoning ? "5 Whys reasoning" : "Why this question?"}
+                  </span>
+                  <CaretRight aria-hidden="true" />
+                </button>
+                {!activity && waiting && saveStatus}
+              </div>
             )}
           </div>
         </ReactFlowProvider>

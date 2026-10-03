@@ -1,4 +1,5 @@
 .investigation-graph {
+  --live-timeline-size: clamp(292px, 26vw, 360px);
   --answer-panel-size: clamp(
     320px,
     var(--answer-panel-width, 368px),
@@ -73,6 +74,52 @@
 }
 .is-chart.has-answer-panel .investigation-shape-legend {
   max-width: calc(100% - var(--chart-left) - var(--answer-panel-size) - 56px);
+}
+.has-live-timeline .investigation-shape-legend {
+  max-width: calc(100% - var(--chart-left) - var(--live-timeline-size) - 280px);
+}
+.has-live-timeline .investigation-canvas {
+  width: calc(100% - var(--live-timeline-size) - 40px);
+}
+.has-live-timeline .investigation-answer-panel {
+  right: calc(var(--live-timeline-size) + 40px);
+  z-index: 5;
+}
+.has-live-timeline .investigation-conversation,
+.has-live-timeline.has-answer-panel .investigation-conversation {
+  right: calc(var(--live-timeline-size) + 40px);
+}
+.has-live-timeline.has-answer-panel .investigation-conversation {
+  right: calc(var(--live-timeline-size) + var(--answer-panel-size) + 60px);
+}
+.has-live-timeline .investigation-answer-options {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.investigation-explanation-dock {
+  position: absolute;
+  z-index: 3;
+  top: 108px;
+  right: calc(var(--live-timeline-size) + 40px);
+  max-width: min(
+    300px,
+    calc(100% - var(--chart-left) - var(--live-timeline-size) - 60px)
+  );
+}
+.investigation-graph .investigation-explanation-bubble {
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 24px;
+  color: var(--teal-700);
+  background: var(--surface-document);
+  font-size: 13px;
+  box-shadow: 0 4px 16px
+    color-mix(in srgb, var(--surface-shell) 7%, transparent);
+}
+.investigation-explanation-dock .investigation-save-status {
+  padding: 8px 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--surface-document);
 }
 .is-chart .investigation-graph-controls {
   position: absolute;
@@ -290,6 +337,20 @@
 }
 .flowchart-node.is-active .flowchart-node-status {
   color: var(--teal-700);
+}
+.flowchart-node.is-processing .flowchart-node-status {
+  color: var(--blue-600);
+}
+.flowchart-node.is-processing .flowchart-node-status::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: middle;
+  animation: investigation-progress-breathe 1.5s ease-in-out infinite;
 }
 .flowchart-node.is-answered .flowchart-node-answer {
   color: var(--green-700);
@@ -916,7 +977,34 @@
     font-size: 12px;
   }
 }
+@media (min-width: 851px) and (max-width: 1200px) {
+  .has-live-timeline.has-answer-panel .investigation-conversation {
+    right: calc(var(--live-timeline-size) + 40px);
+  }
+  .has-live-timeline .investigation-answer-panel {
+    bottom: calc(var(--conversation-height, 360px) + 40px);
+  }
+}
 @media (max-width: 850px) {
+  .has-live-timeline .investigation-canvas {
+    width: 100%;
+  }
+  .has-live-timeline .investigation-answer-panel {
+    right: 12px;
+  }
+  .has-live-timeline .investigation-conversation,
+  .has-live-timeline.has-answer-panel .investigation-conversation {
+    right: 12px;
+  }
+  .investigation-explanation-dock {
+    top: 184px;
+    left: var(--chart-left);
+    right: auto;
+    max-width: calc(100% - var(--chart-left) - 24px);
+  }
+  .has-live-timeline .investigation-answer-options {
+    grid-template-columns: 1fr;
+  }
   .investigation-panel-resize {
     display: none;
   }
@@ -977,7 +1065,9 @@
     animation: none;
     transition: none;
   }
-  .investigation-graph * {
+  .investigation-graph *,
+  .investigation-graph *::before,
+  .investigation-graph *::after {
     animation: none !important;
     transition: none !important;
   }

@@ -4,12 +4,22 @@ import { incidentJson, type Incident } from "./api";
 import { useIncidentAccess } from "./AccessPanel";
 import "./operations.css";
 
+export type AnalysisJobStatus = {
+  incidentId: string;
+  revision: number;
+  enabled: boolean | null;
+  job: IncidentJob | null;
+  error?: string;
+};
+
 export function JobStatus({
   incident,
   onRefresh,
+  onAnalysisChange,
 }: {
   incident: Incident;
   onRefresh: () => Promise<void>;
+  onAnalysisChange?: (status: AnalysisJobStatus) => void;
 }) {
   const access = useIncidentAccess();
   const [jobs, setJobs] = useState<IncidentJob[]>([]);
@@ -19,9 +29,11 @@ export function JobStatus({
   const [attempt, setAttempt] = useState(0);
   const finished = useRef(new Set<string>());
   const refresh = useRef(onRefresh);
+  const analysisChange = useRef(onAnalysisChange);
   useEffect(() => {
     refresh.current = onRefresh;
-  }, [onRefresh]);
+    analysisChange.current = onAnalysisChange;
+  }, [onRefresh, onAnalysisChange]);
   useEffect(() => {
     let active = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -53,9 +65,20 @@ export function JobStatus({
             job.state === "succeeded" &&
             !finished.current.has(`${job.id}:${job.updated_at}`),
         );
-        for (const job of newlyCompleted)
-          finished.current.add(`${job.id}:${job.updated_at}`);
-        if (newlyCompleted.length) await refresh.current();
+        if (newlyCompleted.length) {
+          await refresh.current();
+          for (const job of newlyCompleted)
+            finished.current.add(`${job.id}:${job.updated_at}`);
+        }
+        if (!active) return;
+        analysisChange.current?.({
+          incidentId: incident.id,
+          revision: incident.revision,
+          enabled: status.enabled,
+          job:
+            [...current].reverse().find((job) => job.kind === "analysis") ??
+            null,
+        });
         if (
           active &&
           status.enabled &&
@@ -65,12 +88,20 @@ export function JobStatus({
             void poll();
           }, 2000);
       } catch (cause) {
-        if (active)
-          setError(
+        if (active) {
+          const message =
             cause instanceof Error
               ? cause.message
-              : "Background status unavailable. Manual investigation remains available.",
-          );
+              : "Background status unavailable. Manual investigation remains available.";
+          setError(message);
+          analysisChange.current?.({
+            incidentId: incident.id,
+            revision: incident.revision,
+            enabled: null,
+            job: null,
+            error: message,
+          });
+        }
       }
     }
     void poll();

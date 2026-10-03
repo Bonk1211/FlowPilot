@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   ChatCircle,
   ArrowUp,
@@ -19,6 +25,11 @@ import {
   loadIncident,
 } from "./api";
 import "./InvestigationConversation.css";
+import { pcmAudioLevel, voiceCommand } from "./voice";
+import {
+  InvestigationProgress,
+  type InvestigationProgressMode,
+} from "./InvestigationProgress";
 
 type Utterance = Omit<ConversationRequest, "revision">;
 
@@ -27,17 +38,27 @@ export function InvestigationConversation({
   spotlight,
   answerControls,
   disabled,
+  readOnly,
   onUpdated,
   onSpotlight,
   onSelectEvidence,
+  onSendingChange,
+  onShowSources,
+  progressMode,
+  progressError,
 }: {
   incident: Incident;
   spotlight?: InvestigationNode;
   answerControls?: ReactNode;
   disabled: boolean;
+  readOnly: boolean;
   onUpdated: (incident: Incident) => void;
   onSpotlight: (id: string) => void;
   onSelectEvidence: (id: string) => void;
+  onSendingChange: (sending: boolean) => void;
+  onShowSources: () => void;
+  progressMode: InvestigationProgressMode | null;
+  progressError: string;
 }) {
   const draftKey = `flowpilot.conversation-draft.${incident.id}`;
   const [draft, setDraft] = useState(() => {
@@ -56,6 +77,10 @@ export function InvestigationConversation({
   const [elapsed, setElapsed] = useState(0);
   const startedAt = useRef(0);
   const [sending, setSending] = useState(false);
+  useEffect(() => {
+    onSendingChange(sending);
+    return () => onSendingChange(false);
+  }, [sending, onSendingChange]);
   const [error, setError] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
   const connection = useRef<{ close: () => void } | null>(null);
@@ -67,6 +92,8 @@ export function InvestigationConversation({
     incident,
     spotlight,
     disabled,
+    readOnly,
+    draft,
     onUpdated,
     onSpotlight,
   });
@@ -76,6 +103,8 @@ export function InvestigationConversation({
   const history = useRef<HTMLDivElement>(null);
   const container = useRef<HTMLDivElement>(null);
   const connectTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const waveform = useRef<HTMLDivElement>(null);
+  const audioLevel = useRef({ value: 0, at: 0 });
   useEffect(() => {
     try {
       sessionStorage.setItem(draftKey, draft);
@@ -101,10 +130,24 @@ export function InvestigationConversation({
   }, []);
 
   useEffect(() => {
-    current.current = { incident, spotlight, disabled, onUpdated, onSpotlight };
+    current.current = {
+      incident,
+      spotlight,
+      disabled,
+      readOnly,
+      draft,
+      onUpdated,
+      onSpotlight,
+    };
   });
+  const stopVoice = useEffectEvent(stop);
   useEffect(() => {
-    if (disabled) connection.current?.close();
+    if (readOnly) stopVoice();
+  }, [readOnly]);
+
+  const resumeQueue = useEffectEvent(() => void drain());
+  useEffect(() => {
+    if (!disabled && queue.current.length) resumeQueue();
   }, [disabled]);
 
   function stop() {
@@ -113,6 +156,7 @@ export function InvestigationConversation({
     connection.current?.close();
     connection.current = null;
     setVoiceState("off");
+    audioLevel.current = { value: 0, at: 0 };
     const text = interim.current;
     interim.current = "";
     if (text.trim()) setDraft((saved) => `${saved} ${text}`.trim());
@@ -157,18 +201,44 @@ export function InvestigationConversation({
     return () => clearInterval(timer);
   }, [voiceState]);
 
+  useEffect(() => {
+    if (voiceState !== "listening" || !waveform.current) return;
+    const bars = Array.from(waveform.current.children) as HTMLElement[];
+    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+    let frame = 0;
+    let level = 0;
+    let previous = performance.now();
+    let phase = 0;
+    function animate(now: number) {
+      const delta = Math.min(now - previous, 100);
+      previous = now;
+      const target =
+        now - audioLevel.current.at < 700 ? audioLevel.current.value : 0;
+      level +=
+        (target - level) * (1 - Math.exp(-delta / (target > level ? 60 : 180)));
+      phase += delta * (0.002 + level * 0.012);
+      bars.forEach((bar, index) => {
+        const wave = (Math.sin(phase + index * 0.8) + 1) / 2;
+        const scale = reducedMotion.matches
+          ? 0.12 + level * 0.85
+          : 0.1 + wave * 0.035 + level * (0.35 + wave * 0.5);
+        bar.style.transform = `scaleY(${scale.toFixed(3)})`;
+      });
+      frame = requestAnimationFrame(animate);
+    }
+    frame = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(frame);
+  }, [voiceState]);
+
   async function drain() {
-    if (processing.current) return;
+    if (processing.current || current.current.disabled) return;
     processing.current = true;
     setSending(true);
     setError("");
     try {
       while (queue.current.length) {
         const utterance = queue.current[0];
-        if (current.current.disabled)
-          throw new Error(
-            "Wait for the current change, then retry your message.",
-          );
+        if (current.current.disabled) break;
         let updated: Incident;
         try {
           updated = await converseWithInvestigation(
@@ -214,6 +284,20 @@ export function InvestigationConversation({
       processing.current = false;
       setSending(false);
     }
+  }
+
+  function sendVoice(keepListening = false) {
+    const text = [current.current.draft, interim.current]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+    if (!text) return;
+    const target = speechSpotlight.current;
+    interim.current = "";
+    setPartial("");
+    setDraft("");
+    if (!mode.current && !keepListening) stop();
+    enqueue(text, "voice", target);
   }
 
   function enqueue(
@@ -263,7 +347,7 @@ export function InvestigationConversation({
           import("@elevenlabs/client"),
         ]);
       if (session.current !== id) return;
-      if (current.current.disabled)
+      if (current.current.readOnly)
         throw new Error(
           "This investigation is currently read-only. Continue when editing is available.",
         );
@@ -275,9 +359,19 @@ export function InvestigationConversation({
         microphone: {
           echoCancellation: true,
           noiseSuppression: true,
-          autoGainControl: true,
+          autoGainControl: false,
         },
       });
+      const sendAudio = live.send.bind(live);
+      live.send = (data) => {
+        if (session.current === id) {
+          audioLevel.current = {
+            value: pcmAudioLevel(data.audioBase64),
+            at: performance.now(),
+          };
+        }
+        sendAudio(data);
+      };
       connection.current = live;
       connectTimeout.current = setTimeout(() => {
         if (session.current !== id) return;
@@ -304,9 +398,25 @@ export function InvestigationConversation({
         setPartial("");
         interim.current = "";
         setVoiceTranscript(text);
+        const command = voiceCommand(text);
+        if (command === "stop") {
+          stop();
+          return;
+        }
+        if (command === "send") {
+          sendVoice(true);
+          return;
+        }
         const target = speechSpotlight.current;
         speechSpotlight.current = null;
-        if (mode.current) enqueue(text, "voice", target);
+        const pending =
+          current.current.incident.conversation?.at(-1)?.status === "pending";
+        if (
+          mode.current ||
+          (command === "answer" &&
+            (pending || processing.current || queue.current.length))
+        )
+          enqueue(text, "voice", target);
         else setDraft((saved) => `${saved} ${text}`.trim());
       });
       live.on(RealtimeEvents.ERROR, () => {
@@ -364,29 +474,42 @@ export function InvestigationConversation({
           </span>
         </div>
       )}
-      {latest && (
-        <div className="conversation-reply" role="status">
-          <strong>Troubleshooting agent</strong>
-          <p>{latest.reply}</p>
-          {latest.status === "pending" && (
-            <div className="conversation-confirm">
-              <button
-                type="button"
-                disabled={disabled || sending}
-                onClick={() => enqueue("confirm", "text")}
-              >
-                Confirm answer
+      {progressMode ? (
+        <InvestigationProgress
+          incident={incident}
+          mode={progressMode}
+          compact
+        />
+      ) : (
+        latest && (
+          <div className="conversation-reply" role="status">
+            <strong>Troubleshooting agent</strong>
+            <p>{latest.reply}</p>
+            {!!latest.sources?.length && (
+              <button type="button" onClick={onShowSources}>
+                View references · {latest.sources.length}
               </button>
-              <button
-                type="button"
-                disabled={disabled || sending}
-                onClick={() => enqueue("cancel", "text")}
-              >
-                Correct me
-              </button>
-            </div>
-          )}
-        </div>
+            )}
+            {latest.status === "pending" && (
+              <div className="conversation-confirm">
+                <button
+                  type="button"
+                  disabled={disabled || sending}
+                  onClick={() => enqueue("confirm", "text")}
+                >
+                  Confirm answer
+                </button>
+                <button
+                  type="button"
+                  disabled={disabled || sending}
+                  onClick={() => enqueue("cancel", "text")}
+                >
+                  Correct me
+                </button>
+              </div>
+            )}
+          </div>
+        )
       )}
       {historyOpen && (
         <div
@@ -424,7 +547,7 @@ export function InvestigationConversation({
           ))}
         </div>
       )}
-      {!listening && answerControls}
+      {!listening && !progressMode && answerControls}
       {listening ? (
         <div className="voice-message-body">
           <p
@@ -437,18 +560,12 @@ export function InvestigationConversation({
                 ? "Getting your microphone ready…"
                 : "Tell me what you're seeing on the machine…")}
           </p>
-          <div
-            className={`voice-waveform${partial ? " is-speaking" : ""}`}
-            aria-hidden="true"
-          >
+          <div ref={waveform} className="voice-waveform" aria-hidden="true">
             {[
               24, 29, 23, 30, 38, 26, 31, 27, 40, 28, 34, 25, 39, 32, 28, 26,
               33, 24, 15, 27, 40, 28, 26, 38, 24, 30, 25, 32,
             ].map((height, index) => (
-              <span
-                key={index}
-                style={{ height, animationDelay: `${index * -0.13}s` }}
-              />
+              <span key={index} style={{ height }} />
             ))}
           </div>
           <div className="voice-message-tray">
@@ -509,15 +626,7 @@ export function InvestigationConversation({
                   sending ||
                   ![draft, partial].some((text) => text.trim())
                 }
-                onClick={() => {
-                  const text = [draft, interim.current]
-                    .filter(Boolean)
-                    .join(" ");
-                  interim.current = "";
-                  stop();
-                  setDraft("");
-                  enqueue(text, "voice");
-                }}
+                onClick={() => sendVoice()}
               >
                 <ArrowUp aria-hidden="true" />
               </button>
@@ -600,14 +709,14 @@ export function InvestigationConversation({
         </form>
       )}
       <p className="conversation-status" role="status">
-        {sending
-          ? "Agent is listening to your observation…"
-          : voiceState === "connecting"
-            ? "Connecting to ElevenLabs…"
-            : voiceState === "listening"
-              ? handsFree
-                ? "Listening · pauses send automatically · say confirm or cancel"
-                : "Dictating · review your text, then send"
+        {voiceState === "listening"
+          ? handsFree
+            ? "Listening · pauses send automatically · say ‘confirm my answer’, ‘cancel’ or ‘stop listening’"
+            : "Dictating · say ‘send message’, ‘confirm my answer’ or ‘stop listening’"
+          : progressMode
+            ? "The chart and timeline will refresh when analysis is ready."
+            : voiceState === "connecting"
+              ? "Connecting to ElevenLabs…"
               : handsFree
                 ? "Hands-free paused · press Voice to resume"
                 : "Type or dictate · answers can follow any eligible question"}
@@ -615,6 +724,11 @@ export function InvestigationConversation({
       {error && (
         <p className="conversation-error" role="alert">
           {error}
+        </p>
+      )}
+      {progressError && (
+        <p className="conversation-error" role="alert">
+          {progressError}
         </p>
       )}
     </div>

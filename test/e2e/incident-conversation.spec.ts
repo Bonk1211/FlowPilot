@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import type { Incident } from "@flowpilot/contracts";
+import type { Incident, IncidentJob } from "@flowpilot/contracts";
 
 test.use({
   permissions: ["microphone"],
@@ -49,6 +49,10 @@ test("answer cards sit above chat, support keyboard selection and keep explanati
   const panel = graph.getByRole("complementary", {
     name: "Question explanation",
   });
+  await expect(panel).toBeHidden();
+  await graph
+    .getByRole("button", { name: "Expand explanation bubble" })
+    .click();
   await expect(cards).toBeVisible();
   await expect(conversation.locator(".conversation-spotlight")).toHaveCount(0);
   await expect(
@@ -367,6 +371,28 @@ test("hands-free sends only committed speech, accepts spoken confirmation and cl
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1080 });
+  // Feed the SDK's real microphone/worklet path with a controllable audio signal.
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator.mediaDevices, "getUserMedia", {
+      value: async () => {
+        const context = new AudioContext();
+        const tone = context.createOscillator();
+        const gain = context.createGain();
+        gain.gain.value = 0;
+        const output = context.createMediaStreamDestination();
+        tone.connect(gain).connect(output);
+        tone.start();
+        await context.resume();
+        Object.assign(window, {
+          setMicrophoneVolume: (value: number) => {
+            gain.gain.value = value;
+          },
+          microphoneTrack: output.stream.getAudioTracks()[0],
+        });
+        return output.stream;
+      },
+    });
+  });
   await page.route("**/voice-token", (route) =>
     route.fulfill({ json: { token: "test-single-use" } }),
   );
@@ -403,6 +429,38 @@ test("hands-free sends only committed speech, accepts spoken confirmation and cl
   const voice = graph.locator(".investigation-conversation.is-voice");
   await expect(voice.getByText("Voice message", { exact: true })).toBeVisible();
   await expect(voice.locator(".voice-waveform > span")).toHaveCount(28);
+  await expect(voice).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  const averageScale = () =>
+    voice
+      .locator(".voice-waveform > span")
+      .evaluateAll(
+        (bars) =>
+          bars.reduce(
+            (sum, bar) =>
+              sum + new DOMMatrix(getComputedStyle(bar).transform).m22,
+            0,
+          ) / bars.length,
+      );
+  await expect.poll(averageScale).toBeLessThan(0.16);
+  await page.evaluate(() =>
+    (
+      window as unknown as { setMicrophoneVolume: (value: number) => void }
+    ).setMicrophoneVolume(0.7),
+  );
+  await expect.poll(averageScale).toBeGreaterThan(0.6);
+  await page.evaluate(() =>
+    (
+      window as unknown as { setMicrophoneVolume: (value: number) => void }
+    ).setMicrophoneVolume(0.003),
+  );
+  await expect.poll(averageScale).toBeGreaterThan(0.18);
+  await expect.poll(averageScale).toBeLessThan(0.35);
+  await page.evaluate(() =>
+    (
+      window as unknown as { setMicrophoneVolume: (value: number) => void }
+    ).setMicrophoneVolume(0),
+  );
+  await expect.poll(averageScale).toBeLessThan(0.16);
   await expect(voice.locator("time")).not.toHaveText("0:00");
   await expect(
     voice.getByRole("button", { name: "Stop voice input" }),
@@ -433,13 +491,22 @@ test("hands-free sends only committed speech, accepts spoken confirmation and cl
   await expect(graph.locator(".conversation-reply")).toContainText(
     "Say ‘confirm’",
   );
-  emit!("confirm");
+  emit!("Confirm my answer.");
   await expect(
     graph.locator(".flowchart-node.is-spotlight button"),
   ).toHaveAttribute("title", new RegExp("pressure"));
-  expect(requests).toEqual(["It is intermittent", "confirm"]);
-  await graph.getByRole("button", { name: "Stop voice input" }).click();
+  expect(requests).toEqual(["It is intermittent", "Confirm my answer."]);
+  emit!("Stop listening.");
   await expect.poll(() => closed).toBe(true);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          (window as unknown as { microphoneTrack: MediaStreamTrack })
+            .microphoneTrack.readyState,
+      ),
+    )
+    .toBe("ended");
   await expect(graph.locator(".conversation-status")).toContainText("paused");
 });
 
@@ -478,6 +545,116 @@ test("voice card sends the live dictated text and keeps its voice provenance", a
   await expect(graph.locator(".investigation-conversation")).not.toHaveClass(
     /is-voice/,
   );
+  await expect(graph.getByLabel("Talk through what you're seeing")).toHaveValue(
+    "",
+  );
+});
+
+test("voice commands send dictation, wait through analysis, cancel and confirm without clicking", async ({
+  page,
+}) => {
+  await page.route("**/voice-token", (route) =>
+    route.fulfill({ json: { token: "test-single-use" } }),
+  );
+  let emit: ((text: string) => void) | undefined;
+  let closed = false;
+  await page.routeWebSocket("wss://api.elevenlabs.io/**", (socket) => {
+    socket.send(
+      JSON.stringify({
+        message_type: "session_started",
+        session_id: "voice-commands",
+        config: {},
+      }),
+    );
+    emit = (text) =>
+      socket.send(
+        JSON.stringify({ message_type: "committed_transcript", text }),
+      );
+    socket.onClose(() => {
+      closed = true;
+    });
+  });
+  let job: IncidentJob | null = null;
+  let jobPolls = 0;
+  await page.route("**/api/incident-jobs/status", (route) =>
+    route.fulfill({ json: { enabled: true } }),
+  );
+  await page.route("**/api/incidents/*/jobs", (route) => {
+    if (job) jobPolls++;
+    return route.fulfill({ json: job ? [job] : [] });
+  });
+  const requests: string[] = [];
+  await page.route("**/conversation", async (route) => {
+    requests.push(route.request().postDataJSON().text);
+    const response = await route.fetch();
+    const updated: Incident = await response.json();
+    if (requests.length === 1) {
+      job = {
+        id: "voice-analysis-job",
+        incident_id: updated.id,
+        input_fingerprint: "voice-test",
+        source_revision: updated.revision,
+        kind: "analysis",
+        state: "running",
+        attempts: 1,
+        max_attempts: 3,
+        created_at: "2026-10-03T00:00:00+00:00",
+        updated_at: "2026-10-03T00:00:00+00:00",
+        lease_until: null,
+        worker_token: null,
+        error: null,
+      };
+    }
+    await route.fulfill({ response });
+  });
+  const graph = await openInvestigation(page);
+  await graph.getByRole("button", { name: "Start voice input" }).click();
+  await expect(graph.locator(".voice-message-time")).toContainText("Listening");
+  emit!("intermittent");
+  await expect(graph.locator(".voice-message-transcript")).toHaveText(
+    "intermittent",
+  );
+  expect(requests).toHaveLength(0);
+  emit!("Send my message.");
+  await expect(
+    graph.locator('.investigation-progress[data-mode="updating"]'),
+  ).toBeVisible();
+  emit!("Cancel my answer.");
+  await expect.poll(() => jobPolls).toBeGreaterThan(1);
+  expect(requests).toEqual(["intermittent"]);
+  expect(closed).toBe(false);
+  await expect(graph.locator(".voice-message-time")).toContainText("Listening");
+  job = null;
+  await expect(graph.locator(".conversation-reply")).toContainText("Discarded");
+  emit!("sudden");
+  await expect(graph.locator(".voice-message-transcript")).toHaveText("sudden");
+  emit!("Send message.");
+  await expect(graph.locator(".conversation-reply")).toContainText(
+    "Say ‘confirm’",
+  );
+  const confirmed = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/conversation") &&
+      response.request().method() === "POST",
+  );
+  emit!("Yes, confirm.");
+  const recorded: Incident = await (await confirmed).json();
+  expect(recorded.conversation?.at(-1)?.status).toBe("recorded");
+  expect(recorded.investigation?.answers.at(-1)?.confirmed_value).toBe(
+    "sudden",
+  );
+  await expect(
+    graph.locator(".flowchart-node.is-spotlight button"),
+  ).toHaveAttribute("title", /material/);
+  expect(requests).toEqual([
+    "intermittent",
+    "Cancel my answer.",
+    "sudden",
+    "Yes, confirm.",
+  ]);
+  expect(closed).toBe(false);
+  emit!("Stop listening.");
+  await expect.poll(() => closed).toBe(true);
   await expect(graph.getByLabel("Talk through what you're seeing")).toHaveValue(
     "",
   );

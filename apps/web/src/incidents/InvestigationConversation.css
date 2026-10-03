@@ -330,18 +330,7 @@
   min-width: 0;
   border-radius: 20px;
   background: var(--voice-wave);
-  transform: scaleY(0.6);
-}
-.voice-waveform.is-speaking > span {
-  animation: voice-wave 1100ms ease-in-out infinite alternate;
-}
-@keyframes voice-wave {
-  from {
-    transform: scaleY(0.45);
-  }
-  to {
-    transform: scaleY(1);
-  }
+  transform: scaleY(0.12);
 }
 .voice-message-tray {
   padding: 10px;
@@ -438,7 +427,7 @@
 }
 .voice-message-controls .voice-send:disabled {
   color: var(--voice-muted);
-  background: var(--voice-wave);
+  background: var(--voice-border);
   opacity: 1;
 }
 .voice-message-body .voice-history-toggle {
@@ -478,11 +467,6 @@
 .is-voice button:focus-visible {
   outline: 2px solid var(--voice-text);
   outline-offset: 3px;
-}
-@media (prefers-reduced-motion: reduce) {
-  .voice-waveform > span {
-    animation: none;
-  }
 }
 @media (max-width: 1100px) {
   .is-chart.has-answer-panel .investigation-conversation {

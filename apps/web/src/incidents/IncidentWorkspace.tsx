@@ -47,7 +47,11 @@ import { IncidentReview } from "./IncidentReview";
 import { PastIncidents } from "./PastIncidents";
 import { AccessPanel, AccessStatus, useIncidentAccess } from "./AccessPanel";
 import { RawArtifacts } from "./RawArtifacts";
-import { JobStatus } from "./JobStatus";
+import { JobStatus, type AnalysisJobStatus } from "./JobStatus";
+import {
+  InvestigationProgress,
+  type InvestigationProgressMode,
+} from "./InvestigationProgress";
 import { HandoffPage } from "./HandoffPage";
 import { KnowledgeRegistry } from "./KnowledgeRegistry";
 import { SimulationPanel } from "./SimulationPanel";
@@ -60,7 +64,6 @@ import {
   type IncidentRoute,
 } from "./navigation";
 import "./incidents.css";
-import { StatusChip } from "./StatusChip";
 
 const featureIcons = {
   investigation: MagnifyingGlass,
@@ -225,6 +228,11 @@ function IncidentWorkspaceContent({
   const [recent, setRecent] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(!route.invalid || !!route.incidentId);
   const [busy, setBusy] = useState(false);
+  const [workingAction, setWorkingAction] = useState<
+    IncidentCommand["action"] | null
+  >(null);
+  const [analysisStatus, setAnalysisStatus] =
+    useState<AnalysisJobStatus | null>(null);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
   const [retry, setRetry] = useState(0);
@@ -241,9 +249,45 @@ function IncidentWorkspaceContent({
   const [overviewOpen, setOverviewOpen] = useState(false);
   const timelinePage = route.page === "evidence" && !!incident;
   const [graphExpanded, setGraphExpanded] = useState(true);
+  const jobStatus =
+    analysisStatus?.incidentId === incident?.id ? analysisStatus : null;
+  const backgroundProgress: InvestigationProgressMode | null =
+    jobStatus?.enabled
+      ? jobStatus.job?.state === "running"
+        ? "updating"
+        : jobStatus.job?.state === "pending" ||
+            (!incident?.assessment && jobStatus.revision !== incident?.revision)
+          ? "queued"
+          : null
+      : null;
+  const progressMode: InvestigationProgressMode | null =
+    workingAction === "analyze"
+      ? "analysis"
+      : [
+            "answer_investigation",
+            "confirm_investigation",
+            "record_result",
+          ].includes(workingAction ?? "")
+        ? "answer"
+        : ["retry_investigation", "select_investigation"].includes(
+              workingAction ?? "",
+            )
+          ? "updating"
+          : backgroundProgress;
+  const analysisError =
+    jobStatus &&
+    jobStatus.revision === incident?.revision &&
+    !progressMode &&
+    jobStatus.job?.state === "failed"
+      ? "Evidence analysis did not finish. Your evidence is saved. Analyze the available evidence to try again."
+      : !progressMode &&
+          jobStatus?.revision === incident?.revision &&
+          jobStatus?.error
+        ? "Background analysis status is unavailable. Refresh job status in Incident overview to check again."
+        : "";
   const investigationCanvas =
     route.page === "investigation" &&
-    !!incident?.assessment &&
+    (!!incident?.assessment || !!progressMode) &&
     !!incident?.investigation?.nodes?.length &&
     historicalRevision === null &&
     graphExpanded;
@@ -313,6 +357,7 @@ function IncidentWorkspaceContent({
   ) {
     if (!incident) return;
     setBusy(true);
+    setWorkingAction(command.action);
     setError("");
     try {
       const updated = await actOnIncident(
@@ -338,6 +383,7 @@ function IncidentWorkspaceContent({
       throw cause;
     } finally {
       setBusy(false);
+      setWorkingAction(null);
     }
   }
   const perform = (command: IncidentCommand) => {
@@ -713,6 +759,7 @@ function IncidentWorkspaceContent({
                 key={`jobs-${incident.id}`}
                 incident={incident}
                 onRefresh={refreshSaved}
+                onAnalysisChange={setAnalysisStatus}
               />
             </section>
             <div className="incident-feature-layout">
@@ -822,7 +869,7 @@ function IncidentWorkspaceContent({
                             {!closed && (
                               <button
                                 className="primary"
-                                disabled={busy || !canEdit}
+                                disabled={busy || !!progressMode || !canEdit}
                                 onClick={() => perform({ action: "analyze" })}
                               >
                                 {busy
@@ -887,6 +934,11 @@ function IncidentWorkspaceContent({
                           before choosing the next investigation step.
                         </p>
                       )}
+                      {analysisError && !investigationCanvas && (
+                        <p className="incident-notice" role="alert">
+                          {analysisError}
+                        </p>
+                      )}
                       {historicalRevision === null && (
                         <InvestigationGraph
                           key={incident.id}
@@ -894,6 +946,10 @@ function IncidentWorkspaceContent({
                           expanded={investigationCanvas}
                           onExpandedChange={setGraphExpanded}
                           onAction={onAction}
+                          progressMode={progressMode}
+                          progressError={
+                            investigationCanvas ? analysisError : ""
+                          }
                           onUpdated={(updated) => {
                             setIncident((current) =>
                               current &&
@@ -904,35 +960,50 @@ function IncidentWorkspaceContent({
                             );
                           }}
                           busy={busy || !canEdit || !!closed}
+                          readOnly={!canEdit || !!closed}
                           onSelectHypothesis={setSelectedHypothesis}
                           selectedHypothesisId={hypothesisId}
                           onSelectEvidence={(id) => {
                             setSelectedEvent(id);
                             navigate(incidentPageUrl(incident.id, "evidence"));
                           }}
+                          onOpenTimeline={() =>
+                            navigate(incidentPageUrl(incident.id, "evidence"))
+                          }
                         />
                       )}
                       <div hidden={investigationCanvas}>
-                        <InvestigationPanel
-                          showForms={!incident.investigation?.nodes?.length}
-                          assessment={assessment}
-                          observations={visibleObservations}
-                          onObserve={(input) =>
-                            onAction({ action: "record_result", ...input })
-                          }
-                          onSelectEvidence={(id) => {
-                            setSelectedEvent(id);
-                            navigate(incidentPageUrl(incident.id, "evidence"));
-                          }}
-                          onSelectHypothesis={setSelectedHypothesis}
-                          selectedHypothesisId={hypothesisId}
-                          busy={
-                            busy ||
-                            !canEdit ||
-                            historicalRevision !== null ||
-                            !!closed
-                          }
-                        />
+                        {progressMode &&
+                        !incident.investigation?.nodes?.length &&
+                        historicalRevision === null ? (
+                          <InvestigationProgress
+                            incident={incident}
+                            mode={progressMode}
+                          />
+                        ) : assessment ? (
+                          <InvestigationPanel
+                            showForms={!incident.investigation?.nodes?.length}
+                            assessment={assessment}
+                            observations={visibleObservations}
+                            onObserve={(input) =>
+                              onAction({ action: "record_result", ...input })
+                            }
+                            onSelectEvidence={(id) => {
+                              setSelectedEvent(id);
+                              navigate(
+                                incidentPageUrl(incident.id, "evidence"),
+                              );
+                            }}
+                            onSelectHypothesis={setSelectedHypothesis}
+                            selectedHypothesisId={hypothesisId}
+                            busy={
+                              busy ||
+                              !canEdit ||
+                              historicalRevision !== null ||
+                              !!closed
+                            }
+                          />
+                        ) : null}
                         {route.page === "investigation" && (
                           <LinkedExploration
                             evidence={incident.evidence ?? []}
@@ -1032,29 +1103,6 @@ function IncidentWorkspaceContent({
                           })
                         }
                       />
-                      {selectedObservation && (
-                        <article
-                          className="incident-card incident-selected-observation"
-                          aria-label="Selected recorded result"
-                        >
-                          <StatusChip
-                            kind={
-                              selectedObservation.synthetic
-                                ? "simulated"
-                                : "observed"
-                            }
-                          />
-                          <h3>
-                            {selectedObservation.check_id.replaceAll("_", " ")}
-                          </h3>
-                          <p>
-                            {selectedObservation.result} ·{" "}
-                            {displayTime(selectedObservation.recorded_at)}
-                          </p>
-                          <p>{selectedObservation.notes}</p>
-                          <span className="mono">{selectedObservation.id}</span>
-                        </article>
-                      )}
                       <p className="incident-page-next">
                         <a
                           href={incidentPageUrl(incident.id, "investigation")}
