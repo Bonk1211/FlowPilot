@@ -1,6 +1,7 @@
 import { useState } from "react";
 import type { DiagnosticAssessment, IncidentObservation } from "./api";
 import "./InvestigationPanel.css";
+import { StatusChip } from "./StatusChip";
 
 export type ObservationInput = {
   check_id: string;
@@ -98,7 +99,7 @@ export function InvestigationPanel({
           </p>
           <h2 id="investigation-title">Investigate competing causes</h2>
         </div>
-        <span className="investigation-badge">Inferred</span>
+        <StatusChip kind="inferred" />
       </div>
       <p className="investigation-muted">{assessment.summary}</p>
       {assessment.explanation?.result && (

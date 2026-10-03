@@ -7,6 +7,7 @@ import type {
 import { incidentJson, type Incident } from "./api";
 import { useIncidentAccess } from "./AccessPanel";
 import "./experiments.css";
+import { StatusChip } from "./StatusChip";
 
 const mechanisms = {
   restriction: "Fluid-path restriction",
@@ -39,7 +40,7 @@ function PlanDetail({ plan }: { plan: IncidentExperiment }) {
     <>
       <div className="incident-section-title">
         <h3>Stored mock plan · {plan.id}</h3>
-        <span className="incident-tag">Simulated · {plan.status}</span>
+        <StatusChip kind="simulated" detail={plan.status} />
       </div>
       <p>
         {plan.matrix.length} fixed runs including one baseline per mechanism.

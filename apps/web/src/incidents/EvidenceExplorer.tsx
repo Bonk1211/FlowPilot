@@ -16,6 +16,7 @@ import {
   type TimelineDetailContext,
 } from "./EvidenceTimeline";
 import { useTimelinePlayback } from "./useTimelinePlayback";
+import { StatusChip } from "./StatusChip";
 
 function imageUrl(value?: string | null) {
   if (!value) return null;
@@ -133,13 +134,11 @@ function EvidenceImage({
     <figure className="incident-image">
       <div className="incident-image-title">
         <span>{title}</span>
-        <span className="incident-tag">
-          {evidence
-            ? evidence.synthetic
-              ? "Simulated"
-              : "Observed"
-            : "Not supplied"}
-        </span>
+        {evidence ? (
+          <StatusChip kind={evidence.synthetic ? "simulated" : "observed"} />
+        ) : (
+          <span className="incident-tag">Not supplied</span>
+        )}
       </div>
       {displayUrl && evidence?.status === "collected" && !failed ? (
         <button
@@ -350,9 +349,11 @@ export function EvidenceExplorer({
               {layout === "horizontal" ? (
                 <>
                   <span className="eyebrow">
-                    Event {selectedIndex + 1} of {total} ·{" "}
-                    {selected.synthetic ? "Simulated" : "Observed"}
+                    Event {selectedIndex + 1} of {total}
                   </span>
+                  <StatusChip
+                    kind={selected.synthetic ? "simulated" : "observed"}
+                  />
                   <strong>{selected.label}</strong>
                   <span className="incident-caption">
                     {displayTime(selected.event_time)}

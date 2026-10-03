@@ -928,3 +928,43 @@ test("investigation board fits a phone without horizontal scroll", async ({
     ),
   ).toBeTruthy();
 });
+
+test("every incident page gives controls and images accessible names and unique ids", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  for (const feature of features) {
+    await page.goto(`/incidents/${incident.id}/${feature.slug}`);
+    await expect(featureHeading(page, feature.label)).toBeVisible();
+    const problems = await page.evaluate(() => {
+      const issues: string[] = [];
+      const visible = (element: Element) =>
+        element.checkVisibility({
+          contentVisibilityAuto: true,
+          visibilityProperty: true,
+        });
+      for (const control of document.querySelectorAll(
+        "main button, main a[href], main input, main select, main textarea",
+      )) {
+        if (!visible(control)) continue;
+        const name =
+          control.getAttribute("aria-label") ||
+          control.getAttribute("aria-labelledby") ||
+          control.textContent?.trim() ||
+          (control as HTMLInputElement).labels?.[0]?.textContent?.trim() ||
+          control.getAttribute("title");
+        if (!name) issues.push(`unnamed ${control.outerHTML.slice(0, 160)}`);
+      }
+      for (const image of document.querySelectorAll("main img")) {
+        if (visible(image) && image.getAttribute("alt") === null)
+          issues.push("image without alt");
+      }
+      const ids = [...document.querySelectorAll("[id]")].map((e) => e.id);
+      for (const id of new Set(ids.filter((v, i) => ids.indexOf(v) !== i)))
+        issues.push(`duplicate id ${id}`);
+      return issues;
+    });
+    expect(problems, `${feature.label}: ${problems.join(", ")}`).toEqual([]);
+  }
+});

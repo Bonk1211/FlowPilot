@@ -59,6 +59,7 @@ import {
   type IncidentRoute,
 } from "./navigation";
 import "./incidents.css";
+import { StatusChip } from "./StatusChip";
 
 const featureIcons = {
   investigation: MagnifyingGlass,
@@ -986,11 +987,13 @@ function IncidentWorkspaceContent({
                           className="incident-card incident-selected-observation"
                           aria-label="Selected recorded result"
                         >
-                          <span className="incident-tag">
-                            {selectedObservation.synthetic
-                              ? "Simulated"
-                              : "Observed"}
-                          </span>
+                          <StatusChip
+                            kind={
+                              selectedObservation.synthetic
+                                ? "simulated"
+                                : "observed"
+                            }
+                          />
                           <h3>
                             {selectedObservation.check_id.replaceAll("_", " ")}
                           </h3>
