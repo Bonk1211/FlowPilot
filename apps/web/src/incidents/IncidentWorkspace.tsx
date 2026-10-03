@@ -38,7 +38,8 @@ import {
   type Incident,
   type IncidentCommand,
 } from "./api";
-import { EvidenceExplorer, displayTime } from "./EvidenceExplorer";
+import { EvidenceExplorer } from "./EvidenceExplorer";
+import { displayTime } from "./time";
 import { MechanismView } from "./MechanismView";
 import { InvestigationPanel } from "./InvestigationPanel";
 import { IncidentReview } from "./IncidentReview";

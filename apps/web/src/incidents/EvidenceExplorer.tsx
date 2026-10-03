@@ -1,39 +1,21 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
-  ArrowLeft,
-  ArrowRight,
   ArrowSquareOut,
   CaretDown,
   CaretRight,
-  Clock,
-  Play,
-  Pause,
   Image,
-  FileText,
 } from "@phosphor-icons/react";
 import {
   incidentFetch,
   type EvidenceInput,
   type IncidentEvidence,
 } from "./api";
-
-// eslint-disable-next-line react-refresh/only-export-components -- Shared timestamp formatting for this feature.
-export function displayTime(value?: string | null) {
-  if (!value) return "Event time unavailable";
-  if (!/(Z|[+-]\d{2}:\d{2})$/i.test(value)) return `${value} (offset unknown)`;
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.valueOf())
-    ? value
-    : parsed.toLocaleString(undefined, {
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        timeZone: "UTC",
-        timeZoneName: "short",
-      });
-}
+import { displayTime } from "./time";
+import {
+  EvidenceTimeline,
+  type TimelineDetailContext,
+} from "./EvidenceTimeline";
+import { useTimelinePlayback } from "./useTimelinePlayback";
 
 function imageUrl(value?: string | null) {
   if (!value) return null;
@@ -329,93 +311,26 @@ export function EvidenceExplorer({
   busy: boolean;
   closed: boolean;
 }) {
-  const [layout, setLayout] = useState<"horizontal" | "vertical">("horizontal");
   const [collapsedId, setCollapsedId] = useState<string | null>(null);
-  const timeline = useRef<HTMLOListElement>(null);
-  const [playing, setPlaying] = useState(false);
-  const [reduced, setReduced] = useState(
-    () => matchMedia("(prefers-reduced-motion: reduce)").matches,
-  );
-  useEffect(() => {
-    const query = matchMedia("(prefers-reduced-motion: reduce)");
-    const update = () => {
-      setReduced(query.matches);
-      if (query.matches) setPlaying(false);
-    };
-    const pause = () => {
-      if (document.hidden) setPlaying(false);
-    };
-    query.addEventListener("change", update);
-    document.addEventListener("visibilitychange", pause);
-    return () => {
-      query.removeEventListener("change", update);
-      document.removeEventListener("visibilitychange", pause);
-      setPlaying(false);
-    };
-  }, []);
-  const select = (id: string) => {
-    setPlaying(false);
+  const { playing, setPlaying, reduced } = useTimelinePlayback();
+  const choose = (id: string) => {
     setCollapsedId(null);
     onSelect(id);
   };
-  useEffect(() => {
-    const list = timeline.current;
-    if (layout !== "horizontal" || !list) return;
-    const center = (behavior: ScrollBehavior) => {
-      const marker = list.querySelector<HTMLElement>(
-        ".incident-event.selected",
-      );
-      if (!marker) return;
-      const offset =
-        marker.getBoundingClientRect().left - list.getBoundingClientRect().left;
-      list.scrollTo({
-        left:
-          list.scrollLeft +
-          offset -
-          (list.clientWidth - marker.clientWidth) / 2,
-        behavior,
-      });
-    };
-    center(reduced ? "instant" : "smooth");
-    let width = list.clientWidth;
-    const observer = new ResizeObserver(() => {
-      if (width === list.clientWidth) return;
-      width = list.clientWidth;
-      center("instant");
-    });
-    observer.observe(list);
-    return () => observer.disconnect();
-  }, [selectedId, layout, evidence.length, reduced]);
+  const select = (id: string) => {
+    setPlaying(false);
+    choose(id);
+  };
   const superseded = new Set(
     evidence.map((item) => item.supersedes_id).filter(Boolean),
   );
   const active = evidence.filter((item) => !superseded.has(item.id));
   const selected = evidence.find((item) => item.id === selectedId);
-  const sortTime = (item: IncidentEvidence) =>
-    item.event_time && /(Z|[+-]\d{2}:\d{2})$/i.test(item.event_time)
-      ? Date.parse(item.event_time)
-      : Infinity;
-  const ordered = [...evidence].sort((a, b) => sortTime(a) - sortTime(b));
-  const selectedIndex = ordered.findIndex((item) => item.id === selectedId);
-  const nextId = ordered[selectedIndex + 1]?.id;
-  const atPenultimate = selectedIndex >= ordered.length - 2;
-  useEffect(() => {
-    if (!playing || reduced || !nextId) return;
-    const timer = window.setTimeout(() => {
-      onSelect(nextId);
-      setCollapsedId(null);
-      if (atPenultimate) setPlaying(false);
-    }, 3000);
-    return () => window.clearTimeout(timer);
-  }, [playing, reduced, nextId, onSelect, atPenultimate]);
-  const flags: Record<IncidentEvidence["role"], string> = {
-    last_good: "Last known good",
-    first_bad: "First known bad",
-    machine_log: "Machine log",
-    pm: "Maintenance",
-    context: "Context / change",
-  };
-  const detail = (
+  const renderDetail = ({
+    layout,
+    index: selectedIndex,
+    total,
+  }: TimelineDetailContext) => (
     <section
       key={selectedId}
       className="incident-event-detail"
@@ -435,7 +350,7 @@ export function EvidenceExplorer({
               {layout === "horizontal" ? (
                 <>
                   <span className="eyebrow">
-                    Event {selectedIndex + 1} of {ordered.length} ·{" "}
+                    Event {selectedIndex + 1} of {total} ·{" "}
                     {selected.synthetic ? "Simulated" : "Observed"}
                   </span>
                   <strong>{selected.label}</strong>
@@ -604,179 +519,15 @@ export function EvidenceExplorer({
           {actions}
         </div>
       </div>
-      <div className="incident-timeline-toolbar">
-        <h3>
-          <Clock aria-hidden="true" /> Source events
-        </h3>
-        <div
-          className="incident-view-toggle"
-          role="group"
-          aria-label="Timeline layout"
-        >
-          <button
-            aria-pressed={layout === "horizontal"}
-            onClick={() => {
-              setPlaying(false);
-              setLayout("horizontal");
-            }}
-          >
-            Horizontal
-          </button>
-          <button
-            aria-pressed={layout === "vertical"}
-            onClick={() => {
-              setPlaying(false);
-              setLayout("vertical");
-            }}
-          >
-            Vertical
-          </button>
-        </div>
-        {ordered.length > 0 && (
-          <div className="incident-timeline-controls">
-            <button
-              aria-label={playing ? "Pause timeline" : "Play timeline"}
-              disabled={ordered.length < 2 || reduced}
-              title={
-                reduced
-                  ? "Playback is disabled for reduced motion"
-                  : "Advance one source event every 3 seconds"
-              }
-              onClick={() => {
-                if (!playing && !nextId) onSelect(ordered[0].id);
-                setPlaying((value) => !value);
-              }}
-            >
-              {playing ? (
-                <Pause aria-hidden="true" />
-              ) : (
-                <Play aria-hidden="true" />
-              )}
-            </button>
-            <button
-              aria-label="Previous event"
-              disabled={selectedIndex <= 0}
-              onClick={() => select(ordered[selectedIndex - 1].id)}
-            >
-              <ArrowLeft aria-hidden="true" />
-            </button>
-            <label className="incident-event-scrubber">
-              Explore source events
-              <input
-                type="range"
-                min={0}
-                max={ordered.length - 1}
-                step={1}
-                value={Math.max(0, selectedIndex)}
-                onFocus={() => {
-                  if (selectedIndex < 0) select(ordered[0].id);
-                }}
-                onChange={(event) =>
-                  select(ordered[Number(event.target.value)].id)
-                }
-                aria-valuetext={selected?.label ?? ordered[0].label}
-              />
-            </label>
-            <button
-              aria-label="Next event"
-              disabled={selectedIndex === ordered.length - 1}
-              onClick={() => select(ordered[selectedIndex + 1].id)}
-            >
-              <ArrowRight aria-hidden="true" />
-            </button>
-          </div>
-        )}
-      </div>
-      <p className="incident-timeline-caption">
-        UTC · Sequence spacing, not elapsed time · Undated records last.
-        {evidence.some((item) => item.time_uncertain) &&
-          " Timing uncertain: order is provisional."}
-        {playing && " Playing · 3 seconds per event"}
-      </p>
-      <div className="incident-events" data-layout={layout}>
-        <ol
-          ref={timeline}
-          aria-label="Evidence timeline"
-          className="incident-timeline"
-          onKeyDown={(event) => {
-            if (
-              !(event.target instanceof HTMLElement) ||
-              !event.target.classList.contains("incident-event")
-            )
-              return;
-            const index = ["ArrowRight", "ArrowDown"].includes(event.key)
-              ? selectedIndex + 1
-              : ["ArrowLeft", "ArrowUp"].includes(event.key)
-                ? selectedIndex - 1
-                : event.key === "Home"
-                  ? 0
-                  : event.key === "End"
-                    ? ordered.length - 1
-                    : null;
-            if (index === null) return;
-            event.preventDefault();
-            const target = Math.max(0, Math.min(ordered.length - 1, index));
-            select(ordered[target].id);
-            const buttons =
-              timeline.current?.querySelectorAll<HTMLButtonElement>(
-                ".incident-event",
-              );
-            buttons?.[target]?.focus({ preventScroll: true });
-          }}
-        >
-          {ordered.map((item, index) => (
-            <li key={item.id} data-past={index < selectedIndex}>
-              <button
-                aria-pressed={selectedId === item.id}
-                tabIndex={
-                  selectedId === item.id || (selectedIndex < 0 && index === 0)
-                    ? 0
-                    : -1
-                }
-                title={item.label}
-                onClick={() => select(item.id)}
-                className={
-                  selectedId === item.id
-                    ? "incident-event selected"
-                    : "incident-event"
-                }
-              >
-                <span className="incident-event-flag">{flags[item.role]}</span>
-                <span className="incident-event-time">
-                  {displayTime(item.event_time)}
-                </span>
-                <span className="incident-event-dot" aria-hidden="true">
-                  {index + 1}
-                </span>
-                <span className="incident-event-card">
-                  <span className="incident-event-icon">
-                    {item.kind === "image" ? (
-                      <Image aria-hidden="true" />
-                    ) : (
-                      <FileText aria-hidden="true" />
-                    )}
-                  </span>
-                  <span className="incident-event-text">
-                    <strong>{item.label}</strong>
-                    <span>
-                      {item.synthetic ? "Simulated" : "Observed"} ·{" "}
-                      {item.status}
-                      {superseded.has(item.id) ? " · Superseded" : ""}
-                    </span>
-                    {item.time_uncertain && <span>Timing uncertain</span>}
-                  </span>
-                  <CaretRight
-                    className="incident-event-caret"
-                    aria-hidden="true"
-                  />
-                </span>
-              </button>
-              {layout === "vertical" && selectedId === item.id && detail}
-            </li>
-          ))}
-        </ol>
-        {(layout === "horizontal" || !selected) && detail}
-      </div>
+      <EvidenceTimeline
+        evidence={evidence}
+        selectedId={selectedId}
+        onSelect={choose}
+        playing={playing}
+        onPlayingChange={setPlaying}
+        reduced={reduced}
+        renderDetail={renderDetail}
+      />
     </section>
   );
 }
