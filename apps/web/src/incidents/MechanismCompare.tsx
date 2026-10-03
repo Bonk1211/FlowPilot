@@ -3,6 +3,7 @@ import type { ProcedureStep } from "@flowpilot/contracts";
 import { ProcedureDiagram } from "../prototype/ProcedureDiagram";
 import { modelNodes, type ModelNodeId } from "../prototype/model";
 import type { DiagnosticAssessment } from "./api";
+import { StatusChip } from "./StatusChip";
 
 type Hypothesis = DiagnosticAssessment["hypotheses"][number];
 
@@ -92,7 +93,7 @@ export function MechanismCompare({
                 </option>
               ))}
             </select>
-            <span className="incident-tag">Inferred explanation</span>
+            <StatusChip kind="inferred" detail="explanation" />
             <p>{column.item.mechanism}</p>
             <ProcedureDiagram
               step={stepFor(column.item)}

@@ -10,6 +10,7 @@ import {
 } from "react";
 import type { ProcedureStep } from "@flowpilot/contracts";
 import { Columns, Cube, Path } from "@phosphor-icons/react";
+import { StatusChip } from "./StatusChip";
 import { MechanismCompare } from "./MechanismCompare";
 import type { DiagnosticAssessment } from "./api";
 import { ProcedureDiagram } from "../prototype/ProcedureDiagram";
@@ -164,7 +165,7 @@ export function MechanismView({
               Compare mechanisms
             </button>
           )}
-          <span className="incident-tag">Simulated · schematic v1</span>
+          <StatusChip kind="simulated" detail="schematic v1" />
         </div>
       </div>
       <p className="incident-caption">
@@ -241,7 +242,7 @@ export function MechanismView({
             </div>
           </div>
           <div className="incident-mechanism-text">
-            <span className="incident-tag">Inferred explanation</span>
+            <StatusChip kind="inferred" detail="explanation" />
             <h3>{mechanism?.title ?? "Select a hypothesis to explore"}</h3>
             <p>{step.instruction}</p>
             {mechanism && (

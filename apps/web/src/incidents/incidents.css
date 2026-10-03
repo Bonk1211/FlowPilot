@@ -113,6 +113,19 @@
 .incident-section-title h2 {
   margin-top: 4px;
 }
+.incident-status {
+  gap: 6px;
+  width: fit-content;
+}
+.incident-status[data-status="inferred"] {
+  color: var(--graph-hypothesis);
+  border-color: var(--graph-hypothesis);
+}
+.incident-status[data-status="simulated"] {
+  color: var(--state-provisional);
+  border-color: var(--state-provisional);
+  background: var(--surface-provisional);
+}
 .incident-tag {
   display: inline-flex;
   align-items: center;

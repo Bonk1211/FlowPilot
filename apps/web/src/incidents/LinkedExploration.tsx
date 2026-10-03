@@ -1,6 +1,7 @@
 import type { MouseEvent } from "react";
 import type { DiagnosticAssessment, IncidentEvidence } from "./api";
 import { EvidenceTimeline } from "./EvidenceTimeline";
+import { StatusChip } from "./StatusChip";
 import { MechanismView } from "./MechanismView";
 import { displayTime } from "./time";
 import { useTimelinePlayback } from "./useTimelinePlayback";
@@ -108,9 +109,11 @@ export function LinkedExploration({
                 {selected ? (
                   <>
                     <span className="eyebrow">
-                      Event {index + 1} of {total} ·{" "}
-                      {selected.synthetic ? "Simulated" : "Observed"}
+                      Event {index + 1} of {total}
                     </span>
+                    <StatusChip
+                      kind={selected.synthetic ? "simulated" : "observed"}
+                    />
                     <strong>{selected.label}</strong>
                     <span className="incident-caption">
                       {displayTime(selected.event_time)}

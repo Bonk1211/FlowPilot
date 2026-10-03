@@ -834,3 +834,97 @@ test("timeline marks uncollected sources instead of treating them as normal", as
       .filter({ hasText: "Last-known-good coverage" }),
   ).toContainText("collected");
 });
+
+test("investigation board stays usable without WebGL", async ({
+  page,
+  request,
+}) => {
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (
+      ...args: Parameters<typeof original>
+    ) {
+      if (String(args[0]).startsWith("webgl")) return null;
+      return original.apply(this, args);
+    } as typeof original;
+  });
+  const incident = await replay(request);
+  const hypothesis = incident.assessment?.hypotheses[0];
+  await page.goto(`/incidents/${incident.id}/investigation`);
+  const board = page.getByRole("region", {
+    name: "Evidence and mechanism",
+    exact: true,
+  });
+  await expect(
+    board.getByRole("status").filter({ hasText: "3D unavailable" }),
+  ).toBeVisible();
+  await expect(
+    board.locator('.prototype-diagram [data-highlighted="true"]'),
+  ).toHaveCount(hypothesis?.component_ids.length ?? 0);
+  await board.getByRole("button", { name: /Last-known-good coverage/ }).click();
+  await expect(
+    board.getByRole("region", { name: "Selected event", exact: true }),
+  ).toContainText("Last-known-good coverage");
+});
+
+test("investigation board works from the keyboard with reduced motion", async ({
+  page,
+  request,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/investigation`);
+  const board = page.getByRole("region", {
+    name: "Evidence and mechanism",
+    exact: true,
+  });
+  await expect(
+    board.getByRole("button", { name: "Play timeline", exact: true }),
+  ).toBeDisabled();
+  const scrubber = board.getByRole("slider", {
+    name: "Explore source events",
+    exact: false,
+  });
+  await scrubber.focus();
+  await scrubber.press("Home");
+  const detail = board.getByRole("region", {
+    name: "Selected event",
+    exact: true,
+  });
+  await expect(detail).toContainText("Event 1 of");
+  await scrubber.press("ArrowRight");
+  await expect(detail).toContainText("Event 2 of");
+  await page.keyboard.press("Tab");
+  await expect(
+    board.getByRole("button", { name: "Next event", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(detail).toContainText("Event 3 of");
+  const links = board.getByRole("list", {
+    name: "Hypotheses that cite this event",
+    exact: true,
+  });
+  await links.getByRole("button").first().focus();
+  await page.keyboard.press("Enter");
+  await expect(links.getByRole("button").first()).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});
+
+test("investigation board fits a phone without horizontal scroll", async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/investigation`);
+  await expect(
+    page.getByRole("region", { name: "Evidence and mechanism", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBeTruthy();
+});
