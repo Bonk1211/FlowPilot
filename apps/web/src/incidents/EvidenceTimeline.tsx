@@ -20,6 +20,18 @@ export type TimelineDetailContext = {
   total: number;
 };
 
+const layoutKey = "flowpilot.incident-timeline-layout";
+
+function storedLayout() {
+  try {
+    return window.localStorage.getItem(layoutKey) === "vertical"
+      ? "vertical"
+      : "horizontal";
+  } catch {
+    return "horizontal";
+  }
+}
+
 const flags: Record<IncidentEvidence["role"], string> = {
   last_good: "Last known good",
   first_bad: "First known bad",
@@ -45,7 +57,17 @@ export function EvidenceTimeline({
   reduced: boolean;
   renderDetail: (context: TimelineDetailContext) => ReactNode;
 }) {
-  const [layout, setLayout] = useState<"horizontal" | "vertical">("horizontal");
+  const [layout, setLayoutState] = useState<"horizontal" | "vertical">(
+    storedLayout,
+  );
+  const setLayout = (value: "horizontal" | "vertical") => {
+    setLayoutState(value);
+    try {
+      window.localStorage.setItem(layoutKey, value);
+    } catch {
+      // Storage can be blocked; the choice then lasts for this page only.
+    }
+  };
   const timeline = useRef<HTMLOListElement>(null);
   const setPlaying = onPlayingChange;
   const select = (id: string) => {

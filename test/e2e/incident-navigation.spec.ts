@@ -997,3 +997,39 @@ test("application activity is listed apart from the evidence timeline", async ({
       .locator(".incident-event"),
   ).toHaveCount(timelineCount);
 });
+
+test("the chosen timeline layout is remembered and works when storage is blocked", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/evidence`);
+  const events = page.locator(".incident-events");
+  await expect(events).toHaveAttribute("data-layout", "horizontal");
+  await page.getByRole("button", { name: "Vertical", exact: true }).click();
+  await page.reload();
+  await expect(events).toHaveAttribute("data-layout", "vertical");
+  await page.getByRole("button", { name: "Horizontal", exact: true }).click();
+  await page.reload();
+  await expect(events).toHaveAttribute("data-layout", "horizontal");
+});
+
+test("the timeline still renders when browser storage throws", async ({
+  page,
+  request,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "localStorage", {
+      get() {
+        throw new DOMException("blocked", "SecurityError");
+      },
+    });
+  });
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/evidence`);
+  await page.getByRole("button", { name: "Vertical", exact: true }).click();
+  await expect(page.locator(".incident-events")).toHaveAttribute(
+    "data-layout",
+    "vertical",
+  );
+});
