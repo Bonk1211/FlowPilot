@@ -1065,6 +1065,63 @@
   border-color: var(--selection-active);
   color: var(--text-selection);
 }
+.incident-linked-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-5);
+  align-items: start;
+}
+.incident-linked-evidence {
+  min-width: 0;
+}
+.incident-linked .incident-timeline-toolbar .incident-view-toggle button {
+  color: var(--text-secondary);
+  background: var(--surface-document);
+  border-color: var(--border-default);
+}
+.incident-linked
+  .incident-timeline-toolbar
+  .incident-view-toggle
+  button[aria-pressed="true"] {
+  color: var(--text-selection);
+  border-color: var(--selection-active);
+  box-shadow: inset 0 -2px var(--selection-active);
+}
+.incident-linked-detail {
+  display: grid;
+  gap: var(--space-2);
+}
+.incident-linked-links {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.incident-linked-links li {
+  display: grid;
+  gap: var(--space-1);
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--selection-active);
+}
+.incident-linked-links li[data-relation="conflicts"] {
+  border-left-color: var(--state-conflicting);
+}
+.incident-linked-links button[aria-pressed="true"] {
+  border-color: var(--selection-active);
+  color: var(--text-selection);
+}
+.incident-mechanism[data-compact] .incident-mechanism-layout {
+  grid-template-columns: minmax(0, 1fr);
+}
+.incident-mechanism[data-compact] .incident-scene .assembly-canvas {
+  height: 300px;
+}
+@media (max-width: 1100px) {
+  .incident-linked-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .incident-component-role {
   display: grid;
   gap: var(--space-1);

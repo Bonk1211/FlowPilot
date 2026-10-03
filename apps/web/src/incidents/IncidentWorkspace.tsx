@@ -41,6 +41,7 @@ import {
 import { EvidenceExplorer } from "./EvidenceExplorer";
 import { displayTime } from "./time";
 import { MechanismView } from "./MechanismView";
+import { LinkedExploration } from "./LinkedExploration";
 import { InvestigationPanel } from "./InvestigationPanel";
 import { IncidentReview } from "./IncidentReview";
 import { PastIncidents } from "./PastIncidents";
@@ -890,6 +891,24 @@ function IncidentWorkspaceContent({
                           !!closed
                         }
                       />
+                      {route.page === "investigation" && (
+                        <LinkedExploration
+                          evidence={incident.evidence ?? []}
+                          assessment={assessment}
+                          selectedEventId={eventId}
+                          onSelectEvent={setSelectedEvent}
+                          hypothesisId={hypothesisId}
+                          onSelectHypothesis={setSelectedHypothesis}
+                          revision={
+                            snapshot?.incident_revision ?? incident.revision
+                          }
+                          evidenceHref={incidentPageUrl(
+                            incident.id,
+                            "evidence",
+                          )}
+                          onOpenEvidence={followLink}
+                        />
+                      )}
                       <p className="incident-page-next">
                         <a
                           href={incidentPageUrl(incident.id, "simulation")}

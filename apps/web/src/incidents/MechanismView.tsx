@@ -3,6 +3,7 @@ import {
   lazy,
   Suspense,
   useEffect,
+  useId,
   useMemo,
   useState,
   type ReactNode,
@@ -72,13 +73,17 @@ export function MechanismView({
   componentIds,
   revision,
   eventLabel,
+  compact = false,
 }: {
   hypothesisId: string | null;
   /** Components of the selected hypothesis, as supplied by the assessment. */
   componentIds: string[];
   revision: number;
   eventLabel?: string;
+  /** Hides the flow sketch so the explorer fits beside a timeline. */
+  compact?: boolean;
 }) {
+  const headingId = useId();
   const mechanism = mechanisms[hypothesisId ?? ""];
   const componentKey = componentIds.join(",");
   const { nodes, unmapped } = useMemo(() => {
@@ -134,12 +139,13 @@ export function MechanismView({
   return (
     <section
       className="incident-card incident-mechanism"
-      aria-labelledby="incident-mechanism-heading"
+      data-compact={compact || undefined}
+      aria-labelledby={headingId}
     >
       <div className="incident-section-title">
         <div>
           <p className="eyebrow">Understand the explanation</p>
-          <h2 id="incident-mechanism-heading">Mechanism explorer</h2>
+          <h2 id={headingId}>Mechanism explorer</h2>
         </div>
         <span className="incident-tag">Simulated · schematic v1</span>
       </div>
@@ -219,34 +225,40 @@ export function MechanismView({
           <p>{step.instruction}</p>
           {mechanism && (
             <>
-              <p className="mono incident-flow-path">{mechanism.path}</p>
-              <div
-                className="incident-flow-sketch"
-                data-mechanism={hypothesisId}
-                data-playing={playing && !reduced}
-                role="img"
-                aria-label={`Simulated qualitative illustration of ${mechanism.title.toLowerCase()}. No measured flow or timescale.`}
-              >
-                <span>Supply</span>
-                <div className="incident-flow-track">
-                  <i />
-                  <i />
-                  <i />
-                  <b />
-                </div>
-                <span>Deposit</span>
-              </div>
-              <div className="incident-actions">
-                <button
-                  disabled={reduced}
-                  onClick={() => setPlaying((value) => !value)}
-                >
-                  {playing && !reduced ? "Pause schematic" : "Play schematic"}
-                </button>
-                <span className="incident-caption">
-                  Simulated pattern · no physical timescale
-                </span>
-              </div>
+              {!compact && (
+                <>
+                  <p className="mono incident-flow-path">{mechanism.path}</p>
+                  <div
+                    className="incident-flow-sketch"
+                    data-mechanism={hypothesisId}
+                    data-playing={playing && !reduced}
+                    role="img"
+                    aria-label={`Simulated qualitative illustration of ${mechanism.title.toLowerCase()}. No measured flow or timescale.`}
+                  >
+                    <span>Supply</span>
+                    <div className="incident-flow-track">
+                      <i />
+                      <i />
+                      <i />
+                      <b />
+                    </div>
+                    <span>Deposit</span>
+                  </div>
+                  <div className="incident-actions">
+                    <button
+                      disabled={reduced}
+                      onClick={() => setPlaying((value) => !value)}
+                    >
+                      {playing && !reduced
+                        ? "Pause schematic"
+                        : "Play schematic"}
+                    </button>
+                    <span className="incident-caption">
+                      Simulated pattern · no physical timescale
+                    </span>
+                  </div>
+                </>
+              )}
               <div
                 className="incident-component-list"
                 aria-label="Components in this mechanism"

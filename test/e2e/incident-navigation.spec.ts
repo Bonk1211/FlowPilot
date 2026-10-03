@@ -728,3 +728,51 @@ test("mechanism highlights every component of the hypothesis and explains the se
     page.getByRole("group", { name: `Role of ${name}`, exact: true }),
   ).toBeVisible();
 });
+
+test("investigation board links a selected event to the hypotheses that cite it and their components", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/investigation`);
+  const board = page.getByRole("region", {
+    name: "Evidence and mechanism",
+    exact: true,
+  });
+  await board
+    .getByRole("button", { name: /Falling mass with a stable recorded/ })
+    .click();
+  const links = board.getByRole("list", {
+    name: "Hypotheses that cite this event",
+    exact: true,
+  });
+  await expect(links).toContainText("Supports Fluid-path restriction");
+  await expect(links).toContainText("Conflicts with Unstable fluid delivery");
+  await expect(board.getByRole("status")).toContainText(
+    "Conflicts with Unstable fluid delivery",
+  );
+  const components = board.getByLabel("Components in this mechanism", {
+    exact: true,
+  });
+  await expect(components.getByRole("button")).toHaveText([
+    "Pickup tube",
+    "Feed tube",
+    "Fluid QD",
+    "Nozzle",
+  ]);
+  await links
+    .getByRole("button", { name: "Conflicts with Unstable fluid delivery" })
+    .click();
+  await expect(components.getByRole("button")).toHaveText([
+    "BFS bottle",
+    "BFS pressure",
+    "Pickup tube",
+    "Fluid QD",
+  ]);
+  await navigate(page, "Simulation");
+  await expect(
+    page
+      .getByRole("heading", { name: "Unstable fluid delivery", level: 3 })
+      .first(),
+  ).toBeVisible();
+});
