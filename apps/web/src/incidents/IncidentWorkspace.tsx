@@ -1005,6 +1005,11 @@ function IncidentWorkspaceContent({
                     <section aria-label="Simulation workspace">
                       <MechanismView
                         hypothesisId={hypothesisId}
+                        componentIds={
+                          assessment?.hypotheses.find(
+                            (item) => item.id === hypothesisId,
+                          )?.component_ids ?? []
+                        }
                         revision={
                           snapshot?.incident_revision ?? incident.revision
                         }

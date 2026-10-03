@@ -670,3 +670,36 @@ test("fullscreen timeline keeps its floating navigation and playback synchronize
     .click();
   await expect(featureHeading(page, "Simulation")).toBeVisible();
 });
+
+test("mechanism components come from the assessment for every hypothesis", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  const labels: Record<string, string> = {
+    bfs_bottle: "BFS bottle",
+    bfs_air: "BFS pressure",
+    pickup_tube: "Pickup tube",
+    feed_tube: "Feed tube",
+    fluid_qd: "Fluid QD",
+    dj2200_valve: "DJ-2200 valve",
+    nozzle: "Nozzle",
+  };
+  const hypotheses = incident.assessment?.hypotheses ?? [];
+  expect(hypotheses.length).toBeGreaterThanOrEqual(3);
+  await page.goto(`/incidents/${incident.id}/investigation`);
+  for (const hypothesis of hypotheses) {
+    await page
+      .getByLabel("Candidate mechanisms", { exact: true })
+      .getByRole("button", { name: new RegExp(hypothesis.title) })
+      .click();
+    await navigate(page, "Simulation");
+    const list = page.getByLabel("Components in this mechanism", {
+      exact: true,
+    });
+    await expect(list.getByRole("button")).toHaveText(
+      hypothesis.component_ids.map((id) => labels[id]),
+    );
+    await navigate(page, "Investigation");
+  }
+});

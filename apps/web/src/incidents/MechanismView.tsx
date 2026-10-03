@@ -19,7 +19,6 @@ const mechanisms: Record<
   string,
   {
     title: string;
-    nodes: ModelNodeId[];
     mechanism: string;
     assumption: string;
     path: string;
@@ -27,7 +26,6 @@ const mechanisms: Record<
 > = {
   restriction: {
     title: "Fluid-path restriction",
-    nodes: ["feed_tube", "fluid_qd", "dj2200_valve", "nozzle"],
     mechanism:
       "A restriction in the fluid path could reduce the quantity reaching the substrate while dispensing continues.",
     assumption:
@@ -36,7 +34,6 @@ const mechanisms: Record<
   },
   unstable_delivery: {
     title: "Unstable fluid delivery",
-    nodes: ["bfs_air", "bfs_bottle", "pickup_tube", "feed_tube"],
     mechanism:
       "Changing reservoir delivery conditions could interrupt or vary fluid reaching the valve, producing inconsistent coverage.",
     assumption:
@@ -45,7 +42,6 @@ const mechanisms: Record<
   },
   material_condition: {
     title: "Material-condition change",
-    nodes: ["bfs_bottle", "feed_tube", "dj2200_valve", "substrate_tray"],
     mechanism:
       "A change in material condition could alter delivery and deposited coverage even when the mechanical path has not changed.",
     assumption:
@@ -69,14 +65,27 @@ class SceneBoundary extends Component<
 
 export function MechanismView({
   hypothesisId,
+  componentIds,
   revision,
   eventLabel,
 }: {
   hypothesisId: string | null;
+  /** Components of the selected hypothesis, as supplied by the assessment. */
+  componentIds: string[];
   revision: number;
   eventLabel?: string;
 }) {
   const mechanism = mechanisms[hypothesisId ?? ""];
+  const componentKey = componentIds.join(",");
+  const { nodes, unmapped } = useMemo(() => {
+    const ids = componentKey ? componentKey.split(",") : [];
+    return {
+      nodes: ids.filter((id): id is ModelNodeId =>
+        Object.hasOwn(modelNodes, id),
+      ),
+      unmapped: ids.filter((id) => !Object.hasOwn(modelNodes, id)),
+    };
+  }, [componentKey]);
   const [part, setPart] = useState<ModelNodeId | null>(null);
   const [twoD, setTwoD] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -96,9 +105,7 @@ export function MechanismView({
     return () => query.removeEventListener("change", update);
   }, []);
   const node =
-    part && mechanism?.nodes.includes(part)
-      ? part
-      : (mechanism?.nodes[0] ?? "substrate_tray");
+    part && nodes.includes(part) ? part : (nodes[0] ?? "substrate_tray");
   const step = useMemo<ProcedureStep>(
     () => ({
       step_id: `mechanism-${hypothesisId}-${node}`,
@@ -234,7 +241,7 @@ export function MechanismView({
                 className="incident-component-list"
                 aria-label="Components in this mechanism"
               >
-                {mechanism.nodes.map((id) => (
+                {nodes.map((id) => (
                   <button
                     key={id}
                     aria-pressed={node === id}
@@ -244,6 +251,11 @@ export function MechanismView({
                   </button>
                 ))}
               </div>
+              {unmapped.length > 0 && (
+                <p className="incident-caption">
+                  Not in the schematic: {unmapped.join(", ")}.
+                </p>
+              )}
               <p>
                 <strong>Assumptions & limits</strong>
               </p>
