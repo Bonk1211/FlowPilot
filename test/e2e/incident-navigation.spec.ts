@@ -1033,3 +1033,28 @@ test("the timeline still renders when browser storage throws", async ({
     "vertical",
   );
 });
+
+test("the 3D scene is told to highlight every component of each hypothesis", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  const hypotheses = incident.assessment?.hypotheses ?? [];
+  expect(hypotheses.length).toBeGreaterThanOrEqual(3);
+  await page.goto(`/incidents/${incident.id}/investigation`);
+  for (const hypothesis of hypotheses) {
+    await page
+      .getByLabel("Candidate mechanisms", { exact: true })
+      .getByRole("button", { name: new RegExp(hypothesis.title) })
+      .click();
+    await navigate(page, "Simulation");
+    const scene = page.locator(".assembly-canvas");
+    await expect(scene).toHaveAttribute("data-model-loaded", "true");
+    await expect(scene).toHaveAttribute(
+      "data-highlight-ids",
+      hypothesis.component_ids.join(","),
+    );
+    await expect(scene).toHaveAttribute("aria-label", /Highlighted parts: .+/);
+    await navigate(page, "Investigation");
+  }
+});
