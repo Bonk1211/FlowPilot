@@ -36,8 +36,13 @@ class Settings(BaseSettings):
     )
     incident_voice_enabled: bool = False
     reasoning_timeout_seconds: float = Field(default=12, gt=0, le=30)
+    incident_rag_enabled: bool = False
+    incident_rag_timeout_seconds: float = Field(default=12, gt=0, le=30)
     incident_interpretation_thinking: Literal["low", "medium", "high"] = "low"
     incident_generation_thinking: Literal["low", "medium", "high"] = "medium"
+    incident_question_model: str = Field(default="gemini-3.8-flash", min_length=1, max_length=100)
+    incident_question_timeout_seconds: float = Field(default=30, gt=0, le=30)
+    incident_question_selector: Literal["auto", "baseline", "gemini", "jev"] = "auto"
     incident_auth_mode: Literal["demo", "configured"] = "demo"
     incident_auto_process: bool = False
     incident_gateway_root: Path | None = None

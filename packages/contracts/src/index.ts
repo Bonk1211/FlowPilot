@@ -44,6 +44,7 @@ export type KnowledgeGraph = components["schemas"]["KnowledgeGraph"];
 export type PastExperience = components["schemas"]["PastExperience"];
 export type CitationStatus = components["schemas"]["CitationStatus"];
 export type LibraryOverview = components["schemas"]["LibraryOverview"];
+export type SourcePassage = components["schemas"]["SourcePassage"];
 export type LearningCase = components["schemas"]["LearningCase"];
 
 export type QuestionPlan = components["schemas"]["QuestionPlan"];

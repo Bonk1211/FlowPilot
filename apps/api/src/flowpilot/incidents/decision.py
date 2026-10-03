@@ -50,14 +50,14 @@ class JevResponse(Contract):
 
 class DecisionRun(Contract):
     task: Literal["next_step", "answer_readiness", "question_type"] = "next_step"
-    gateway: Literal["typesafe", "openrouter"] = "typesafe"
-    provider: Literal["jev", "deterministic"] = "deterministic"
+    gateway: Literal["typesafe", "openrouter", "gemini"] = "typesafe"
+    provider: Literal["jev", "gemini", "deterministic"] = "deterministic"
     status: Literal["selected", "fallback"] = "fallback"
     selected_id: str
     baseline_id: str
     requested_model: str
     model_version: str | None = None
-    adapter_version: Literal["s932-jev-1", "s932-jev-2"] = "s932-jev-2"
+    adapter_version: Literal["s932-jev-1", "s932-jev-2", "s932-gemini-questions-2"] = "s932-jev-2"
     eligible_ids: list[str]
     minimum_probability: float
     input_sha256: str | None = None

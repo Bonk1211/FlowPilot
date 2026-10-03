@@ -282,6 +282,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/incident-rag/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Index Status */
+        get: operations["index_status_api_incident_rag_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/incident-simulation/demo": {
         parameters: {
             query?: never;
@@ -1818,7 +1835,7 @@ export interface components {
              * @default s932-jev-2
              * @enum {string}
              */
-            adapter_version: "s932-jev-1" | "s932-jev-2";
+            adapter_version: "s932-jev-1" | "s932-jev-2" | "s932-gemini-questions-2";
             /** Baseline Id */
             baseline_id: string;
             /** Eligible Ids */
@@ -1828,7 +1845,7 @@ export interface components {
              * @default typesafe
              * @enum {string}
              */
-            gateway: "typesafe" | "openrouter";
+            gateway: "typesafe" | "openrouter" | "gemini";
             /** Input Sha256 */
             input_sha256?: string | null;
             /**
@@ -1845,7 +1862,7 @@ export interface components {
              * @default deterministic
              * @enum {string}
              */
-            provider: "jev" | "deterministic";
+            provider: "jev" | "gemini" | "deterministic";
             /** Reason */
             reason: string;
             /** Request */
@@ -1933,7 +1950,7 @@ export interface components {
              * @default deterministic
              * @enum {string}
              */
-            provider: "deterministic" | "jev";
+            provider: "deterministic" | "jev" | "gemini";
             /**
              * Provider Status
              * @default Deterministic baseline. Jev is not connected; no provider probabilities are used.
@@ -3313,6 +3330,8 @@ export interface components {
             recorded_at: string;
             /** Reply */
             reply: string;
+            /** Sources */
+            sources?: components["schemas"]["SourcePassage"][];
             /**
              * Status
              * @enum {string}
@@ -3370,6 +3389,7 @@ export interface components {
              * @default 0
              */
             rejected_count: number;
+            retrieval?: components["schemas"]["RetrievalRun"] | null;
             /**
              * Status
              * @default fallback
@@ -3574,10 +3594,18 @@ export interface components {
             evidence_ids: string[];
             /** Id */
             id: string;
+            /** Matched Text */
+            matched_text?: string | null;
             /** Relation */
             relation: string;
             /** Source */
             source: string;
+            /**
+             * Source Type
+             * @default experience
+             * @enum {string}
+             */
+            source_type: "experience" | "reference";
             /** Status */
             status: string;
             /** Target */
@@ -3637,10 +3665,23 @@ export interface components {
             href?: string | null;
             /** Id */
             id: string;
+            /**
+             * Indexed Passages
+             * @default 0
+             */
+            indexed_passages: number;
             /** Kind */
             kind: string;
             /** Label */
             label: string;
+            /**
+             * Source Type
+             * @default shared
+             * @enum {string}
+             */
+            source_type: "experience" | "reference" | "shared";
+            /** Sources */
+            sources?: components["schemas"]["SourcePassage"][];
         };
         /** KnowledgeSource */
         KnowledgeSource: {
@@ -3854,6 +3895,16 @@ export interface components {
             pending_review: number;
             /** Processes */
             processes: string[];
+            /**
+             * Reference Documents
+             * @default 0
+             */
+            reference_documents: number;
+            /**
+             * Reference Passages
+             * @default 0
+             */
+            reference_passages: number;
             /** Reusable Experiences */
             reusable_experiences: number;
             /** Saved Cases */
@@ -4339,6 +4390,24 @@ export interface components {
             artifact_ids: string[];
             /** Dry Run */
             dry_run: boolean;
+        };
+        /** RetrievalRun */
+        RetrievalRun: {
+            /** Document Revision */
+            document_revision?: string | null;
+            /**
+             * Reason
+             * @default Reference retrieval has not run.
+             */
+            reason: string;
+            /** Source Refs */
+            source_refs?: string[];
+            /**
+             * Status
+             * @default unavailable
+             * @enum {string}
+             */
+            status: "disabled" | "blocked" | "unavailable" | "empty" | "retrieved";
         };
         /** RetrievalSnapshot */
         RetrievalSnapshot: {
@@ -5391,6 +5460,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    index_status_api_incident_rag_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
                 };
             };
         };

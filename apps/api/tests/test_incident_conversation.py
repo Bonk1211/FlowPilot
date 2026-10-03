@@ -91,6 +91,27 @@ def test_ambiguity_cancel_idempotency_and_stale_confirmation(client):
     assert conflict.status_code == 409
 
 
+@pytest.mark.parametrize(
+    ("words", "status"),
+    [
+        ("Confirm my answer!", "recorded"),
+        ("Confirm the answer.", "recorded"),
+        ("Yes, confirm.", "recorded"),
+        ("Cancel my answer.", "cancelled"),
+        ("Cancel the answer.", "cancelled"),
+        ("Correct me.", "cancelled"),
+        ("Don't confirm my answer.", "clarification"),
+    ],
+)
+def test_spoken_answer_commands(client, words, status):
+    incident = act(client, replay(client), "analyze")
+    pending = send(client, incident, "intermittent", input_mode="voice")
+    updated = send(client, pending, words, input_mode="voice")
+    assert updated["conversation"][-1]["status"] == status
+    assert updated["conversation"][-1]["text"] == words
+    assert bool(updated["investigation"]["answers"]) == (status == "recorded")
+
+
 def live_turn(incident, text, plan):
     async def generate(payload, schema):
         assert payload["utterance"] == text

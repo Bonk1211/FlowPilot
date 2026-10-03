@@ -34,6 +34,7 @@ class ConversationPlan(Contract):
     node_ids: list[str] = Field(default_factory=list, max_length=3)
     mappings: list[ConversationMapping] = Field(default_factory=list, max_length=3)
     ambiguities: list[str] = Field(default_factory=list, max_length=5)
+    source_refs: list[str] = Field(default_factory=list, max_length=10)
 
 
 class VoiceToken(Contract):
@@ -56,6 +57,12 @@ identify relevant nodes and explain what evidence would distinguish the possibil
 Never invent observations, a confirmed cause, machine instructions, tests, adjustments or limits.
 Do not turn a request for a repair into permission to operate equipment. Ask about existing
 records instead. Return only the requested JSON, no hidden reasoning.
+Use retrieved_sources to explain relevant machine knowledge and its limitations. Cite every
+reference-derived explanation using its exact supplied source ID in source_refs. Preserve
+unverified authority and separate reference hypotheses from technician-confirmed observations.
+Put citation IDs only in source_refs. Keep the reply natural and acknowledge unverified
+reference status when explaining technical claims.
+If retrieval is unavailable or does not support the question, explain the knowledge gap.
 """
 
 
@@ -126,7 +133,7 @@ def offline_plan(incident, request):
     )
 
 
-def validate_plan(incident, request, plan):
+def validate_plan(incident, request, plan, source_ids=None):
     nodes = {node.id: node for node in available_nodes(incident)}
     if not set(plan.node_ids) <= nodes.keys():
         raise ValueError("Unavailable node")
@@ -144,6 +151,13 @@ def validate_plan(incident, request, plan):
         raise ValueError("Discussion cannot record answers")
     if plan.intent == "switch" and len(plan.node_ids) != 1:
         raise ValueError("Ambiguous switch")
+    sources = (
+        {source.id for source in incident.assessment.sources if source.applicable}
+        if incident.assessment
+        else set()
+    )
+    if not set(plan.source_refs) <= (sources if source_ids is None else source_ids):
+        raise ValueError("Unsupported source citation")
 
 
 async def converse(incident_id, request, actor, settings=None, generate=None):
@@ -171,7 +185,18 @@ async def converse(incident_id, request, actor, settings=None, generate=None):
     mappings, node_ids = [], []
     reply = ""
     changed = False
-    if pending and text in {"confirm", "yes", "yes that s right", "that s right", "correct"}:
+    cited_sources = []
+    if pending and text in {
+        "confirm",
+        "confirm answer",
+        "confirm my answer",
+        "confirm the answer",
+        "yes",
+        "yes confirm",
+        "yes that s right",
+        "that s right",
+        "correct",
+    }:
         intent = "confirm"
         if pending.input_fingerprint != fingerprint:
             reply = (
@@ -218,7 +243,16 @@ async def converse(incident_id, request, actor, settings=None, generate=None):
                     "That branch now needs review or has a pending answer. "
                     "Resolve it before recording this answer."
                 )
-    elif pending and text in {"cancel", "no", "discard", "that s wrong"}:
+    elif pending and text in {
+        "cancel",
+        "cancel answer",
+        "cancel my answer",
+        "cancel the answer",
+        "correct me",
+        "no",
+        "discard",
+        "that s wrong",
+    }:
         intent, status = "cancel", "cancelled"
         reply = "Discarded that proposed answer. Tell me what you observed instead."
     else:
@@ -227,7 +261,10 @@ async def converse(incident_id, request, actor, settings=None, generate=None):
             "spotlight_node_id": request.spotlight_node_id,
             "active_node_id": incident.investigation.active_node_id,
             "nodes": [node.model_dump(mode="json") for node in available_nodes(incident)],
-            "history": [turn.model_dump(mode="json") for turn in incident.conversation[-8:]],
+            "history": [
+                turn.model_dump(mode="json", exclude={"sources", "generation"})
+                for turn in incident.conversation[-8:]
+            ],
             "assessment": incident.assessment.model_dump(mode="json")
             if incident.assessment
             else None,
@@ -245,7 +282,27 @@ async def converse(incident_id, request, actor, settings=None, generate=None):
         try:
             if plan is None:
                 plan = offline_plan(incident, request)
-            validate_plan(incident, request, plan)
+            if (
+                plan.intent == "discuss"
+                and payload.get("retrieved_sources")
+                and not set(plan.source_refs).intersection(
+                    source["id"] for source in payload["retrieved_sources"]
+                )
+            ):
+                raise ValueError("Reference discussion needs a retrieved source citation")
+            validate_plan(
+                incident,
+                request,
+                plan,
+                {
+                    source["id"]
+                    for source in [
+                        *payload.get("sources", []),
+                        *payload.get("retrieved_sources", []),
+                    ]
+                    if source["applicable"]
+                },
+            )
         except ValueError:
             plan = ConversationPlan(
                 intent="clarify",
@@ -256,6 +313,11 @@ async def converse(incident_id, request, actor, settings=None, generate=None):
                 generation.status = "fallback"
                 generation.fallback_reason = "Conversation routing failed local validation."
         intent, reply, node_ids = plan.intent, plan.reply, plan.node_ids
+        cited_sources = [
+            diagnostic.SourcePassage.model_validate(source)
+            for source in [*payload.get("sources", []), *payload.get("retrieved_sources", [])]
+            if source["id"] in plan.source_refs
+        ]
         mappings = plan.mappings
         if intent == "answer":
             status = "pending"
@@ -308,6 +370,7 @@ async def converse(incident_id, request, actor, settings=None, generate=None):
             status=status,
             input_fingerprint=fingerprint,
             generation=generation,
+            sources=cited_sources,
             recorded_at=incident.updated_at,
             author=actor,
         )

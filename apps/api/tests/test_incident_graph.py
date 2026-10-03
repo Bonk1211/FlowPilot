@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+from types import SimpleNamespace
 from uuid import uuid4
 
 import httpx
@@ -395,3 +396,140 @@ def test_structured_answers_skip_interpretation_and_shared_rules_consume_confirm
         item["evidence_id"] == incident["observations"][-1]["id"]
         for item in incident["assessment"]["hypotheses"][0]["supporting_evidence"]
     )
+
+
+@pytest.mark.parametrize("selector", ["auto", "gemini", "baseline"])
+def test_gemini_preference_reaches_active_question_with_correct_provenance(client, selector):
+    incident = act(client, replay(client), "analyze")
+    saved = service.get_incident(incident["id"])
+    service.apply_action(
+        saved,
+        AnswerInvestigationAction(
+            action="answer_investigation",
+            revision=saved.revision,
+            answer_id=f"ANS-{uuid4()}",
+            node_id=active(incident)["id"],
+            choice="intermittent",
+        ),
+    )
+    assess_locally(saved)
+
+    async def generate(payload, schema):
+        pressure = payload["fact_definitions"]["pressure_trend"]
+        pressure.update(
+            id="context_pressure",
+            evidence_ids=["image-good"],
+            prompt="Do archived pressure records show stability or variability?",
+        )
+        timing = payload["fact_definitions"]["timing"]
+        timing.update(
+            id="context_timing",
+            evidence_ids=["image-good"],
+            prompt="Do existing logs align delivery changes with the affected trays?",
+        )
+        return {"candidates": [pressure, timing], "preferred_id": timing["id"]}
+
+    asyncio.run(
+        graph.advance(
+            saved,
+            coordinator.input_fingerprint(saved),
+            Settings(
+                _env_file=None,
+                reasoning_enabled=True,
+                incident_jev_enabled=False,
+                incident_question_selector=selector,
+            ),
+            generate,
+        )
+    )
+    chosen = active(saved.model_dump(mode="json"))
+    run = saved.investigation.expansions[-1].decision
+    if selector == "baseline":
+        assert chosen["target_fact"] == "pressure_trend"
+        assert chosen["prompt"] == "Do archived pressure records show stability or variability?"
+        assert run.provider == "deterministic"
+    else:
+        assert chosen["target_fact"] == "timing"
+        assert run.provider == "gemini" and run.gateway == "gemini"
+        assert run.adapter_version == "s932-gemini-questions-2"
+        assert run.response is None and run.request is None
+        assert run.selected_id == "generated_timing"
+    assert saved.investigation.expansions[-1].generation.model == "gemini-3.8-flash"
+
+
+def test_question_provider_receives_supported_schema_and_dedicated_model(client, monkeypatch):
+    from google import genai
+
+    saved = service.get_incident(act(client, replay(client), "analyze")["id"])
+    assess_locally(saved)
+    candidate = graph.question_for("timing", saved.assessment).model_dump(mode="json")
+    candidate["evidence_ids"] = ["image-good"]
+
+    class Provider:
+        aio = property(lambda self: self)
+        models = property(lambda self: self)
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_):
+            return None
+
+        async def generate_content(self, **request):
+            assert request["model"] == "gemini-3.8-flash"
+            schema = request["config"].response_json_schema
+            assert "maxItems" not in schema["properties"]["candidates"]
+            assert (
+                "maxLength" not in schema["$defs"]["InvestigationQuestion"]["properties"]["prompt"]
+            )
+            assert request["config"].thinking_config.thinking_level == "MEDIUM"
+            return SimpleNamespace(
+                text=json.dumps({"candidates": [candidate], "preferred_id": candidate["id"]}),
+                model_version="gemini-3.8-flash-test",
+            )
+
+    monkeypatch.setattr(genai, "Client", lambda **_: Provider())
+    candidates, preferred, run = asyncio.run(
+        diagnostic.generate_questions(
+            saved,
+            graph.baseline_candidates(saved)[0],
+            coordinator.input_fingerprint(saved),
+            settings=Settings(
+                _env_file=None,
+                reasoning_enabled=True,
+                gemini_api_key="test-key",
+                gemini_model="gemini-3.5-flash-lite",
+                incident_rag_enabled=False,
+            ),
+        )
+    )
+    assert len(candidates) == 1 and preferred == "generated_timing"
+    assert run.status == "validated" and run.model_version == "gemini-3.8-flash-test"
+
+
+def test_rejected_preferred_question_reports_selection_fallback(client):
+    saved = service.get_incident(act(client, replay(client), "analyze")["id"])
+    assess_locally(saved)
+
+    async def generate(payload, schema):
+        invalid = payload["fact_definitions"]["pressure_trend"]
+        invalid.update(
+            prompt="Adjust pressure to 3 bar and compare existing logs?",
+            evidence_ids=["image-good"],
+        )
+        valid = payload["fact_definitions"]["timing"]
+        valid["evidence_ids"] = ["image-good"]
+        return {"candidates": [invalid, valid], "preferred_id": invalid["id"]}
+
+    candidates, preferred, run = asyncio.run(
+        diagnostic.generate_questions(
+            saved,
+            graph.baseline_candidates(saved)[0],
+            coordinator.input_fingerprint(saved),
+            generate,
+            Settings(_env_file=None, reasoning_enabled=True),
+        )
+    )
+    assert len(candidates) == 1 and preferred is None
+    assert run.status == "fallback" and run.rejected_count == 1
+    assert "preferred question failed" in run.fallback_reason

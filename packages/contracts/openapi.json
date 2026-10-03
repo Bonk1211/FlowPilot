@@ -2111,7 +2111,8 @@
             "default": "s932-jev-2",
             "enum": [
               "s932-jev-1",
-              "s932-jev-2"
+              "s932-jev-2",
+              "s932-gemini-questions-2"
             ],
             "title": "Adapter Version",
             "type": "string"
@@ -2131,7 +2132,8 @@
             "default": "typesafe",
             "enum": [
               "typesafe",
-              "openrouter"
+              "openrouter",
+              "gemini"
             ],
             "title": "Gateway",
             "type": "string"
@@ -2171,6 +2173,7 @@
             "default": "deterministic",
             "enum": [
               "jev",
+              "gemini",
               "deterministic"
             ],
             "title": "Provider",
@@ -2395,7 +2398,8 @@
             "default": "deterministic",
             "enum": [
               "deterministic",
-              "jev"
+              "jev",
+              "gemini"
             ],
             "title": "Provider",
             "type": "string"
@@ -6095,6 +6099,14 @@
             "title": "Reply",
             "type": "string"
           },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourcePassage"
+            },
+            "maxItems": 10,
+            "title": "Sources",
+            "type": "array"
+          },
           "status": {
             "enum": [
               "pending",
@@ -6244,6 +6256,16 @@
             "default": 0,
             "title": "Rejected Count",
             "type": "integer"
+          },
+          "retrieval": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RetrievalRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "status": {
             "default": "fallback",
@@ -6839,12 +6861,32 @@
             "title": "Id",
             "type": "string"
           },
+          "matched_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Matched Text"
+          },
           "relation": {
             "title": "Relation",
             "type": "string"
           },
           "source": {
             "title": "Source",
+            "type": "string"
+          },
+          "source_type": {
+            "default": "experience",
+            "enum": [
+              "experience",
+              "reference"
+            ],
+            "title": "Source Type",
             "type": "string"
           },
           "status": {
@@ -7022,6 +7064,11 @@
             "title": "Id",
             "type": "string"
           },
+          "indexed_passages": {
+            "default": 0,
+            "title": "Indexed Passages",
+            "type": "integer"
+          },
           "kind": {
             "title": "Kind",
             "type": "string"
@@ -7029,6 +7076,23 @@
           "label": {
             "title": "Label",
             "type": "string"
+          },
+          "source_type": {
+            "default": "shared",
+            "enum": [
+              "experience",
+              "reference",
+              "shared"
+            ],
+            "title": "Source Type",
+            "type": "string"
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/SourcePassage"
+            },
+            "title": "Sources",
+            "type": "array"
           }
         },
         "required": [
@@ -7575,6 +7639,16 @@
             },
             "title": "Processes",
             "type": "array"
+          },
+          "reference_documents": {
+            "default": 0,
+            "title": "Reference Documents",
+            "type": "integer"
+          },
+          "reference_passages": {
+            "default": 0,
+            "title": "Reference Passages",
+            "type": "integer"
           },
           "reusable_experiences": {
             "title": "Reusable Experiences",
@@ -8911,6 +8985,48 @@
           "artifact_ids"
         ],
         "title": "RetentionResult",
+        "type": "object"
+      },
+      "RetrievalRun": {
+        "additionalProperties": false,
+        "properties": {
+          "document_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Revision"
+          },
+          "reason": {
+            "default": "Reference retrieval has not run.",
+            "title": "Reason",
+            "type": "string"
+          },
+          "source_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Refs",
+            "type": "array"
+          },
+          "status": {
+            "default": "unavailable",
+            "enum": [
+              "disabled",
+              "blocked",
+              "unavailable",
+              "empty",
+              "retrieved"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "title": "RetrievalRun",
         "type": "object"
       },
       "RetrievalSnapshot": {
@@ -11001,6 +11117,25 @@
         "summary": "Publish Document",
         "tags": [
           "incident sources"
+        ]
+      }
+    },
+    "/api/incident-rag/status": {
+      "get": {
+        "operationId": "index_status_api_incident_rag_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Index Status",
+        "tags": [
+          "incident-rag"
         ]
       }
     },

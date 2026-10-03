@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 from pydantic import Field, JsonValue, field_validator, model_validator
 
 from flowpilot.incidents.decision import DecisionRun
-from flowpilot.incidents.diagnostic import DiagnosticAssessment
+from flowpilot.incidents.diagnostic import DiagnosticAssessment, RetrievalRun, SourcePassage
 from flowpilot.incidents.question_types import QuestionType, default_question_type
 from flowpilot.incidents.simulation import SimulationRun
 from flowpilot.investigations.models import Contract
@@ -212,6 +212,7 @@ class InvestigationGeneration(Contract):
     input_revision: int
     fallback_reason: str | None = "Offline baseline; adaptive generation has not run."
     rejected_count: int = 0
+    retrieval: RetrievalRun | None = None
 
 
 class InvestigationAnswer(Contract):
@@ -278,6 +279,7 @@ class InvestigationConversationTurn(Contract):
     status: Literal["pending", "recorded", "clarification", "discussed", "cancelled"]
     input_fingerprint: str
     generation: InvestigationGeneration | None = None
+    sources: list[SourcePassage] = Field(default_factory=list, max_length=10)
     recorded_at: str
     author: str | None = None
 

@@ -310,11 +310,13 @@ def assess(incident: Incident):
     observations = [item.model_dump(mode="json") for item in active_observations(incident)]
     baseline = diagnostic.analyze(evidence, observations, incident.configuration)
     from flowpilot.incidents.knowledge import applicable_sources
+    from flowpilot.incidents.rag import DOCUMENT_ID as RAG_DOCUMENT_ID
 
     try:
         baseline.sources.extend(
             diagnostic.SourcePassage.model_validate(source.model_dump(mode="json"))
             for source in applicable_sources(incident.configuration)
+            if source.document_id != RAG_DOCUMENT_ID
         )
     except HTTPException as error:
         if error.status_code != 503:
@@ -694,6 +696,11 @@ def report_markdown(incident: Incident, communications=(), experiments=()) -> st
                     f"questions: {', '.join(turn.node_ids) or 'none'}.",
                     f"  Technician: {turn.text}",
                     f"  Agent: {turn.reply}",
+                    *[
+                        f"  Reference: {source.id}; {source.document_id}, {source.revision}; "
+                        f"{source.section}; {source.approval_status}. {source.limitation}"
+                        for source in turn.sources
+                    ],
                 ]
             )
     lines.extend(["", "## Assessment history", ""])

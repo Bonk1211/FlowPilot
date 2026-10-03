@@ -2,6 +2,7 @@ from typing import Literal
 
 from pydantic import Field
 
+from flowpilot.incidents.diagnostic import SourcePassage
 from flowpilot.investigations.models import Contract, Evidence
 
 KnowledgeState = Literal["draft", "published", "disputed", "archived"]
@@ -124,6 +125,9 @@ class KnowledgeNode(Contract):
     detail: str
     case_ids: list[str] = Field(default_factory=list)
     href: str | None = None
+    source_type: Literal["experience", "reference", "shared"] = "shared"
+    sources: list[SourcePassage] = Field(default_factory=list)
+    indexed_passages: int = 0
 
 
 class KnowledgeEdge(Contract):
@@ -135,6 +139,8 @@ class KnowledgeEdge(Contract):
     evidence_ids: list[str]
     status: str
     case_id: str
+    source_type: Literal["experience", "reference"] = "experience"
+    matched_text: str | None = None
 
 
 class KnowledgeGraph(Contract):
@@ -166,3 +172,5 @@ class LibraryOverview(Contract):
     graph: KnowledgeGraph
     total_matching: int
     truncated: bool
+    reference_documents: int = 0
+    reference_passages: int = 0

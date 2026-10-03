@@ -263,7 +263,9 @@ def review_document(source_id: str, request: SourceReviewRequest, actor: str):
     return database_operation(review)
 
 
-def applicable_sources(configuration: str, q: str = "") -> list[ApplicableSourcePassage]:
+def applicable_sources(
+    configuration: str, q: str = "", *, session=None
+) -> list[ApplicableSourcePassage]:
     normalized = " ".join(configuration.casefold().split())
     terms = q.casefold().split()
 
@@ -347,7 +349,7 @@ def applicable_sources(configuration: str, q: str = "") -> list[ApplicableSource
             ),
         )
 
-    return database_operation(retrieve)
+    return retrieve(session) if session is not None else database_operation(retrieve)
 
 
 router = APIRouter(prefix="/api/incident-knowledge", tags=["incident sources"])

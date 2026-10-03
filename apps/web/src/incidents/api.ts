@@ -99,7 +99,8 @@ async function request<T>(
             },
             body: JSON.stringify(body),
           }),
-      signal: AbortSignal.timeout(20000),
+      // Manual analysis can retrieve sources and generate questions in one request.
+      signal: AbortSignal.timeout(body === undefined ? 20000 : 120000),
     });
     if (!response.ok) {
       const problem = await response.json().catch(() => null);
@@ -113,12 +114,14 @@ async function request<T>(
     }
     return response.json() as Promise<T>;
   } catch (error) {
-    if (
-      error instanceof TypeError ||
-      (error instanceof DOMException && error.name === "TimeoutError")
-    ) {
+    if (error instanceof DOMException && error.name === "TimeoutError") {
       throw new Error(
-        "The incident service is unavailable. Your last saved evidence is unchanged. Retry when connected.",
+        "This request took too long. Reload saved state to check whether your answer or analysis was saved before retrying.",
+      );
+    }
+    if (error instanceof TypeError) {
+      throw new Error(
+        "The incident service could not be reached. Check your connection, then reload saved state before retrying.",
       );
     }
     throw error;

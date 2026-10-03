@@ -144,7 +144,7 @@ async def evaluate(live):
                         )
                         for item in catalogue
                     ],
-                    baseline[0].id,
+                    catalogue[0].id,
                     api_key=settings.jev_key,
                     gateway=settings.jev_gateway,
                     model=settings.jev_model,

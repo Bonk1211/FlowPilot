@@ -17,6 +17,7 @@ from flowpilot.incidents.coordinator import status_router as incident_jobs_statu
 from flowpilot.incidents.experience import router as incident_experience_router
 from flowpilot.incidents.experiments import router as incident_experiments_router
 from flowpilot.incidents.knowledge import router as incident_knowledge_router
+from flowpilot.incidents.rag import router as incident_rag_router
 from flowpilot.incidents.routes import router as incident_router
 from flowpilot.incidents.simulation import router as incident_simulation_router
 from flowpilot.ingestion.industry_event_log import parse_industry_event_log
@@ -119,6 +120,7 @@ def create_app() -> FastAPI:
     app.include_router(incident_access_router)
     app.include_router(incident_artifact_router)
     app.include_router(incident_knowledge_router)
+    app.include_router(incident_rag_router)
     app.include_router(incident_communication_router)
     app.include_router(incident_coordinator_router)
     app.include_router(incident_jobs_status_router)

@@ -5,7 +5,11 @@ from uuid import uuid4
 from fastapi import HTTPException
 
 from flowpilot.incidents import diagnostic
-from flowpilot.incidents.decision import DecisionOption, check_answer_readiness, choose_next_step
+from flowpilot.incidents.decision import (
+    DecisionOption,
+    check_answer_readiness,
+    choose_next_step,
+)
 from flowpilot.incidents.models import (
     AnswerChoice,
     IncidentObservation,
@@ -252,11 +256,13 @@ def eligible(incident, node, correcting=False):
 
 
 def merge_candidates(baseline, generated, preferred):
-    catalogue = {baseline[0].target_fact: baseline[0]}
-    for candidate in [*generated, *baseline[1:]]:
+    catalogue = {item.target_fact: item for item in generated}
+    for candidate in baseline:
         catalogue.setdefault(candidate.target_fact, candidate)
     preferred_fact = next((item.target_fact for item in generated if item.id == preferred), None)
-    return list(catalogue.values()), catalogue[preferred_fact].id if preferred_fact else None
+    fallback = catalogue[baseline[0].target_fact]
+    candidates = [fallback, *(item for item in catalogue.values() if item.id != fallback.id)]
+    return candidates, catalogue[preferred_fact].id if preferred_fact else None
 
 
 def supersede_after(incident, node_id):
@@ -569,6 +575,9 @@ async def advance(incident, fingerprint, settings=None, generate=None, client=No
     """One immediate expansion per turn; callers commit only against the same input fingerprint."""
     graph = incident.investigation
     settings = settings or Settings()
+    selector = selector or settings.incident_question_selector
+    if selector == "auto":
+        selector = "jev" if settings.incident_jev_enabled else "gemini"
     generation = InvestigationGeneration(
         input_fingerprint=fingerprint, input_revision=incident.revision
     )
@@ -730,7 +739,7 @@ async def advance(incident, fingerprint, settings=None, generate=None, client=No
         ],
         candidates[0].id,
         api_key=settings.jev_key
-        if allowed and settings.incident_jev_enabled and selector != "gemini"
+        if allowed and settings.incident_jev_enabled and selector == "jev"
         else None,
         gateway=settings.jev_gateway,
         model=settings.jev_model,
@@ -740,10 +749,22 @@ async def advance(incident, fingerprint, settings=None, generate=None, client=No
     )
     selected_id = run.selected_id
     if selector == "gemini" and preferred in {item.id for item in candidates}:
-        # Explicit evaluation mode only; never an application fallback when Jev fails.
         selected_id = preferred
-        run.reason = "Evaluation-only Gemini selection from the same filtered candidate set."
+        run.provider, run.status = "gemini", "selected"
+        run.gateway, run.adapter_version = "gemini", "s932-gemini-questions-2"
+        run.requested_model = generation.model or settings.incident_question_model
+        run.model_version = generation.model_version
+        run.request, run.input_sha256 = None, generation.input_fingerprint
+        run.minimum_probability = 0
+        run.reason = "Gemini selected a validated, grounded question from the eligible candidates."
+        run.limitation = "Question selection is advisory; it does not establish a machine fault."
         run.selected_id = preferred
+    elif selector == "gemini":
+        run.reason = (
+            generation.fallback_reason or "No validated Gemini preference; baseline retained."
+        )
+    elif selector == "baseline":
+        run.reason = "Deterministic next-step selection is configured."
     added = append_expansion(incident, candidates, parent, generation, selected_id, run)
     for node in added:
         if any(

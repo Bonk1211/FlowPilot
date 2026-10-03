@@ -43,6 +43,25 @@ def analyzed(client):
     return act(client, incident, "analyze")
 
 
+def test_saved_gemini_assessment_and_history_load_without_breaking_incident_list(client):
+    incident = analyzed(client)
+    incident["assessment"]["provider"] = "gemini"
+    incident["assessment_history"][0]["assessment"]["provider"] = "gemini"
+
+    def save(session):
+        session.get(service.IncidentRecord, incident["id"]).payload = incident
+
+    service.database_operation(save)
+    detail = client.get(f"/api/incidents/{incident['id']}")
+    assert detail.status_code == 200, detail.text
+    assert detail.json()["assessment"]["provider"] == "gemini"
+    assert detail.json()["assessment_history"][0]["assessment"]["provider"] == "gemini"
+    assert detail.json()["evidence"] == incident["evidence"]
+    listing = client.get("/api/incidents")
+    assert listing.status_code == 200, listing.text
+    assert listing.json()[0]["id"] == incident["id"]
+
+
 def test_partial_creation_deduplicates_without_diagnosis_or_machine_assumptions(
     client, monkeypatch
 ):
