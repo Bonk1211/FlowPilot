@@ -19,7 +19,6 @@ import {
   SidebarSimple,
   X,
   ArrowRight,
-  ArrowSquareOut,
   DownloadSimple,
   Flask,
   Plus,
@@ -38,8 +37,10 @@ import {
   type Incident,
   type IncidentCommand,
 } from "./api";
-import { EvidenceExplorer, displayTime } from "./EvidenceExplorer";
+import { EvidenceExplorer } from "./EvidenceExplorer";
+import { displayTime } from "./time";
 import { MechanismView } from "./MechanismView";
+import { LinkedExploration } from "./LinkedExploration";
 import { InvestigationPanel } from "./InvestigationPanel";
 import { IncidentReview } from "./IncidentReview";
 import { PastIncidents } from "./PastIncidents";
@@ -58,6 +59,7 @@ import {
   type IncidentRoute,
 } from "./navigation";
 import "./incidents.css";
+import { StatusChip } from "./StatusChip";
 
 const featureIcons = {
   investigation: MagnifyingGlass,
@@ -412,9 +414,6 @@ function IncidentWorkspaceContent({
             Incidents
           </a>
           <a href="/knowledge">Learning database</a>
-          <a href="/legacy">
-            Legacy demo <ArrowSquareOut aria-hidden="true" />
-          </a>
         </nav>
         <span className="demo-badge">Prototype / Simulated data</span>
       </header>
@@ -889,6 +888,24 @@ function IncidentWorkspaceContent({
                           !!closed
                         }
                       />
+                      {route.page === "investigation" && (
+                        <LinkedExploration
+                          evidence={incident.evidence ?? []}
+                          assessment={assessment}
+                          selectedEventId={eventId}
+                          onSelectEvent={setSelectedEvent}
+                          hypothesisId={hypothesisId}
+                          onSelectHypothesis={setSelectedHypothesis}
+                          revision={
+                            snapshot?.incident_revision ?? incident.revision
+                          }
+                          evidenceHref={incidentPageUrl(
+                            incident.id,
+                            "evidence",
+                          )}
+                          onOpenEvidence={followLink}
+                        />
+                      )}
                       <p className="incident-page-next">
                         <a
                           href={incidentPageUrl(incident.id, "simulation")}
@@ -933,8 +950,11 @@ function IncidentWorkspaceContent({
                               className="incident-source-tools"
                               name="evidence-tools"
                             >
-                              <summary>
-                                <UploadSimple aria-hidden="true" /> Source files
+                              <summary title="Source files">
+                                <UploadSimple aria-hidden="true" />{" "}
+                                <span className="incident-narrow-label">
+                                  Source files
+                                </span>
                               </summary>
                               <div className="incident-source-drawer">
                                 <AddEvidence
@@ -952,6 +972,7 @@ function IncidentWorkspaceContent({
                           </>
                         }
                         evidence={incident.evidence ?? []}
+                        activity={incident.history}
                         selectedId={eventId}
                         onSelect={setSelectedEvent}
                         busy={busy || !canEdit}
@@ -970,11 +991,13 @@ function IncidentWorkspaceContent({
                           className="incident-card incident-selected-observation"
                           aria-label="Selected recorded result"
                         >
-                          <span className="incident-tag">
-                            {selectedObservation.synthetic
-                              ? "Simulated"
-                              : "Observed"}
-                          </span>
+                          <StatusChip
+                            kind={
+                              selectedObservation.synthetic
+                                ? "simulated"
+                                : "observed"
+                            }
+                          />
                           <h3>
                             {selectedObservation.check_id.replaceAll("_", " ")}
                           </h3>
@@ -1004,7 +1027,13 @@ function IncidentWorkspaceContent({
                   >
                     <section aria-label="Simulation workspace">
                       <MechanismView
+                        hypotheses={assessment?.hypotheses}
                         hypothesisId={hypothesisId}
+                        componentIds={
+                          assessment?.hypotheses.find(
+                            (item) => item.id === hypothesisId,
+                          )?.component_ids ?? []
+                        }
                         revision={
                           snapshot?.incident_revision ?? incident.revision
                         }

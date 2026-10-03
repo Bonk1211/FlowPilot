@@ -3,6 +3,7 @@ import type { SimulationDemo, SimulationRun } from "@flowpilot/contracts";
 import { incidentJson, type Incident } from "./api";
 import { useIncidentAccess } from "./AccessPanel";
 import "./simulation.css";
+import { StatusChip } from "./StatusChip";
 
 const scenarios = {
   restriction: "Fluid-path restriction",
@@ -203,7 +204,7 @@ export function SimulationPanel({
           <p className="eyebrow">Compare a hypothetical response</p>
           <h2 id="simulation-title">Simulation sandbox</h2>
         </div>
-        <span className="incident-tag">Simulated · not measured</span>
+        <StatusChip kind="simulated" detail="not measured" />
       </div>
       <p>
         Explore invented subsystem responses and a model fitted to synthetic

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import type { IncidentCommunication } from "@flowpilot/contracts";
 import { incidentJson, type Incident } from "./api";
 import { useIncidentAccess } from "./AccessPanel";
-import { displayTime } from "./EvidenceExplorer";
+import { displayTime } from "./time";
 import "./operations.css";
 
 const labels: Record<IncidentCommunication["status"], string> = {

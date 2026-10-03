@@ -8,7 +8,7 @@ import {
   type IncidentCommand,
 } from "./api";
 import { useIncidentAccess } from "./AccessPanel";
-import { displayTime } from "./EvidenceExplorer";
+import { displayTime } from "./time";
 import "./artifacts.css";
 
 const roles = {

@@ -92,8 +92,20 @@ function ComponentSymbol({ id }: { id: string }) {
   }
 }
 
-export function ProcedureDiagram({ step }: { step: ProcedureStep }) {
+export function ProcedureDiagram({
+  step,
+  highlightIds,
+}: {
+  step: ProcedureStep;
+  /** Parts to highlight; defaults to the step's own part. */
+  highlightIds?: readonly string[];
+}) {
   const current = modelNodes[step.model_node_id];
+  const highlighted = highlightIds ?? [step.model_node_id];
+  const highlightedLabels = highlighted
+    .map((id) => modelNodes[id as keyof typeof modelNodes]?.label)
+    .filter(Boolean)
+    .join(", ");
   return (
     <figure className="prototype-diagram">
       <figcaption>
@@ -102,14 +114,16 @@ export function ProcedureDiagram({ step }: { step: ProcedureStep }) {
       </figcaption>
       <p>
         2D guide ·{" "}
-        {current
-          ? `Current part: ${current.label}`
-          : "Diagram unavailable for this part; use the text instructions."}
+        {highlightIds && highlightIds.length > 1
+          ? `Highlighted parts: ${highlightedLabels}`
+          : current
+            ? `Current part: ${current.label}`
+            : "Diagram unavailable for this part; use the text instructions."}
       </p>
       <svg
         viewBox="0 0 535 445"
         role="img"
-        aria-label={`Dispensing assembly. ${current ? `Highlighted part: ${current.label}` : "No highlighted part"}`}
+        aria-label={`Dispensing assembly. ${highlightedLabels ? `Highlighted ${highlighted.length > 1 ? "parts" : "part"}: ${highlightedLabels}` : "No highlighted part"}`}
       >
         <path
           d="M100 90 V148 H175 V58 H195 M257 78 V290"
@@ -150,7 +164,7 @@ export function ProcedureDiagram({ step }: { step: ProcedureStep }) {
             transform={`translate(${node.x} ${node.y})`}
             data-node-id={id}
             data-highlighted={
-              id === step.model_node_id && step.highlight !== "none"
+              highlighted.includes(id) && step.highlight !== "none"
             }
           >
             <ComponentSymbol id={id} />

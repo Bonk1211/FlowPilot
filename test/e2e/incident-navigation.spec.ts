@@ -670,3 +670,410 @@ test("fullscreen timeline keeps its floating navigation and playback synchronize
     .click();
   await expect(featureHeading(page, "Simulation")).toBeVisible();
 });
+
+test("mechanism components come from the assessment for every hypothesis", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  const labels: Record<string, string> = {
+    bfs_bottle: "BFS bottle",
+    bfs_air: "BFS pressure",
+    pickup_tube: "Pickup tube",
+    feed_tube: "Feed tube",
+    fluid_qd: "Fluid QD",
+    dj2200_valve: "DJ-2200 valve",
+    nozzle: "Nozzle",
+  };
+  const hypotheses = incident.assessment?.hypotheses ?? [];
+  expect(hypotheses.length).toBeGreaterThanOrEqual(3);
+  await page.goto(`/incidents/${incident.id}/investigation`);
+  for (const hypothesis of hypotheses) {
+    await page
+      .getByLabel("Candidate mechanisms", { exact: true })
+      .getByRole("button", { name: new RegExp(hypothesis.title) })
+      .click();
+    await navigate(page, "Simulation");
+    const list = page.getByLabel("Components in this mechanism", {
+      exact: true,
+    });
+    await expect(list.getByRole("button")).toHaveText(
+      hypothesis.component_ids.map((id) => labels[id]),
+    );
+    await navigate(page, "Investigation");
+  }
+});
+
+test("mechanism highlights every component of the hypothesis and explains the selected one", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  const hypothesis = incident.assessment?.hypotheses[0];
+  expect(hypothesis).toBeTruthy();
+  await page.goto(`/incidents/${incident.id}/simulation`);
+  await page.getByRole("button", { name: "2D schematic", exact: true }).click();
+  const figure = page.locator(".prototype-diagram");
+  await expect(figure.locator('[data-highlighted="true"]')).toHaveCount(
+    hypothesis?.component_ids.length ?? 0,
+  );
+  const list = page.getByLabel("Components in this mechanism", { exact: true });
+  const buttons = list.getByRole("button");
+  await buttons.first().focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(buttons.nth(1)).toBeFocused();
+  await expect(buttons.nth(1)).toHaveAttribute("aria-pressed", "true");
+  const name = (await buttons.nth(1).textContent()) ?? "";
+  await expect(
+    page.getByRole("group", { name: `Role of ${name}`, exact: true }),
+  ).toBeVisible();
+});
+
+test("investigation board links a selected event to the hypotheses that cite it and their components", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/investigation`);
+  const board = page.getByRole("region", {
+    name: "Evidence and mechanism",
+    exact: true,
+  });
+  await board
+    .getByRole("button", { name: /Falling mass with a stable recorded/ })
+    .click();
+  const links = board.getByRole("list", {
+    name: "Hypotheses that cite this event",
+    exact: true,
+  });
+  await expect(links).toContainText("Supports Fluid-path restriction");
+  await expect(links).toContainText("Conflicts with Unstable fluid delivery");
+  await expect(board.getByRole("status")).toContainText(
+    "Conflicts with Unstable fluid delivery",
+  );
+  const components = board.getByLabel("Components in this mechanism", {
+    exact: true,
+  });
+  await expect(components.getByRole("button")).toHaveText([
+    "Pickup tube",
+    "Feed tube",
+    "Fluid QD",
+    "Nozzle",
+  ]);
+  await links
+    .getByRole("button", { name: "Conflicts with Unstable fluid delivery" })
+    .click();
+  await expect(components.getByRole("button")).toHaveText([
+    "BFS bottle",
+    "BFS pressure",
+    "Pickup tube",
+    "Fluid QD",
+  ]);
+  await navigate(page, "Simulation");
+  await expect(
+    page
+      .getByRole("heading", { name: "Unstable fluid delivery", level: 3 })
+      .first(),
+  ).toBeVisible();
+});
+
+test("two mechanisms can be compared by shared and distinct components", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/simulation`);
+  await page
+    .getByRole("button", { name: "Compare mechanisms", exact: true })
+    .click();
+  await page
+    .getByLabel("Mechanism A", { exact: true })
+    .selectOption({ label: "Fluid-path restriction" });
+  await page
+    .getByLabel("Mechanism B", { exact: true })
+    .selectOption({ label: "Unstable fluid delivery" });
+  const cells = page
+    .getByRole("table", { name: "Components in each mechanism" })
+    .getByRole("cell");
+  await expect(cells.nth(0)).toHaveText(/Feed tube.*Nozzle/s);
+  await expect(cells.nth(1)).toHaveText(/Pickup tube.*Fluid QD/s);
+  await expect(cells.nth(2)).toHaveText(/BFS bottle.*BFS pressure/s);
+  await expect(
+    page
+      .getByRole("region", { name: "Schematic A", exact: true })
+      .getByRole("img", { name: /Highlighted parts: .*Nozzle/ }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Compare mechanisms", exact: true })
+    .click();
+  await expect(page.getByLabel("Mechanism A", { exact: true })).toHaveCount(0);
+});
+
+test("timeline marks uncollected sources instead of treating them as normal", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/evidence`);
+  const timeline = page.getByRole("list", {
+    name: "Evidence timeline",
+    exact: true,
+  });
+  const missing = timeline.locator("li[data-missing]");
+  await expect(missing).toHaveCount(
+    (incident.evidence ?? []).filter((item) => item.status !== "collected")
+      .length,
+  );
+  const pm = missing.filter({ hasText: "PM record unavailable" });
+  await expect(pm).toContainText("Unavailable · not assumed normal");
+  await expect(pm).not.toContainText("Observed");
+  await expect(pm).not.toContainText("Simulated");
+  await expect(
+    timeline
+      .locator("li:not([data-missing])")
+      .filter({ hasText: "Last-known-good coverage" }),
+  ).toContainText("collected");
+});
+
+test("investigation board stays usable without WebGL", async ({
+  page,
+  request,
+}) => {
+  await page.addInitScript(() => {
+    const original = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (
+      ...args: Parameters<typeof original>
+    ) {
+      if (String(args[0]).startsWith("webgl")) return null;
+      return original.apply(this, args);
+    } as typeof original;
+  });
+  const incident = await replay(request);
+  const hypothesis = incident.assessment?.hypotheses[0];
+  await page.goto(`/incidents/${incident.id}/investigation`);
+  const board = page.getByRole("region", {
+    name: "Evidence and mechanism",
+    exact: true,
+  });
+  await expect(
+    board.getByRole("status").filter({ hasText: "3D unavailable" }),
+  ).toBeVisible();
+  await expect(
+    board.locator('.prototype-diagram [data-highlighted="true"]'),
+  ).toHaveCount(hypothesis?.component_ids.length ?? 0);
+  await board.getByRole("button", { name: /Last-known-good coverage/ }).click();
+  await expect(
+    board.getByRole("region", { name: "Selected event", exact: true }),
+  ).toContainText("Last-known-good coverage");
+});
+
+test("investigation board works from the keyboard with reduced motion", async ({
+  page,
+  request,
+}) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/investigation`);
+  const board = page.getByRole("region", {
+    name: "Evidence and mechanism",
+    exact: true,
+  });
+  await expect(
+    board.getByRole("button", { name: "Play timeline", exact: true }),
+  ).toBeDisabled();
+  const scrubber = board.getByRole("slider", {
+    name: "Explore source events",
+    exact: false,
+  });
+  await scrubber.focus();
+  await scrubber.press("Home");
+  const detail = board.getByRole("region", {
+    name: "Selected event",
+    exact: true,
+  });
+  await expect(detail).toContainText("Event 1 of");
+  await scrubber.press("ArrowRight");
+  await expect(detail).toContainText("Event 2 of");
+  await page.keyboard.press("Tab");
+  await expect(
+    board.getByRole("button", { name: "Next event", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(detail).toContainText("Event 3 of");
+  const links = board.getByRole("list", {
+    name: "Hypotheses that cite this event",
+    exact: true,
+  });
+  await links.getByRole("button").first().focus();
+  await page.keyboard.press("Enter");
+  await expect(links.getByRole("button").first()).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
+});
+
+test("investigation board fits a phone without horizontal scroll", async ({
+  page,
+  request,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/investigation`);
+  await expect(
+    page.getByRole("region", { name: "Evidence and mechanism", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBeTruthy();
+});
+
+test("every incident page gives controls and images accessible names and unique ids", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  for (const feature of features) {
+    await page.goto(`/incidents/${incident.id}/${feature.slug}`);
+    await expect(featureHeading(page, feature.label)).toBeVisible();
+    const problems = await page.evaluate(() => {
+      const issues: string[] = [];
+      const visible = (element: Element) =>
+        element.checkVisibility({
+          contentVisibilityAuto: true,
+          visibilityProperty: true,
+        });
+      for (const control of document.querySelectorAll(
+        "main button, main a[href], main input, main select, main textarea",
+      )) {
+        if (!visible(control)) continue;
+        const name =
+          control.getAttribute("aria-label") ||
+          control.getAttribute("aria-labelledby") ||
+          control.textContent?.trim() ||
+          (control as HTMLInputElement).labels?.[0]?.textContent?.trim() ||
+          control.getAttribute("title");
+        if (!name) issues.push(`unnamed ${control.outerHTML.slice(0, 160)}`);
+      }
+      for (const image of document.querySelectorAll("main img")) {
+        if (visible(image) && image.getAttribute("alt") === null)
+          issues.push("image without alt");
+      }
+      const ids = [...document.querySelectorAll("[id]")].map((e) => e.id);
+      for (const id of new Set(ids.filter((v, i) => ids.indexOf(v) !== i)))
+        issues.push(`duplicate id ${id}`);
+      return issues;
+    });
+    expect(problems, `${feature.label}: ${problems.join(", ")}`).toEqual([]);
+  }
+});
+
+test("application activity is listed apart from the evidence timeline", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/evidence`);
+  const timelineCount = incident.evidence?.length ?? 0;
+  await expect(
+    page
+      .getByRole("list", { name: "Evidence timeline", exact: true })
+      .locator(".incident-event"),
+  ).toHaveCount(timelineCount);
+  await page.getByText("Application activity", { exact: true }).click();
+  const activity = page.getByRole("list", {
+    name: "Application activity",
+    exact: true,
+  });
+  await expect(activity.getByRole("listitem")).toHaveCount(
+    incident.history?.length ?? 0,
+  );
+  await expect(activity).toContainText("Advance replay");
+  await expect(activity).toContainText("demo:technician");
+  await expect(
+    page
+      .getByRole("list", { name: "Evidence timeline", exact: true })
+      .locator(".incident-event"),
+  ).toHaveCount(timelineCount);
+});
+
+test("the chosen timeline layout is remembered and works when storage is blocked", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/evidence`);
+  const events = page.locator(".incident-events");
+  await expect(events).toHaveAttribute("data-layout", "horizontal");
+  await page.getByRole("button", { name: "Vertical", exact: true }).click();
+  await page.reload();
+  await expect(events).toHaveAttribute("data-layout", "vertical");
+  await page.getByRole("button", { name: "Horizontal", exact: true }).click();
+  await page.reload();
+  await expect(events).toHaveAttribute("data-layout", "horizontal");
+});
+
+test("the timeline still renders when browser storage throws", async ({
+  page,
+  request,
+}) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "localStorage", {
+      get() {
+        throw new DOMException("blocked", "SecurityError");
+      },
+    });
+  });
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/evidence`);
+  await page.getByRole("button", { name: "Vertical", exact: true }).click();
+  await expect(page.locator(".incident-events")).toHaveAttribute(
+    "data-layout",
+    "vertical",
+  );
+});
+
+test("the 3D scene is told to highlight every component of each hypothesis", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  const hypotheses = incident.assessment?.hypotheses ?? [];
+  expect(hypotheses.length).toBeGreaterThanOrEqual(3);
+  await page.goto(`/incidents/${incident.id}/investigation`);
+  for (const hypothesis of hypotheses) {
+    await page
+      .getByLabel("Candidate mechanisms", { exact: true })
+      .getByRole("button", { name: new RegExp(hypothesis.title) })
+      .click();
+    await navigate(page, "Simulation");
+    const scene = page.locator(".assembly-canvas");
+    await expect(scene).toHaveAttribute("data-model-loaded", "true");
+    await expect(scene).toHaveAttribute(
+      "data-highlight-ids",
+      hypothesis.component_ids.join(","),
+    );
+    await expect(scene).toHaveAttribute("aria-label", /Highlighted parts: .+/);
+    await navigate(page, "Investigation");
+  }
+});
+
+test("choosing the mechanism shown on the other side swaps the comparison", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/simulation`);
+  await page
+    .getByRole("button", { name: "Compare mechanisms", exact: true })
+    .click();
+  const a = page.getByLabel("Mechanism A", { exact: true });
+  const b = page.getByLabel("Mechanism B", { exact: true });
+  const first = await a.inputValue();
+  const second = await b.inputValue();
+  expect(first).not.toEqual(second);
+  await a.selectOption(second);
+  await expect(a).toHaveValue(second);
+  await expect(b).toHaveValue(first);
+});
