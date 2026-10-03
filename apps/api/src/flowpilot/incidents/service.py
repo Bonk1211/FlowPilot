@@ -92,7 +92,10 @@ def active_evidence(incident: Incident) -> list[IncidentEvidence]:
 
 
 def active_observations(incident: Incident) -> list[IncidentObservation]:
+    from flowpilot.incidents.graph import excluded_observations
+
     superseded = {item.supersedes_id for item in incident.observations if item.supersedes_id}
+    superseded.update(excluded_observations(incident))
     evidence_ids = {item.id for item in active_evidence(incident) if item.status == "collected"}
     return [
         item
@@ -165,6 +168,11 @@ def draft_for(incident: Incident, human_body: str | None = None) -> HandoffDraft
         f"- Simulated {item.check_id}: {item.result}; evidence {', '.join(item.evidence_ids)}."
         for item in active_observations(incident)
     )
+    if incident.investigation.nodes:
+        investigation.append(
+            f"- Saved investigation path: {len(incident.investigation.nodes)} nodes, "
+            f"{len(incident.investigation.answers)} original answers; full path in the report."
+        )
     body = "\n".join(
         [
             f"Incident {incident.id} — {incident.tool_id}",
@@ -291,6 +299,9 @@ def create_incident(request: CreateIncident, owner: str | None = None) -> Incide
 
 
 def assess(incident: Incident):
+    from flowpilot.incidents import graph
+    from flowpilot.incidents.coordinator import input_fingerprint
+
     evidence = [
         item.model_dump(mode="json")
         for item in active_evidence(incident)
@@ -312,15 +323,8 @@ def assess(incident: Incident):
             "Controlled-source retrieval failed; operational methods remain blocked."
         )
 
-    async def enrich():
-        await diagnostic.select_assessment_step(
-            baseline, evidence, observations, incident.configuration
-        )
-        return await diagnostic.enrich_assessment(
-            baseline, evidence, observations, incident.configuration
-        )
-
-    incident.assessment = asyncio.run(enrich())
+    incident.assessment = baseline
+    asyncio.run(graph.advance(incident, input_fingerprint(incident)))
     incident.assessment_history.append(
         AssessmentSnapshot(
             incident_revision=incident.revision,
@@ -337,6 +341,9 @@ def assess(incident: Incident):
 
 
 def invalidate_conclusion(incident: Incident):
+    from flowpilot.incidents.graph import invalidate_evidence
+
+    invalidate_evidence(incident)
     incident.assessment = None
     if incident.closure:
         incident.closure_history.append(incident.closure)
@@ -358,10 +365,17 @@ def invalidate_conclusion(incident: Incident):
 
 
 def apply_action(incident: Incident, action: IncidentAction, actor: str | None = None) -> Incident:
+    from flowpilot.incidents.graph import GRAPH_ACTIONS, apply_graph_action
+
     incident.revision += 1
     incident.updated_at = now()
     detail = action.action.replace("_", " ")
-    if action.action == "advance_replay":
+    if action.action in GRAPH_ACTIONS:
+        apply_graph_action(incident, action, actor)
+        if action.action != "select_investigation":
+            invalidate_conclusion(incident)
+        detail = "Investigation action saved; original answers and earlier paths retained."
+    elif action.action == "advance_replay":
         if incident.mode != "replay":
             raise HTTPException(422, "Only a replay incident has staged collection.")
         if incident.replay_stage:
@@ -573,6 +587,17 @@ def act(incident_id: str, action: IncidentAction, actor: str | None = None) -> I
     rebaseable = action.action in REBASEABLE_ACTIONS
     for attempt in range(3):
         incident = get_incident(incident_id)
+        if action.action == "answer_investigation":
+            previous = next(
+                (item for item in incident.investigation.answers if item.id == action.answer_id),
+                None,
+            )
+            if previous:
+                if previous.request_fingerprint != digest(action.model_dump(exclude={"revision"})):
+                    raise HTTPException(
+                        409, "This answer ID was already used for different content."
+                    )
+                return incident
         if incident.revision != action.revision:
             if not (rebaseable and only_background_changes(incident, action.revision)):
                 raise HTTPException(409, "Incident changed. Reload before applying this action.")
@@ -656,6 +681,21 @@ def report_markdown(incident: Incident, communications=(), experiments=()) -> st
                 f"  Values: {json.dumps(item.values, ensure_ascii=False)}",
             ]
         )
+    from flowpilot.incidents.graph import report_lines
+
+    lines.extend(report_lines(incident))
+    if incident.conversation:
+        lines.extend(["", "## Investigation conversation", ""])
+        for turn in incident.conversation:
+            lines.extend(
+                [
+                    f"- {turn.id} at {turn.recorded_at}; {turn.input_mode}; {turn.author}; "
+                    f"{turn.intent} / {turn.status}; "
+                    f"questions: {', '.join(turn.node_ids) or 'none'}.",
+                    f"  Technician: {turn.text}",
+                    f"  Agent: {turn.reply}",
+                ]
+            )
     lines.extend(["", "## Assessment history", ""])
     for snapshot in incident.assessment_history:
         assessment = snapshot.assessment

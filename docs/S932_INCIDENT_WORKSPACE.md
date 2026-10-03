@@ -79,9 +79,13 @@ The mock works without these settings. They configure software adapters; they do
 | Environment variable | Purpose |
 |---|---|
 | `FLOWPILOT_INCIDENT_AUTO_PROCESS=true` | Start independent analysis and handoff workers |
-| `FLOWPILOT_REASONING_ENABLED=true` and `GEMINI_API_KEY` | Enable Gemini prose and draft generation |
-| `FLOWPILOT_INCIDENT_JEV_ENABLED=true` and `FLOWPILOT_JEV_API_KEY` | Enable the official Jev typed next-step adapter |
-| `FLOWPILOT_JEV_MODEL`, `FLOWPILOT_JEV_MIN_PROBABILITY` | Requested decision model and threshold; default `jev-latest` and `0.75` |
+| `FLOWPILOT_REASONING_ENABLED=true` and `GEMINI_API_KEY` | Enable Gemini answer interpretation, adaptive questions and draft generation |
+| `FLOWPILOT_INCIDENT_JEV_ENABLED=true` | Enable Jev next-step decisions, answer readiness and generated-question classification |
+| `FLOWPILOT_JEV_GATEWAY=openrouter` and `OPENROUTER_API_KEY` | Use OpenRouter's compatible Jev endpoint; the environment template uses model `typesafe/jev-1.13` |
+| `FLOWPILOT_JEV_GATEWAY=typesafe` and `FLOWPILOT_JEV_API_KEY` | Use direct TypeSafe access instead; model `jev-latest` |
+| `FLOWPILOT_JEV_MODEL`, `FLOWPILOT_JEV_MIN_PROBABILITY` | Requested decision model and next-step/question-category probability gate; default gate `0.75` |
+| `FLOWPILOT_JEV_ANSWER_MIN_PROBABILITY` | Separate answer-readiness gate, default `0.90`; human confirmation still required |
+| `FLOWPILOT_INCIDENT_INTERPRETATION_THINKING`, `FLOWPILOT_INCIDENT_GENERATION_THINKING` | Gemini thinking settings, initially `low` and `medium`; supported values `low`, `medium`, `high` |
 | `FLOWPILOT_INCIDENT_EXTERNAL_DATA_POLICY` | `synthetic_only` by default; `disabled` blocks external processing; `permitted` requires an actual permitted deployment/data policy |
 | `FLOWPILOT_INCIDENT_AUTH_MODE=configured` | Ignore demonstration role headers and require configured credentials |
 | `FLOWPILOT_INCIDENT_PRINCIPALS` | JSON array of `{subject, token_sha256, permissions}`; store only SHA-256 of a randomly generated token with at least 32 characters |
@@ -90,7 +94,11 @@ The mock works without these settings. They configure software adapters; they do
 
 Configured permissions are `view`, `edit`, `authorize_test`, `send_email`, `close`, `publish_knowledge` and `manage_data`. The application records the authenticated identity for reviews; a submitted reviewer name cannot impersonate another user. Browser credentials remain in the current tab's session. Deploy behind HTTPS and provision/revoke site credentials through the site's actual identity process before a pilot.
 
-The decision adapter uses the [official TypeSafe API](https://docs.typesafe.ai/api). It sends text/JSON and validates the complete distribution and selected eligible ID. Low-confidence, malformed, failed or timed-out responses retain the recorded deterministic choice. Choice probabilities are not fault probabilities. Gemini citation validation checks references and explicit uncertainty; it does not prove the prose semantically correct.
+The decision adapter uses the [official TypeSafe API](https://docs.typesafe.ai/api) or [OpenRouter's compatible System One API](https://openrouter.ai/docs/guides/community/typesafe-sdk). It sends text/JSON and validates the complete distribution and selected eligible ID. Below-threshold, malformed, failed or timed-out responses retain the recorded deterministic choice. Choice probabilities are not fault probabilities. Gemini citation validation checks references and explicit uncertainty; it does not prove the prose semantically correct.
+
+Flowchart colors identify question purpose: What, Where, When, Who/Which, Why/Impact, How detected and How many/much, with separate categories for causal 5 Whys, hypothesis tests and unclassified questions. Shapes identify the stage, and status labels identify active/answered steps. Open **Question colors** for the key. Predefined questions and older saved nodes use their fact definitions; Jev classifies newly generated questions once, with its result stored on the node. Classification cannot change answers, routing or a diagnosis. **5 Whys** opens the separate causal view, which labels unsupported mechanisms as provisional; the mechanism and verification notes are not presented as 5W2H's two H categories.
+
+The root `.env.example` starts with both providers disabled. Add the relevant keys in the ignored `.env`, enable the provider switches when ready, and restart with `npm run dev` or `make dev`. `npm run dev:mock` and `make start` always disable providers. Gemini model availability and comparative Jev benefit remain to be evaluated with the configured accounts.
 
 Real mail additionally requires `FLOWPILOT_INCIDENT_EMAIL_RECIPIENTS` (JSON allowlist), `FLOWPILOT_INCIDENT_SMTP_HOST`, `FLOWPILOT_INCIDENT_SMTP_FROM`, and optional port/username/password. STARTTLS is required by default; implicit TLS uses port 465. Real sending requires configured `send_email` permission and a separately approved current snapshot. SMTP acceptance is not delivery. An uncertain post-submission failure cannot be blindly retried. Mock communications cannot enter the SMTP path.
 

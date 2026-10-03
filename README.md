@@ -6,6 +6,8 @@ The S932 / DJ-2200 / BFS workflow now runs as a complete mock demonstration: pro
 
 Each incident has separate [feature pages](docs/S932_INCIDENT_WORKSPACE.md#feature-pages) for Investigation, Evidence, Simulation, Experiments, Handoff, Knowledge and Review, with shared incident context and bookmarkable URLs.
 
+The investigation includes a [conversation bar and optional ElevenLabs voice input](docs/INVESTIGATION_VOICE.md). Hands-free mode sends speech during pauses, spotlights the question being discussed, and lets technicians confirm interpreted answers by voice. Agent replies remain text.
+
 Existing v1/v2 cases remain available at `/legacy` and their saved `/?case=...` links. Epoxy cases remain read-only. Controlled operating procedures and real-machine validation are still pending.
 
 The **Learning Database** at `/knowledge` connects saved cases, symptoms, findings and outcomes in an interactive graph. Gemini can prepare experience drafts; technician publication makes them available to future diagnoses, with versioned citations and correction history.
@@ -58,7 +60,8 @@ audited evidence corrections, and an interactive 3D guide with 2D/text fallback.
 The home page and `/incidents` open the new incident workspace. Additive migrations
 preserve old case records. The incident replay uses
 bundled illustrative images and does not require the vision model download.
-Copy `.env.example` to the ignored `.env` and set `GEMINI_API_KEY` for optional live explanations;
+Copy `.env.example` to the ignored `.env`, set `GEMINI_API_KEY`, and enable
+`FLOWPILOT_REASONING_ENABLED=true` for optional live explanations;
 without a key, the journey uses clearly labelled deterministic findings. The optional Jev adapter
 uses bounded choices and explicit fallback. `dev:mock` disables all external model calls;
 see the [incident guide](docs/S932_INCIDENT_WORKSPACE.md#optional-integrations) to enable providers. See the

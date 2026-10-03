@@ -234,6 +234,7 @@ test("same-incident navigation preserves unsaved handoff edits and selected cont
     page.getByText("Image could not load", { exact: true }),
   ).not.toBeVisible();
   await navigate(page, "Investigation");
+  await page.getByRole("button", { name: "Exit full screen" }).click();
   await expect(
     page.getByRole("button", { name: /Material-condition change possible/ }),
   ).toHaveAttribute("aria-pressed", "true");
@@ -688,6 +689,7 @@ test("mechanism components come from the assessment for every hypothesis", async
   const hypotheses = incident.assessment?.hypotheses ?? [];
   expect(hypotheses.length).toBeGreaterThanOrEqual(3);
   await page.goto(`/incidents/${incident.id}/investigation`);
+  await page.getByRole("button", { name: "Exit full screen" }).click();
   for (const hypothesis of hypotheses) {
     await page
       .getByLabel("Candidate mechanisms", { exact: true })
@@ -735,6 +737,7 @@ test("investigation board links a selected event to the hypotheses that cite it 
 }) => {
   const incident = await replay(request);
   await page.goto(`/incidents/${incident.id}/investigation`);
+  await page.getByRole("button", { name: "Exit full screen" }).click();
   const board = page.getByRole("region", {
     name: "Evidence and mechanism",
     exact: true,
@@ -851,6 +854,7 @@ test("investigation board stays usable without WebGL", async ({
   const incident = await replay(request);
   const hypothesis = incident.assessment?.hypotheses[0];
   await page.goto(`/incidents/${incident.id}/investigation`);
+  await page.getByRole("button", { name: "Exit full screen" }).click();
   const board = page.getByRole("region", {
     name: "Evidence and mechanism",
     exact: true,
@@ -874,6 +878,7 @@ test("investigation board works from the keyboard with reduced motion", async ({
   await page.emulateMedia({ reducedMotion: "reduce" });
   const incident = await replay(request);
   await page.goto(`/incidents/${incident.id}/investigation`);
+  await page.getByRole("button", { name: "Exit full screen" }).click();
   const board = page.getByRole("region", {
     name: "Evidence and mechanism",
     exact: true,
@@ -919,6 +924,7 @@ test("investigation board fits a phone without horizontal scroll", async ({
   await page.setViewportSize({ width: 390, height: 844 });
   const incident = await replay(request);
   await page.goto(`/incidents/${incident.id}/investigation`);
+  await page.getByRole("button", { name: "Exit full screen" }).click();
   await expect(
     page.getByRole("region", { name: "Evidence and mechanism", exact: true }),
   ).toBeVisible();
@@ -1042,6 +1048,7 @@ test("the 3D scene is told to highlight every component of each hypothesis", asy
   const hypotheses = incident.assessment?.hypotheses ?? [];
   expect(hypotheses.length).toBeGreaterThanOrEqual(3);
   await page.goto(`/incidents/${incident.id}/investigation`);
+  await page.getByRole("button", { name: "Exit full screen" }).click();
   for (const hypothesis of hypotheses) {
     await page
       .getByLabel("Candidate mechanisms", { exact: true })

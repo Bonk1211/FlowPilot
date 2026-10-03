@@ -42,6 +42,7 @@ import { displayTime } from "./time";
 import { MechanismView } from "./MechanismView";
 import { LinkedExploration } from "./LinkedExploration";
 import { InvestigationPanel } from "./InvestigationPanel";
+import { InvestigationGraph } from "./InvestigationGraph";
 import { IncidentReview } from "./IncidentReview";
 import { PastIncidents } from "./PastIncidents";
 import { AccessPanel, AccessStatus, useIncidentAccess } from "./AccessPanel";
@@ -239,6 +240,14 @@ function IncidentWorkspaceContent({
   const [navigationExpanded, setNavigationExpanded] = useState(false);
   const [overviewOpen, setOverviewOpen] = useState(false);
   const timelinePage = route.page === "evidence" && !!incident;
+  const [graphExpanded, setGraphExpanded] = useState(true);
+  const investigationCanvas =
+    route.page === "investigation" &&
+    !!incident?.assessment &&
+    !!incident?.investigation?.nodes?.length &&
+    historicalRevision === null &&
+    graphExpanded;
+  const canvasPage = timelinePage || investigationCanvas;
 
   const [manualTool, setManualTool] = useState("S932-DEMO-01");
   const [manualSymptom, setManualSymptom] = useState(
@@ -379,7 +388,7 @@ function IncidentWorkspaceContent({
 
   return (
     <div
-      className={`incident-app${incident ? " incident-workspace" : ""}${timelinePage ? " incident-timeline-page" : ""}`}
+      className={`incident-app${incident ? " incident-workspace" : ""}${canvasPage ? " incident-timeline-page" : ""}${investigationCanvas ? " incident-investigation-page" : ""}`}
     >
       <a className="skip-link" href="#main">
         Skip to main content
@@ -395,11 +404,11 @@ function IncidentWorkspaceContent({
           FlowPilot
         </a>
         <span className="incident-nav-context">
-          {timelinePage
-            ? `${incident.tool_id} · Evidence timeline`
+          {canvasPage
+            ? `${incident.tool_id} · ${timelinePage ? "Evidence timeline" : "Investigation"}`
             : "S932 · Incident workspace"}
         </span>
-        {timelinePage && (
+        {canvasPage && (
           <button
             className="incident-overview-toggle"
             aria-expanded={overviewOpen}
@@ -418,7 +427,7 @@ function IncidentWorkspaceContent({
         <span className="demo-badge">Prototype / Simulated data</span>
       </header>
       <main id="main" tabIndex={-1} className="incident-main">
-        {!timelinePage && (
+        {!canvasPage && (
           <div className="incident-access-banner">
             <AccessStatus />
           </div>
@@ -608,9 +617,9 @@ function IncidentWorkspaceContent({
               id="incident-overview"
               className="incident-overview"
               aria-label="Incident details"
-              hidden={timelinePage && !overviewOpen}
+              hidden={canvasPage && !overviewOpen}
               onKeyDown={(event) => {
-                if (timelinePage && event.key === "Escape") {
+                if (canvasPage && event.key === "Escape") {
                   setOverviewOpen(false);
                   document
                     .querySelector<HTMLButtonElement>(
@@ -620,7 +629,7 @@ function IncidentWorkspaceContent({
                 }
               }}
             >
-              {timelinePage && (
+              {canvasPage && (
                 <div className="incident-access-banner">
                   <AccessStatus />
                   <button
@@ -762,7 +771,9 @@ function IncidentWorkspaceContent({
                 </p>
               </aside>
               <div className="incident-feature-content">
-                <header className="incident-feature-heading">
+                <header
+                  className={`incident-feature-heading${investigationCanvas ? " sr-only" : ""}`}
+                >
                   <h2 ref={featureHeading} tabIndex={-1}>
                     {route.page
                       ? incidentPages[route.page].label
@@ -801,61 +812,68 @@ function IncidentWorkspaceContent({
                   <Activity
                     mode={route.page === "investigation" ? "visible" : "hidden"}
                   >
-                    <section aria-label="Investigation workspace">
-                      <div className="incident-action-bar">
-                        <div className="incident-actions">
-                          {!closed && (
-                            <button
-                              className="primary"
-                              disabled={busy || !canEdit}
-                              onClick={() => perform({ action: "analyze" })}
-                            >
-                              {busy
-                                ? "Working…"
-                                : incident.assessment
-                                  ? "Reassess evidence"
-                                  : "Analyze available evidence"}
-                            </button>
-                          )}
-                          {!closed && !incident.escalated && (
-                            <button
-                              disabled={busy || !canEdit}
-                              onClick={() =>
-                                perform({
-                                  action: "escalate",
-                                  notes:
-                                    "Technician requested engineer review from the incident workspace.",
-                                })
+                    <section
+                      className="incident-investigation-workspace"
+                      aria-label="Investigation workspace"
+                    >
+                      <div hidden={investigationCanvas}>
+                        <div className="incident-action-bar">
+                          <div className="incident-actions">
+                            {!closed && (
+                              <button
+                                className="primary"
+                                disabled={busy || !canEdit}
+                                onClick={() => perform({ action: "analyze" })}
+                              >
+                                {busy
+                                  ? "Working…"
+                                  : incident.assessment
+                                    ? "Reassess evidence"
+                                    : "Analyze available evidence"}
+                              </button>
+                            )}
+                            {!closed && !incident.escalated && (
+                              <button
+                                disabled={busy || !canEdit}
+                                onClick={() =>
+                                  perform({
+                                    action: "escalate",
+                                    notes:
+                                      "Technician requested engineer review from the incident workspace.",
+                                  })
+                                }
+                              >
+                                Request engineer review
+                              </button>
+                            )}
+                          </div>
+                          <label className="incident-history-select">
+                            Assessment view
+                            <select
+                              value={historicalRevision ?? "current"}
+                              onChange={(event) =>
+                                setHistoricalRevision(
+                                  event.target.value === "current"
+                                    ? null
+                                    : Number(event.target.value),
+                                )
                               }
                             >
-                              Request engineer review
-                            </button>
-                          )}
+                              <option value="current">Current evidence</option>
+                              {(incident.assessment_history ?? []).map(
+                                (item) => (
+                                  <option
+                                    key={item.incident_revision}
+                                    value={item.incident_revision}
+                                  >
+                                    Saved assessment · revision{" "}
+                                    {item.incident_revision}
+                                  </option>
+                                ),
+                              )}
+                            </select>
+                          </label>
                         </div>
-                        <label className="incident-history-select">
-                          Assessment view
-                          <select
-                            value={historicalRevision ?? "current"}
-                            onChange={(event) =>
-                              setHistoricalRevision(
-                                event.target.value === "current"
-                                  ? null
-                                  : Number(event.target.value),
-                              )
-                            }
-                          >
-                            <option value="current">Current evidence</option>
-                            {(incident.assessment_history ?? []).map((item) => (
-                              <option
-                                key={item.incident_revision}
-                                value={item.incident_revision}
-                              >
-                                Saved assessment · revision{" "}
-                                {item.incident_revision}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
                       </div>
                       {!assessment && (
                         <p className="incident-investigation-intro">
@@ -869,52 +887,80 @@ function IncidentWorkspaceContent({
                           before choosing the next investigation step.
                         </p>
                       )}
-                      <InvestigationPanel
-                        assessment={assessment}
-                        observations={visibleObservations}
-                        onObserve={(input) =>
-                          onAction({ action: "record_result", ...input })
-                        }
-                        onSelectEvidence={(id) => {
-                          setSelectedEvent(id);
-                          navigate(incidentPageUrl(incident.id, "evidence"));
-                        }}
-                        onSelectHypothesis={setSelectedHypothesis}
-                        selectedHypothesisId={hypothesisId}
-                        busy={
-                          busy ||
-                          !canEdit ||
-                          historicalRevision !== null ||
-                          !!closed
-                        }
-                      />
-                      {route.page === "investigation" && (
-                        <LinkedExploration
-                          evidence={incident.evidence ?? []}
-                          assessment={assessment}
-                          selectedEventId={eventId}
-                          onSelectEvent={setSelectedEvent}
-                          hypothesisId={hypothesisId}
+                      {historicalRevision === null && (
+                        <InvestigationGraph
+                          key={incident.id}
+                          incident={incident}
+                          expanded={investigationCanvas}
+                          onExpandedChange={setGraphExpanded}
+                          onAction={onAction}
+                          onUpdated={(updated) => {
+                            setIncident((current) =>
+                              current &&
+                              current.id === updated.id &&
+                              current.revision > updated.revision
+                                ? current
+                                : updated,
+                            );
+                          }}
+                          busy={busy || !canEdit || !!closed}
                           onSelectHypothesis={setSelectedHypothesis}
-                          revision={
-                            snapshot?.incident_revision ?? incident.revision
-                          }
-                          evidenceHref={incidentPageUrl(
-                            incident.id,
-                            "evidence",
-                          )}
-                          onOpenEvidence={followLink}
+                          selectedHypothesisId={hypothesisId}
+                          onSelectEvidence={(id) => {
+                            setSelectedEvent(id);
+                            navigate(incidentPageUrl(incident.id, "evidence"));
+                          }}
                         />
                       )}
-                      <p className="incident-page-next">
-                        <a
-                          href={incidentPageUrl(incident.id, "simulation")}
-                          onClick={followLink}
-                        >
-                          Explore the selected mechanism in Simulation{" "}
-                          <ArrowRight aria-hidden="true" />
-                        </a>
-                      </p>
+                      <div hidden={investigationCanvas}>
+                        <InvestigationPanel
+                          showForms={!incident.investigation?.nodes?.length}
+                          assessment={assessment}
+                          observations={visibleObservations}
+                          onObserve={(input) =>
+                            onAction({ action: "record_result", ...input })
+                          }
+                          onSelectEvidence={(id) => {
+                            setSelectedEvent(id);
+                            navigate(incidentPageUrl(incident.id, "evidence"));
+                          }}
+                          onSelectHypothesis={setSelectedHypothesis}
+                          selectedHypothesisId={hypothesisId}
+                          busy={
+                            busy ||
+                            !canEdit ||
+                            historicalRevision !== null ||
+                            !!closed
+                          }
+                        />
+                        {route.page === "investigation" && (
+                          <LinkedExploration
+                            evidence={incident.evidence ?? []}
+                            assessment={assessment}
+                            selectedEventId={eventId}
+                            onSelectEvent={setSelectedEvent}
+                            hypothesisId={hypothesisId}
+                            onSelectHypothesis={setSelectedHypothesis}
+                            revision={
+                              snapshot?.incident_revision ?? incident.revision
+                            }
+                            evidenceHref={incidentPageUrl(
+                              incident.id,
+                              "evidence",
+                            )}
+                            onOpenEvidence={followLink}
+                          />
+                        )}
+                        <p className="incident-page-next">
+                          <a
+                            href={incidentPageUrl(incident.id, "simulation")}
+                            onClick={followLink}
+                          >
+                            Explore the selected mechanism in Simulation{" "}
+                            <ArrowRight aria-hidden="true" />
+                          </a>
+                        </p>
+                      </div>
                     </section>
                   </Activity>
                 )}

@@ -30,7 +30,14 @@ class Settings(BaseSettings):
     )
     gemini_model: str = "gemini-3.5-flash-lite"
     reasoning_enabled: bool = True
+    elevenlabs_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices("ELEVENLABS_API_KEY", "FLOWPILOT_ELEVENLABS_API_KEY"),
+    )
+    incident_voice_enabled: bool = False
     reasoning_timeout_seconds: float = Field(default=12, gt=0, le=30)
+    incident_interpretation_thinking: Literal["low", "medium", "high"] = "low"
+    incident_generation_thinking: Literal["low", "medium", "high"] = "medium"
     incident_auth_mode: Literal["demo", "configured"] = "demo"
     incident_auto_process: bool = False
     incident_gateway_root: Path | None = None
@@ -43,10 +50,16 @@ class Settings(BaseSettings):
         "synthetic_only"
     )
     incident_jev_enabled: bool = False
+    jev_gateway: Literal["typesafe", "openrouter"] = "typesafe"
     jev_api_key: SecretStr | None = None
+    openrouter_api_key: SecretStr | None = Field(
+        default=None,
+        validation_alias=AliasChoices("OPENROUTER_API_KEY", "FLOWPILOT_OPENROUTER_API_KEY"),
+    )
     jev_model: str = "jev-latest"
     jev_timeout_seconds: float = Field(default=3, gt=0, le=30)
     jev_min_probability: float = Field(default=0.75, ge=0, le=1)
+    jev_answer_min_probability: float = Field(default=0.9, ge=0, le=1)
     incident_email_recipients: list[str] = Field(default_factory=list)
     incident_smtp_host: str | None = None
     incident_smtp_port: int = Field(default=587, ge=1, le=65535)
@@ -54,6 +67,10 @@ class Settings(BaseSettings):
     incident_smtp_password: SecretStr | None = None
     incident_smtp_from: str | None = None
     incident_smtp_starttls: bool = True
+
+    @property
+    def jev_key(self) -> SecretStr | None:
+        return self.openrouter_api_key if self.jev_gateway == "openrouter" else self.jev_api_key
 
 
 def fixture_path(name: str) -> Path:

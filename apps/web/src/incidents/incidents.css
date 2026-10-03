@@ -6,7 +6,7 @@
   text-underline-offset: 3px;
 }
 .incident-main {
-  width: min(1600px, 100%);
+  width: 100%;
   margin: auto;
   padding: 32px 40px 64px;
   outline: none;

@@ -233,6 +233,36 @@
         "title": "Answer",
         "type": "object"
       },
+      "AnswerChoice": {
+        "additionalProperties": false,
+        "properties": {
+          "interpretation": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Interpretation",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 150,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "value": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "label",
+          "interpretation"
+        ],
+        "title": "AnswerChoice",
+        "type": "object"
+      },
       "AnswerClarification": {
         "additionalProperties": false,
         "properties": {
@@ -272,6 +302,128 @@
           "source_ref"
         ],
         "title": "AnswerClarification",
+        "type": "object"
+      },
+      "AnswerInterpretation": {
+        "additionalProperties": false,
+        "properties": {
+          "ambiguities": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Ambiguities",
+            "type": "array"
+          },
+          "clarification": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clarification"
+          },
+          "supporting_spans": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Supporting Spans",
+            "type": "array"
+          },
+          "target_fact": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Target Fact",
+            "type": "string"
+          },
+          "value": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "target_fact",
+          "value"
+        ],
+        "title": "AnswerInterpretation",
+        "type": "object"
+      },
+      "AnswerInvestigationAction": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "const": "answer_investigation",
+            "title": "Action",
+            "type": "string"
+          },
+          "answer_id": {
+            "pattern": "^ANS-[A-Za-z0-9-]{1,64}$",
+            "title": "Answer Id",
+            "type": "string"
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Choice"
+          },
+          "node_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Node Id",
+            "type": "string"
+          },
+          "notes": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Notes",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "supersedes_id": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Id"
+          },
+          "text": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision",
+          "action",
+          "answer_id",
+          "node_id"
+        ],
+        "title": "AnswerInvestigationAction",
         "type": "object"
       },
       "ApplicableSourcePassage": {
@@ -1482,6 +1634,41 @@
         "title": "Confirm",
         "type": "object"
       },
+      "ConfirmInvestigationAction": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "const": "confirm_investigation",
+            "title": "Action",
+            "type": "string"
+          },
+          "answer_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Answer Id",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "value": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision",
+          "action",
+          "answer_id",
+          "value"
+        ],
+        "title": "ConfirmInvestigationAction",
+        "type": "object"
+      },
       "ConflictReview": {
         "additionalProperties": false,
         "properties": {
@@ -1550,6 +1737,86 @@
           "notes"
         ],
         "title": "ConflictReviewRequest",
+        "type": "object"
+      },
+      "ConversationMapping": {
+        "additionalProperties": false,
+        "properties": {
+          "choice": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Choice",
+            "type": "string"
+          },
+          "node_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Node Id",
+            "type": "string"
+          },
+          "supporting_span": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Supporting Span",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id",
+          "choice",
+          "supporting_span"
+        ],
+        "title": "ConversationMapping",
+        "type": "object"
+      },
+      "ConversationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "input_mode": {
+            "default": "text",
+            "enum": [
+              "text",
+              "voice"
+            ],
+            "title": "Input Mode",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "spotlight_node_id": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spotlight Node Id"
+          },
+          "text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "pattern": "(?s).*\\S.*",
+            "title": "Text",
+            "type": "string"
+          },
+          "turn_id": {
+            "pattern": "^TURN-[A-Za-z0-9-]{1,64}$",
+            "title": "Turn Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision",
+          "turn_id",
+          "text"
+        ],
+        "title": "ConversationRequest",
         "type": "object"
       },
       "CoordinatorStatus": {
@@ -1841,8 +2108,11 @@
         "additionalProperties": false,
         "properties": {
           "adapter_version": {
-            "const": "s932-jev-1",
-            "default": "s932-jev-1",
+            "default": "s932-jev-2",
+            "enum": [
+              "s932-jev-1",
+              "s932-jev-2"
+            ],
             "title": "Adapter Version",
             "type": "string"
           },
@@ -1856,6 +2126,15 @@
             },
             "title": "Eligible Ids",
             "type": "array"
+          },
+          "gateway": {
+            "default": "typesafe",
+            "enum": [
+              "typesafe",
+              "openrouter"
+            ],
+            "title": "Gateway",
+            "type": "string"
           },
           "input_sha256": {
             "anyOf": [
@@ -1940,6 +2219,16 @@
               "fallback"
             ],
             "title": "Status",
+            "type": "string"
+          },
+          "task": {
+            "default": "next_step",
+            "enum": [
+              "next_step",
+              "answer_readiness",
+              "question_type"
+            ],
+            "title": "Task",
             "type": "string"
           }
         },
@@ -3955,6 +4244,13 @@
             "title": "Configuration",
             "type": "string"
           },
+          "conversation": {
+            "items": {
+              "$ref": "#/components/schemas/InvestigationConversationTurn"
+            },
+            "title": "Conversation",
+            "type": "array"
+          },
           "created_at": {
             "title": "Created At",
             "type": "string"
@@ -3997,6 +4293,9 @@
           "id": {
             "title": "Id",
             "type": "string"
+          },
+          "investigation": {
+            "$ref": "#/components/schemas/InvestigationGraph"
           },
           "learning": {
             "anyOf": [
@@ -5571,6 +5870,687 @@
         "title": "Investigation",
         "type": "object"
       },
+      "InvestigationAnswer": {
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Choice"
+          },
+          "confirmed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed At"
+          },
+          "confirmed_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed Value"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "interpretation_run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestigationGeneration"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "notes": {
+            "default": "",
+            "title": "Notes",
+            "type": "string"
+          },
+          "observation_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observation Id"
+          },
+          "proposed": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnswerInterpretation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "readiness": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "recorded_revision": {
+            "title": "Recorded Revision",
+            "type": "integer"
+          },
+          "request_fingerprint": {
+            "title": "Request Fingerprint",
+            "type": "string"
+          },
+          "status": {
+            "default": "pending",
+            "enum": [
+              "pending",
+              "clarification",
+              "confirmed",
+              "unknown"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "supersedes_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supersedes Id"
+          },
+          "text": {
+            "default": "",
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "node_id",
+          "recorded_at",
+          "recorded_revision",
+          "request_fingerprint"
+        ],
+        "title": "InvestigationAnswer",
+        "type": "object"
+      },
+      "InvestigationConversationTurn": {
+        "additionalProperties": false,
+        "properties": {
+          "author": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author"
+          },
+          "generation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/InvestigationGeneration"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "input_fingerprint": {
+            "title": "Input Fingerprint",
+            "type": "string"
+          },
+          "input_mode": {
+            "enum": [
+              "text",
+              "voice"
+            ],
+            "title": "Input Mode",
+            "type": "string"
+          },
+          "intent": {
+            "enum": [
+              "answer",
+              "switch",
+              "discuss",
+              "clarify",
+              "confirm",
+              "cancel"
+            ],
+            "title": "Intent",
+            "type": "string"
+          },
+          "mappings": {
+            "items": {
+              "$ref": "#/components/schemas/ConversationMapping"
+            },
+            "title": "Mappings",
+            "type": "array"
+          },
+          "node_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Node Ids",
+            "type": "array"
+          },
+          "recorded_at": {
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "reply": {
+            "title": "Reply",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "recorded",
+              "clarification",
+              "discussed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "input_mode",
+          "reply",
+          "intent",
+          "status",
+          "input_fingerprint",
+          "recorded_at"
+        ],
+        "title": "InvestigationConversationTurn",
+        "type": "object"
+      },
+      "InvestigationExpansion": {
+        "additionalProperties": false,
+        "properties": {
+          "child_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Child Ids",
+            "type": "array"
+          },
+          "decision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "generation": {
+            "$ref": "#/components/schemas/InvestigationGeneration"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "parent_answer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Answer Id"
+          },
+          "recommended_id": {
+            "title": "Recommended Id",
+            "type": "string"
+          },
+          "superseded": {
+            "default": false,
+            "title": "Superseded",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "child_ids",
+          "recommended_id",
+          "generation"
+        ],
+        "title": "InvestigationExpansion",
+        "type": "object"
+      },
+      "InvestigationGeneration": {
+        "additionalProperties": false,
+        "properties": {
+          "fallback_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": "Offline baseline; adaptive generation has not run.",
+            "title": "Fallback Reason"
+          },
+          "input_fingerprint": {
+            "title": "Input Fingerprint",
+            "type": "string"
+          },
+          "input_revision": {
+            "title": "Input Revision",
+            "type": "integer"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "prompt_version": {
+            "default": "s932-questions-1",
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "provider": {
+            "default": "deterministic",
+            "enum": [
+              "deterministic",
+              "gemini"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "rejected_count": {
+            "default": 0,
+            "title": "Rejected Count",
+            "type": "integer"
+          },
+          "status": {
+            "default": "fallback",
+            "enum": [
+              "validated",
+              "fallback"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "thinking": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thinking"
+          }
+        },
+        "required": [
+          "input_fingerprint",
+          "input_revision"
+        ],
+        "title": "InvestigationGeneration",
+        "type": "object"
+      },
+      "InvestigationGraph": {
+        "additionalProperties": false,
+        "properties": {
+          "active_node_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Node Id"
+          },
+          "answers": {
+            "items": {
+              "$ref": "#/components/schemas/InvestigationAnswer"
+            },
+            "title": "Answers",
+            "type": "array"
+          },
+          "expansions": {
+            "items": {
+              "$ref": "#/components/schemas/InvestigationExpansion"
+            },
+            "title": "Expansions",
+            "type": "array"
+          },
+          "input_version": {
+            "default": 0,
+            "title": "Input Version",
+            "type": "integer"
+          },
+          "nodes": {
+            "items": {
+              "$ref": "#/components/schemas/InvestigationNode"
+            },
+            "title": "Nodes",
+            "type": "array"
+          },
+          "retry_requested": {
+            "default": false,
+            "title": "Retry Requested",
+            "type": "boolean"
+          },
+          "selections": {
+            "items": {
+              "$ref": "#/components/schemas/InvestigationSelection"
+            },
+            "title": "Selections",
+            "type": "array"
+          },
+          "version": {
+            "const": "s932-graph-1",
+            "default": "s932-graph-1",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "title": "InvestigationGraph",
+        "type": "object"
+      },
+      "InvestigationNode": {
+        "additionalProperties": false,
+        "properties": {
+          "blocked_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocked Reason"
+          },
+          "choices": {
+            "items": {
+              "$ref": "#/components/schemas/AnswerChoice"
+            },
+            "maxItems": 10,
+            "title": "Choices",
+            "type": "array"
+          },
+          "clarification_for": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clarification For"
+          },
+          "classification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DecisionRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "component_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Component Ids",
+            "type": "array"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "hypothesis_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 3,
+            "title": "Hypothesis Ids",
+            "type": "array"
+          },
+          "id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9_.:-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "default": "question",
+            "enum": [
+              "question",
+              "check",
+              "review",
+              "escalate"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "parent_answer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Answer Id"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "prerequisites": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 15,
+            "title": "Prerequisites",
+            "type": "array"
+          },
+          "prompt": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Prompt",
+            "type": "string"
+          },
+          "question_type": {
+            "default": "unclassified",
+            "enum": [
+              "what",
+              "where",
+              "when",
+              "which",
+              "why_impact",
+              "how_detected",
+              "how_many",
+              "why_cause",
+              "verification",
+              "unclassified"
+            ],
+            "title": "Question Type",
+            "type": "string"
+          },
+          "source_refs": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10,
+            "title": "Source Refs",
+            "type": "array"
+          },
+          "source_revision": {
+            "title": "Source Revision",
+            "type": "integer"
+          },
+          "source_versions": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Source Versions",
+            "type": "object"
+          },
+          "status": {
+            "default": "proposed",
+            "enum": [
+              "proposed",
+              "active",
+              "answered",
+              "blocked",
+              "superseded"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "target_fact": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Target Fact",
+            "type": "string"
+          },
+          "why": {
+            "maxLength": 1500,
+            "minLength": 1,
+            "title": "Why",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "target_fact",
+          "prompt",
+          "why",
+          "source_revision"
+        ],
+        "title": "InvestigationNode",
+        "type": "object"
+      },
+      "InvestigationSelection": {
+        "additionalProperties": false,
+        "properties": {
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id",
+          "revision",
+          "timestamp"
+        ],
+        "title": "InvestigationSelection",
+        "type": "object"
+      },
       "JevChoice": {
         "additionalProperties": false,
         "properties": {
@@ -5620,11 +6600,35 @@
             "title": "Answers",
             "type": "object"
           },
+          "id": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
           "model": {
             "maxLength": 100,
             "minLength": 1,
             "title": "Model",
             "type": "string"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
           },
           "usage": {
             "$ref": "#/components/schemas/JevUsage"
@@ -5641,6 +6645,18 @@
       "JevUsage": {
         "additionalProperties": false,
         "properties": {
+          "cost": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost"
+          },
           "input_tokens": {
             "minimum": 0,
             "title": "Input Tokens",
@@ -7943,6 +8959,27 @@
         "title": "RetrievalSnapshot",
         "type": "object"
       },
+      "RetryInvestigationAction": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "const": "retry_investigation",
+            "title": "Action",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision",
+          "action"
+        ],
+        "title": "RetryInvestigationAction",
+        "type": "object"
+      },
       "ReviewLearningAction": {
         "additionalProperties": false,
         "properties": {
@@ -8023,6 +9060,34 @@
           "explanation"
         ],
         "title": "ScoreContribution",
+        "type": "object"
+      },
+      "SelectInvestigationAction": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "const": "select_investigation",
+            "title": "Action",
+            "type": "string"
+          },
+          "node_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Node Id",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision",
+          "action",
+          "node_id"
+        ],
+        "title": "SelectInvestigationAction",
         "type": "object"
       },
       "SimpleAction": {
@@ -9270,6 +10335,20 @@
         ],
         "title": "VisionExample",
         "type": "object"
+      },
+      "VoiceToken": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "token"
+        ],
+        "title": "VoiceToken",
+        "type": "object"
       }
     }
   },
@@ -10140,13 +11219,17 @@
                     "add_evidence": "#/components/schemas/AddEvidenceAction",
                     "advance_replay": "#/components/schemas/SimpleAction",
                     "analyze": "#/components/schemas/SimpleAction",
+                    "answer_investigation": "#/components/schemas/AnswerInvestigationAction",
                     "close": "#/components/schemas/CloseIncidentAction",
+                    "confirm_investigation": "#/components/schemas/ConfirmInvestigationAction",
                     "correct_evidence": "#/components/schemas/CorrectEvidenceAction",
                     "edit_handoff": "#/components/schemas/EditHandoffAction",
                     "escalate": "#/components/schemas/EscalateAction",
                     "record_result": "#/components/schemas/RecordResultAction",
                     "refresh_handoff": "#/components/schemas/SimpleAction",
-                    "review_learning": "#/components/schemas/ReviewLearningAction"
+                    "retry_investigation": "#/components/schemas/RetryInvestigationAction",
+                    "review_learning": "#/components/schemas/ReviewLearningAction",
+                    "select_investigation": "#/components/schemas/SelectInvestigationAction"
                   },
                   "propertyName": "action"
                 },
@@ -10162,6 +11245,18 @@
                   },
                   {
                     "$ref": "#/components/schemas/RecordResultAction"
+                  },
+                  {
+                    "$ref": "#/components/schemas/AnswerInvestigationAction"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ConfirmInvestigationAction"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SelectInvestigationAction"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RetryInvestigationAction"
                   },
                   {
                     "$ref": "#/components/schemas/EditHandoffAction"
@@ -10749,6 +11844,58 @@
         ]
       }
     },
+    "/api/incidents/{incident_id}/conversation": {
+      "post": {
+        "operationId": "conversation_api_incidents__incident_id__conversation_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "title": "Incident Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Incident"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Conversation",
+        "tags": [
+          "incidents"
+        ]
+      }
+    },
     "/api/incidents/{incident_id}/experience": {
       "get": {
         "operationId": "past_experience_api_incidents__incident_id__experience_get",
@@ -11286,6 +12433,48 @@
         "summary": "Record Simulation",
         "tags": [
           "illustrative incident simulation"
+        ]
+      }
+    },
+    "/api/incidents/{incident_id}/voice-token": {
+      "post": {
+        "operationId": "create_voice_token_api_incidents__incident_id__voice_token_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "title": "Incident Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoiceToken"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Voice Token",
+        "tags": [
+          "incidents"
         ]
       }
     },

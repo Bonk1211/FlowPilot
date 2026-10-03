@@ -1,8 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
+from starlette.concurrency import run_in_threadpool
 
 from flowpilot.incidents.access import Actor, identify, require_permission
-from flowpilot.incidents.coordinator import schedule_incident
+from flowpilot.incidents.conversation import ConversationRequest, VoiceToken, converse, voice_token
+from flowpilot.incidents.coordinator import process_next_job, schedule_incident
+from flowpilot.incidents.graph import GRAPH_ACTIONS
 from flowpilot.incidents.models import CreateIncident, Incident, IncidentAction, ReplayRequest
 from flowpilot.incidents.replay import replay_request
 from flowpilot.incidents.service import (
@@ -65,6 +68,11 @@ def action(
     incident = act(incident_id, request, actor=actor.subject)
     if Settings().incident_auto_process:
         schedule_incident(incident)
+    elif request.action in GRAPH_ACTIONS:
+        # Manual mode still saves the answer before doing any provider work.
+        schedule_incident(incident)
+        process_next_job("analysis", incident_id=incident.id)
+        incident = get_incident(incident.id)
     return incident
 
 
@@ -82,4 +90,33 @@ def report(incident_id: str):
         headers={
             "Content-Disposition": f'attachment; filename="{incident.id}-r{incident.revision}.md"'
         },
+    )
+
+
+@router.post("/{incident_id}/conversation", response_model=Incident)
+async def conversation(
+    incident_id: str,
+    request: ConversationRequest,
+    actor: Actor = Depends(require_permission("edit")),
+):
+    incident = await converse(incident_id, request, actor.subject)
+    turn = incident.conversation[-1]
+    if turn.status == "recorded" or (turn.intent == "switch" and turn.status == "discussed"):
+        schedule_incident(incident)
+        if not Settings().incident_auto_process:
+            await run_in_threadpool(process_next_job, "analysis", incident_id=incident.id)
+            incident = get_incident(incident.id)
+    return incident
+
+
+@router.post("/{incident_id}/voice-token", response_model=VoiceToken)
+async def create_voice_token(
+    incident_id: str,
+    actor: Actor = Depends(require_permission("edit")),
+):
+    token = await voice_token(incident_id)
+    return Response(
+        token.model_dump_json(),
+        media_type="application/json",
+        headers={"Cache-Control": "no-store"},
     )

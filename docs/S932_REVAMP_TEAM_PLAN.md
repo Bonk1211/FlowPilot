@@ -46,6 +46,8 @@ Use a labelled incident replay containing good/bad images, available pressure/ma
 
 ## 4. Person 2 — Investigation and knowledge
 
+**Next iteration:** See the [Person Two adaptive investigation plan](S932_PERSON_2_INVESTIGATION_PLAN.md) for the proposed React Flow interaction: one question node, a recorded answer, then relevant branches and an adaptive follow-up. It uses the existing synthetic records and proposes Gemini reasoning/question generation with Jev evaluating answer readiness and selecting eligible next steps; this extension is planned work.
+
 | Task | Work to deliver | Done when |
 |---|---|---|
 | B1. Three-cause investigation | Define restriction, unstable delivery and material-condition hypotheses. Store supporting, conflicting and missing evidence; retain previous assessments. | Similar symptoms can keep multiple causes open; diagnosis does not always lead to nozzle inspection. |

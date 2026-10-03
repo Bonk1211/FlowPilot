@@ -33,7 +33,7 @@ Open `http://127.0.0.1:5173/` at 1440×900. `dev:mock` runs background analysis 
 
 | Click | Say |
 |---|---|
-| Feature rail → **Investigation** → **Analyze available evidence** | "Three explanations stay open: restriction, unstable delivery and a material change. None is declared the cause." |
+| Feature rail → **Investigation** → **Analyze available evidence** → **Exit full screen** | "Three explanations stay open: restriction, unstable delivery and a material change. None is declared the cause." |
 | In **Evidence and mechanism**, timeline marker **Falling mass with a stable recorded pressure trend** | "This record is compatible with all three explanations, so it cannot separate them. It also conflicts with unstable delivery, because a stable pressure log can miss short transients." |
 | **Conflicts with Unstable fluid delivery** | "Its components light up: BFS bottle, BFS pressure, pickup tube, fluid QD. The chips say Inferred and Simulated; nothing here is a sensor reading." |
 | Feature rail → **Simulation** → **Compare mechanisms** | "Restriction and unstable delivery share the pickup tube and fluid QD. They differ in the feed tube and nozzle versus the bottle and its pressure, and each lists what evidence is still missing." |

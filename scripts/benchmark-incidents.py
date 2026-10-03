@@ -203,7 +203,7 @@ async def provider_case(provider, case, assessment, settings):
             "local_gate_choice": options[0],
         }
     if provider == "jev":
-        if not settings.jev_api_key:
+        if not settings.jev_key:
             return {"status": "not_run", "reason": "Jev key not configured."}
         evaluated = await diagnostic.select_assessment_step(
             assessment.model_copy(deep=True),

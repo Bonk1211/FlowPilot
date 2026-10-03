@@ -4,7 +4,9 @@ from typing import Annotated, Literal
 
 from pydantic import Field, JsonValue, field_validator, model_validator
 
+from flowpilot.incidents.decision import DecisionRun
 from flowpilot.incidents.diagnostic import DiagnosticAssessment
+from flowpilot.incidents.question_types import QuestionType, default_question_type
 from flowpilot.incidents.simulation import SimulationRun
 from flowpilot.investigations.models import Contract
 
@@ -148,6 +150,138 @@ class LearningCandidate(Contract):
     reviews: list[LearningReview] = Field(default_factory=list)
 
 
+class AnswerChoice(Contract):
+    value: str = Field(min_length=1, max_length=100)
+    label: str = Field(min_length=1, max_length=150)
+    interpretation: str = Field(min_length=1, max_length=500)
+
+
+class InvestigationQuestion(Contract):
+    id: str = Field(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9_.:-]+$")
+    kind: Literal["question", "check", "review", "escalate"] = "question"
+    target_fact: str = Field(min_length=1, max_length=100)
+    prompt: str = Field(min_length=1, max_length=500)
+    why: str = Field(min_length=1, max_length=1500)
+    question_type: QuestionType = "unclassified"
+    choices: list[AnswerChoice] = Field(default_factory=list, max_length=10)
+    hypothesis_ids: list[str] = Field(default_factory=list, max_length=3)
+    component_ids: list[str] = Field(default_factory=list, max_length=10)
+    evidence_ids: list[str] = Field(default_factory=list, max_length=100)
+    source_refs: list[str] = Field(default_factory=list, max_length=10)
+    prerequisites: list[str] = Field(default_factory=list, max_length=15)
+
+    @model_validator(mode="after")
+    def legacy_question_type(self):
+        if "question_type" not in self.model_fields_set:
+            self.question_type = default_question_type(self.kind, self.target_fact)
+        return self
+
+
+class InvestigationNode(InvestigationQuestion):
+    classification: DecisionRun | None = None
+    parent_id: str | None = None
+    parent_answer_id: str | None = None
+    status: Literal["proposed", "active", "answered", "blocked", "superseded"] = "proposed"
+    source_revision: int
+    source_versions: dict[str, str] = Field(default_factory=dict)
+    blocked_reason: str | None = None
+    clarification_for: str | None = None
+
+
+class AnswerInterpretation(Contract):
+    target_fact: str = Field(min_length=1, max_length=100)
+    value: str = Field(min_length=1, max_length=100)
+    supporting_spans: list[str] = Field(default_factory=list, max_length=10)
+    ambiguities: list[str] = Field(default_factory=list, max_length=10)
+    clarification: str | None = Field(default=None, max_length=500)
+
+
+class AdaptiveQuestions(Contract):
+    candidates: list[InvestigationQuestion] = Field(min_length=1, max_length=3)
+    preferred_id: str = Field(min_length=1, max_length=100)
+
+
+class InvestigationGeneration(Contract):
+    provider: Literal["deterministic", "gemini"] = "deterministic"
+    status: Literal["validated", "fallback"] = "fallback"
+    model: str | None = None
+    model_version: str | None = None
+    prompt_version: str = "s932-questions-1"
+    thinking: str | None = None
+    input_fingerprint: str
+    input_revision: int
+    fallback_reason: str | None = "Offline baseline; adaptive generation has not run."
+    rejected_count: int = 0
+
+
+class InvestigationAnswer(Contract):
+    id: str
+    node_id: str
+    choice: str | None = None
+    text: str = ""
+    notes: str = ""
+    status: Literal["pending", "clarification", "confirmed", "unknown"] = "pending"
+    proposed: AnswerInterpretation | None = None
+    confirmed_value: str | None = None
+    observation_id: str | None = None
+    recorded_at: str
+    recorded_revision: int
+    confirmed_at: str | None = None
+    supersedes_id: str | None = None
+    author: str | None = None
+    request_fingerprint: str
+    interpretation_run: InvestigationGeneration | None = None
+    readiness: DecisionRun | None = None
+
+
+class InvestigationExpansion(Contract):
+    id: str
+    parent_answer_id: str | None = None
+    child_ids: list[str]
+    recommended_id: str
+    generation: InvestigationGeneration
+    decision: DecisionRun | None = None
+    superseded: bool = False
+
+
+class InvestigationSelection(Contract):
+    node_id: str
+    revision: int
+    timestamp: str
+
+
+class InvestigationGraph(Contract):
+    version: Literal["s932-graph-1"] = "s932-graph-1"
+    nodes: list[InvestigationNode] = Field(default_factory=list)
+    answers: list[InvestigationAnswer] = Field(default_factory=list)
+    expansions: list[InvestigationExpansion] = Field(default_factory=list)
+    selections: list[InvestigationSelection] = Field(default_factory=list)
+    active_node_id: str | None = None
+    input_version: int = 0
+    retry_requested: bool = False
+
+
+class ConversationMapping(Contract):
+    node_id: str = Field(min_length=1, max_length=100)
+    choice: str = Field(min_length=1, max_length=100)
+    supporting_span: str = Field(min_length=1, max_length=2000)
+
+
+class InvestigationConversationTurn(Contract):
+    id: str
+    text: str
+    input_mode: Literal["text", "voice"]
+    reply: str
+    intent: Literal["answer", "switch", "discuss", "clarify", "confirm", "cancel"]
+    node_ids: list[str] = Field(default_factory=list)
+    mappings: list[ConversationMapping] = Field(default_factory=list)
+    status: Literal["pending", "recorded", "clarification", "discussed", "cancelled"]
+    input_fingerprint: str
+    generation: InvestigationGeneration | None = None
+    recorded_at: str
+    author: str | None = None
+
+
 class Incident(Contract):
     schema_version: Literal["3.0"] = "3.0"
     id: str
@@ -182,6 +316,8 @@ class Incident(Contract):
     learning_history: list[LearningCandidate] = Field(default_factory=list)
     history: list[IncidentEvent] = Field(default_factory=list)
     simulations: list[SimulationRun] = Field(default_factory=list)
+    investigation: InvestigationGraph = Field(default_factory=InvestigationGraph)
+    conversation: list[InvestigationConversationTurn] = Field(default_factory=list)
 
 
 class CreateIncident(Contract):
@@ -244,6 +380,37 @@ class RecordResultAction(RevisionAction):
     extraction_confidence: float | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
 
 
+class AnswerInvestigationAction(RevisionAction):
+    action: Literal["answer_investigation"]
+    answer_id: str = Field(pattern=r"^ANS-[A-Za-z0-9-]{1,64}$")
+    node_id: str = Field(min_length=1, max_length=100)
+    choice: str | None = Field(default=None, min_length=1, max_length=100)
+    text: str = Field(default="", max_length=2000)
+    notes: str = Field(default="", max_length=2000)
+    supersedes_id: str | None = Field(default=None, max_length=100)
+
+    @model_validator(mode="after")
+    def has_answer(self):
+        if not self.choice and not self.text.strip():
+            raise ValueError("Choose an answer, Unknown, or enter your answer in text.")
+        return self
+
+
+class ConfirmInvestigationAction(RevisionAction):
+    action: Literal["confirm_investigation"]
+    answer_id: str = Field(min_length=1, max_length=100)
+    value: str = Field(min_length=1, max_length=100)
+
+
+class SelectInvestigationAction(RevisionAction):
+    action: Literal["select_investigation"]
+    node_id: str = Field(min_length=1, max_length=100)
+
+
+class RetryInvestigationAction(RevisionAction):
+    action: Literal["retry_investigation"]
+
+
 class EditHandoffAction(RevisionAction):
     action: Literal["edit_handoff"]
     body: str = Field(min_length=1, max_length=20000, pattern=r".*\S.*")
@@ -274,6 +441,10 @@ IncidentAction = Annotated[
     | AddEvidenceAction
     | CorrectEvidenceAction
     | RecordResultAction
+    | AnswerInvestigationAction
+    | ConfirmInvestigationAction
+    | SelectInvestigationAction
+    | RetryInvestigationAction
     | EditHandoffAction
     | EscalateAction
     | CloseIncidentAction

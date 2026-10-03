@@ -2,6 +2,7 @@ import type {
   CreateIncident,
   Incident,
   IncidentAction,
+  ConversationRequest,
 } from "@flowpilot/contracts";
 export type {
   Incident,
@@ -127,6 +128,12 @@ async function request<T>(
 export const listIncidents = () => request<Incident[]>("");
 export const loadIncident = (id: string) =>
   request<Incident>(`/${encodeURIComponent(id)}`);
+export const converseWithInvestigation = (
+  id: string,
+  body: ConversationRequest,
+) => request<Incident>(`/${encodeURIComponent(id)}/conversation`, body);
+export const getInvestigationVoiceToken = (id: string) =>
+  request<{ token: string }>(`/${encodeURIComponent(id)}/voice-token`, {});
 export const createIncident = (body: CreateIncident) =>
   request<Incident>("", body);
 export const startReplay = (trigger_id: string) =>

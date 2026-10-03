@@ -53,6 +53,12 @@ export type Incident = components["schemas"]["Incident"];
 export type IncidentEvidence = components["schemas"]["IncidentEvidence"];
 export type EvidenceInput = components["schemas"]["EvidenceInput"];
 export type IncidentObservation = components["schemas"]["IncidentObservation"];
+export type InvestigationGraph = components["schemas"]["InvestigationGraph"];
+export type InvestigationNode = components["schemas"]["InvestigationNode"];
+export type InvestigationAnswer = components["schemas"]["InvestigationAnswer"];
+export type InvestigationConversationTurn =
+  components["schemas"]["InvestigationConversationTurn"];
+export type ConversationRequest = components["schemas"]["ConversationRequest"];
 export type DiagnosticAssessment =
   components["schemas"]["DiagnosticAssessment"];
 export type CreateIncident = components["schemas"]["CreateIncident"];
@@ -71,7 +77,8 @@ export type SimulationRequest = components["schemas"]["SimulationRequest"];
 export type IncidentExperiment = components["schemas"]["IncidentExperiment"];
 export type ExperimentProposal = components["schemas"]["ExperimentProposal"];
 export type ExperimentCommand = components["schemas"]["ExperimentCommand"];
-export type ExperimentWithdrawal = components["schemas"]["ExperimentWithdrawal"];
+export type ExperimentWithdrawal =
+  components["schemas"]["ExperimentWithdrawal"];
 export type ExperimentFactor = components["schemas"]["ExperimentFactor"];
 export type IncidentCommunication =
   components["schemas"]["IncidentCommunication"];
@@ -86,6 +93,10 @@ export type IncidentAction =
   | components["schemas"]["AddEvidenceAction"]
   | components["schemas"]["CorrectEvidenceAction"]
   | components["schemas"]["RecordResultAction"]
+  | components["schemas"]["AnswerInvestigationAction"]
+  | components["schemas"]["ConfirmInvestigationAction"]
+  | components["schemas"]["SelectInvestigationAction"]
+  | components["schemas"]["RetryInvestigationAction"]
   | components["schemas"]["EditHandoffAction"]
   | components["schemas"]["EscalateAction"]
   | components["schemas"]["CloseIncidentAction"]

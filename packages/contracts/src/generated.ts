@@ -506,6 +506,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/incidents/{incident_id}/conversation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Conversation */
+        post: operations["conversation_api_incidents__incident_id__conversation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/incidents/{incident_id}/experience": {
         parameters: {
             query?: never;
@@ -638,6 +655,23 @@ export interface paths {
         put?: never;
         /** Record Simulation */
         post: operations["record_simulation_api_incidents__incident_id__simulation_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/incidents/{incident_id}/voice-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Voice Token */
+        post: operations["create_voice_token_api_incidents__incident_id__voice_token_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1090,6 +1124,15 @@ export interface components {
             /** Value */
             value: string;
         };
+        /** AnswerChoice */
+        AnswerChoice: {
+            /** Interpretation */
+            interpretation: string;
+            /** Label */
+            label: string;
+            /** Value */
+            value: string;
+        };
         /** AnswerClarification */
         AnswerClarification: {
             /** Prompt */
@@ -1103,6 +1146,47 @@ export interface components {
             question_id: "frequency" | "continuous" | "intermittent" | "change" | "temperature" | "service";
             /** Source Ref */
             source_ref: string;
+        };
+        /** AnswerInterpretation */
+        AnswerInterpretation: {
+            /** Ambiguities */
+            ambiguities?: string[];
+            /** Clarification */
+            clarification?: string | null;
+            /** Supporting Spans */
+            supporting_spans?: string[];
+            /** Target Fact */
+            target_fact: string;
+            /** Value */
+            value: string;
+        };
+        /** AnswerInvestigationAction */
+        AnswerInvestigationAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "answer_investigation";
+            /** Answer Id */
+            answer_id: string;
+            /** Choice */
+            choice?: string | null;
+            /** Node Id */
+            node_id: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Revision */
+            revision: number;
+            /** Supersedes Id */
+            supersedes_id?: string | null;
+            /**
+             * Text
+             * @default
+             */
+            text: string;
         };
         /** ApplicableSourcePassage */
         ApplicableSourcePassage: {
@@ -1548,6 +1632,20 @@ export interface components {
             /** Revision */
             revision: number;
         };
+        /** ConfirmInvestigationAction */
+        ConfirmInvestigationAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "confirm_investigation";
+            /** Answer Id */
+            answer_id: string;
+            /** Revision */
+            revision: number;
+            /** Value */
+            value: string;
+        };
         /** ConflictReview */
         ConflictReview: {
             /** Actor */
@@ -1575,6 +1673,32 @@ export interface components {
             notes: string;
             /** Revision */
             revision: number;
+        };
+        /** ConversationMapping */
+        ConversationMapping: {
+            /** Choice */
+            choice: string;
+            /** Node Id */
+            node_id: string;
+            /** Supporting Span */
+            supporting_span: string;
+        };
+        /** ConversationRequest */
+        ConversationRequest: {
+            /**
+             * Input Mode
+             * @default text
+             * @enum {string}
+             */
+            input_mode: "text" | "voice";
+            /** Revision */
+            revision: number;
+            /** Spotlight Node Id */
+            spotlight_node_id?: string | null;
+            /** Text */
+            text: string;
+            /** Turn Id */
+            turn_id: string;
         };
         /** CoordinatorStatus */
         CoordinatorStatus: {
@@ -1691,14 +1815,20 @@ export interface components {
         DecisionRun: {
             /**
              * Adapter Version
-             * @default s932-jev-1
-             * @constant
+             * @default s932-jev-2
+             * @enum {string}
              */
-            adapter_version: "s932-jev-1";
+            adapter_version: "s932-jev-1" | "s932-jev-2";
             /** Baseline Id */
             baseline_id: string;
             /** Eligible Ids */
             eligible_ids: string[];
+            /**
+             * Gateway
+             * @default typesafe
+             * @enum {string}
+             */
+            gateway: "typesafe" | "openrouter";
             /** Input Sha256 */
             input_sha256?: string | null;
             /**
@@ -1733,6 +1863,12 @@ export interface components {
              * @enum {string}
              */
             status: "selected" | "fallback";
+            /**
+             * Task
+             * @default next_step
+             * @enum {string}
+             */
+            task: "next_step" | "answer_readiness" | "question_type";
         };
         /** DeleteArtifact */
         DeleteArtifact: {
@@ -2500,6 +2636,8 @@ export interface components {
             closure_history?: components["schemas"]["Closure"][];
             /** Configuration */
             configuration: string;
+            /** Conversation */
+            conversation?: components["schemas"]["InvestigationConversationTurn"][];
             /** Created At */
             created_at: string;
             /**
@@ -2522,6 +2660,7 @@ export interface components {
             history?: components["schemas"]["IncidentEvent"][];
             /** Id */
             id: string;
+            investigation?: components["schemas"]["InvestigationGraph"];
             learning?: components["schemas"]["LearningCandidate"] | null;
             /** Learning History */
             learning_history?: components["schemas"]["LearningCandidate"][];
@@ -3103,6 +3242,237 @@ export interface components {
             /** Title */
             title: string;
         };
+        /** InvestigationAnswer */
+        InvestigationAnswer: {
+            /** Author */
+            author?: string | null;
+            /** Choice */
+            choice?: string | null;
+            /** Confirmed At */
+            confirmed_at?: string | null;
+            /** Confirmed Value */
+            confirmed_value?: string | null;
+            /** Id */
+            id: string;
+            interpretation_run?: components["schemas"]["InvestigationGeneration"] | null;
+            /** Node Id */
+            node_id: string;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /** Observation Id */
+            observation_id?: string | null;
+            proposed?: components["schemas"]["AnswerInterpretation"] | null;
+            readiness?: components["schemas"]["DecisionRun"] | null;
+            /** Recorded At */
+            recorded_at: string;
+            /** Recorded Revision */
+            recorded_revision: number;
+            /** Request Fingerprint */
+            request_fingerprint: string;
+            /**
+             * Status
+             * @default pending
+             * @enum {string}
+             */
+            status: "pending" | "clarification" | "confirmed" | "unknown";
+            /** Supersedes Id */
+            supersedes_id?: string | null;
+            /**
+             * Text
+             * @default
+             */
+            text: string;
+        };
+        /** InvestigationConversationTurn */
+        InvestigationConversationTurn: {
+            /** Author */
+            author?: string | null;
+            generation?: components["schemas"]["InvestigationGeneration"] | null;
+            /** Id */
+            id: string;
+            /** Input Fingerprint */
+            input_fingerprint: string;
+            /**
+             * Input Mode
+             * @enum {string}
+             */
+            input_mode: "text" | "voice";
+            /**
+             * Intent
+             * @enum {string}
+             */
+            intent: "answer" | "switch" | "discuss" | "clarify" | "confirm" | "cancel";
+            /** Mappings */
+            mappings?: components["schemas"]["ConversationMapping"][];
+            /** Node Ids */
+            node_ids?: string[];
+            /** Recorded At */
+            recorded_at: string;
+            /** Reply */
+            reply: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "recorded" | "clarification" | "discussed" | "cancelled";
+            /** Text */
+            text: string;
+        };
+        /** InvestigationExpansion */
+        InvestigationExpansion: {
+            /** Child Ids */
+            child_ids: string[];
+            decision?: components["schemas"]["DecisionRun"] | null;
+            generation: components["schemas"]["InvestigationGeneration"];
+            /** Id */
+            id: string;
+            /** Parent Answer Id */
+            parent_answer_id?: string | null;
+            /** Recommended Id */
+            recommended_id: string;
+            /**
+             * Superseded
+             * @default false
+             */
+            superseded: boolean;
+        };
+        /** InvestigationGeneration */
+        InvestigationGeneration: {
+            /**
+             * Fallback Reason
+             * @default Offline baseline; adaptive generation has not run.
+             */
+            fallback_reason: string | null;
+            /** Input Fingerprint */
+            input_fingerprint: string;
+            /** Input Revision */
+            input_revision: number;
+            /** Model */
+            model?: string | null;
+            /** Model Version */
+            model_version?: string | null;
+            /**
+             * Prompt Version
+             * @default s932-questions-1
+             */
+            prompt_version: string;
+            /**
+             * Provider
+             * @default deterministic
+             * @enum {string}
+             */
+            provider: "deterministic" | "gemini";
+            /**
+             * Rejected Count
+             * @default 0
+             */
+            rejected_count: number;
+            /**
+             * Status
+             * @default fallback
+             * @enum {string}
+             */
+            status: "validated" | "fallback";
+            /** Thinking */
+            thinking?: string | null;
+        };
+        /** InvestigationGraph */
+        InvestigationGraph: {
+            /** Active Node Id */
+            active_node_id?: string | null;
+            /** Answers */
+            answers?: components["schemas"]["InvestigationAnswer"][];
+            /** Expansions */
+            expansions?: components["schemas"]["InvestigationExpansion"][];
+            /**
+             * Input Version
+             * @default 0
+             */
+            input_version: number;
+            /** Nodes */
+            nodes?: components["schemas"]["InvestigationNode"][];
+            /**
+             * Retry Requested
+             * @default false
+             */
+            retry_requested: boolean;
+            /** Selections */
+            selections?: components["schemas"]["InvestigationSelection"][];
+            /**
+             * Version
+             * @default s932-graph-1
+             * @constant
+             */
+            version: "s932-graph-1";
+        };
+        /** InvestigationNode */
+        InvestigationNode: {
+            /** Blocked Reason */
+            blocked_reason?: string | null;
+            /** Choices */
+            choices?: components["schemas"]["AnswerChoice"][];
+            /** Clarification For */
+            clarification_for?: string | null;
+            classification?: components["schemas"]["DecisionRun"] | null;
+            /** Component Ids */
+            component_ids?: string[];
+            /** Evidence Ids */
+            evidence_ids?: string[];
+            /** Hypothesis Ids */
+            hypothesis_ids?: string[];
+            /** Id */
+            id: string;
+            /**
+             * Kind
+             * @default question
+             * @enum {string}
+             */
+            kind: "question" | "check" | "review" | "escalate";
+            /** Parent Answer Id */
+            parent_answer_id?: string | null;
+            /** Parent Id */
+            parent_id?: string | null;
+            /** Prerequisites */
+            prerequisites?: string[];
+            /** Prompt */
+            prompt: string;
+            /**
+             * Question Type
+             * @default unclassified
+             * @enum {string}
+             */
+            question_type: "what" | "where" | "when" | "which" | "why_impact" | "how_detected" | "how_many" | "why_cause" | "verification" | "unclassified";
+            /** Source Refs */
+            source_refs?: string[];
+            /** Source Revision */
+            source_revision: number;
+            /** Source Versions */
+            source_versions?: {
+                [key: string]: string;
+            };
+            /**
+             * Status
+             * @default proposed
+             * @enum {string}
+             */
+            status: "proposed" | "active" | "answered" | "blocked" | "superseded";
+            /** Target Fact */
+            target_fact: string;
+            /** Why */
+            why: string;
+        };
+        /** InvestigationSelection */
+        InvestigationSelection: {
+            /** Node Id */
+            node_id: string;
+            /** Revision */
+            revision: number;
+            /** Timestamp */
+            timestamp: string;
+        };
         /** JevChoice */
         JevChoice: {
             /** Choice */
@@ -3125,12 +3495,18 @@ export interface components {
             answers: {
                 [key: string]: components["schemas"]["JevChoice"];
             };
+            /** Id */
+            id?: string | null;
             /** Model */
             model: string;
+            /** Provider */
+            provider?: string | null;
             usage: components["schemas"]["JevUsage"];
         };
         /** JevUsage */
         JevUsage: {
+            /** Cost */
+            cost?: number | null;
             /** Input Tokens */
             input_tokens: number;
             /** Output Tokens */
@@ -3983,6 +4359,16 @@ export interface components {
             /** Suggested Check */
             suggested_check?: string | null;
         };
+        /** RetryInvestigationAction */
+        RetryInvestigationAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "retry_investigation";
+            /** Revision */
+            revision: number;
+        };
         /** ReviewLearningAction */
         ReviewLearningAction: {
             /**
@@ -4018,6 +4404,18 @@ export interface components {
             explanation: string;
             /** Weight */
             weight: number;
+        };
+        /** SelectInvestigationAction */
+        SelectInvestigationAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "select_investigation";
+            /** Node Id */
+            node_id: string;
+            /** Revision */
+            revision: number;
         };
         /** SimpleAction */
         SimpleAction: {
@@ -4497,6 +4895,11 @@ export interface components {
             image_url: string;
             /** Label */
             label: string;
+        };
+        /** VoiceToken */
+        VoiceToken: {
+            /** Token */
+            token: string;
         };
     };
     responses: never;
@@ -5151,7 +5554,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SimpleAction"] | components["schemas"]["AddEvidenceAction"] | components["schemas"]["CorrectEvidenceAction"] | components["schemas"]["RecordResultAction"] | components["schemas"]["EditHandoffAction"] | components["schemas"]["EscalateAction"] | components["schemas"]["CloseIncidentAction"] | components["schemas"]["ReviewLearningAction"];
+                "application/json": components["schemas"]["SimpleAction"] | components["schemas"]["AddEvidenceAction"] | components["schemas"]["CorrectEvidenceAction"] | components["schemas"]["RecordResultAction"] | components["schemas"]["AnswerInvestigationAction"] | components["schemas"]["ConfirmInvestigationAction"] | components["schemas"]["SelectInvestigationAction"] | components["schemas"]["RetryInvestigationAction"] | components["schemas"]["EditHandoffAction"] | components["schemas"]["EscalateAction"] | components["schemas"]["CloseIncidentAction"] | components["schemas"]["ReviewLearningAction"];
             };
         };
         responses: {
@@ -5516,6 +5919,41 @@ export interface operations {
             };
         };
     };
+    conversation_api_incidents__incident_id__conversation_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConversationRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Incident"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     past_experience_api_incidents__incident_id__experience_get: {
         parameters: {
             query?: {
@@ -5843,6 +6281,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SimulationRun"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_voice_token_api_incidents__incident_id__voice_token_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoiceToken"];
                 };
             };
             /** @description Validation Error */

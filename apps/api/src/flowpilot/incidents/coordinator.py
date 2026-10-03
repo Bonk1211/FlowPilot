@@ -83,9 +83,16 @@ def input_fingerprint(incident: Incident) -> str:
         "configuration": incident.configuration,
         "symptom": incident.symptom,
         "mode": incident.mode,
+        "escalated": incident.escalated,
         "evidence": [item.model_dump(mode="json") for item in service.active_evidence(incident)],
         "observations": [
             item.model_dump(mode="json") for item in service.active_observations(incident)
+        ],
+        "investigation_version": incident.investigation.input_version,
+        "answered_questions": [
+            {key: getattr(node, key) for key in ("id", "target_fact", "prompt", "source_revision")}
+            for node in incident.investigation.nodes
+            if any(answer.node_id == node.id for answer in incident.investigation.answers)
         ],
     }
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
@@ -202,7 +209,7 @@ def recover_expired_jobs() -> int:
     return service.database_operation(recover)
 
 
-def claim_job(kind: JobKind | None = None) -> IncidentJob | None:
+def claim_job(kind: JobKind | None = None, incident_id: str | None = None) -> IncidentJob | None:
     recover_expired_jobs()
     token = uuid4().hex
     timestamp = service.now()
@@ -215,6 +222,8 @@ def claim_job(kind: JobKind | None = None) -> IncidentJob | None:
         )
         if kind is not None:
             query = query.where(IncidentJobRecord.kind == kind)
+        if incident_id is not None:
+            query = query.where(IncidentJobRecord.incident_id == incident_id)
         row = session.scalar(query.order_by(IncidentJobRecord.created_at).limit(1))
         if row is None:
             return None
@@ -400,8 +409,10 @@ async def generate_handoff(
     return template
 
 
-def process_next_job(kind: JobKind | None = None, analyze_fn=None, handoff_fn=None):
-    job = claim_job(kind)
+def process_next_job(
+    kind: JobKind | None = None, analyze_fn=None, handoff_fn=None, incident_id=None
+):
+    job = claim_job(kind, incident_id)
     if job is None:
         return None
     try:
@@ -429,6 +440,7 @@ def process_next_job(kind: JobKind | None = None, analyze_fn=None, handoff_fn=No
             current.updated_at = service.now()
             if job.kind == "analysis":
                 current.assessment = work.assessment
+                current.investigation = work.investigation
                 if current.assessment is None:
                     raise ValueError("Analysis did not produce an assessment.")
                 current.assessment_history.append(

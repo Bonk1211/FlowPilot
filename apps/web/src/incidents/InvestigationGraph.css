@@ -1,0 +1,984 @@
+.investigation-graph {
+  --answer-panel-size: clamp(
+    320px,
+    var(--answer-panel-width, 368px),
+    min(720px, 60%)
+  );
+  min-width: 0;
+  margin-bottom: 20px;
+}
+.incident-investigation-page.incident-timeline-page .incident-main {
+  overflow: hidden;
+}
+.incident-investigation-page.incident-timeline-page .incident-feature-content {
+  padding: 0;
+}
+.incident-investigation-page .incident-investigation-workspace {
+  height: 100%;
+  min-height: 0;
+}
+.incident-card.investigation-graph.is-chart {
+  --chart-left: 20px;
+  position: relative;
+  isolation: isolate;
+  height: max(600px, calc(100dvh - 96px));
+  padding: 0;
+  overflow: hidden;
+}
+.incident-card.investigation-graph.is-expanded {
+  --chart-left: 104px;
+  height: 100%;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+.investigation-view-actions,
+.investigation-panel-heading > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.investigation-view-actions {
+  flex-wrap: wrap;
+}
+.is-chart .investigation-graph-heading {
+  position: absolute;
+  z-index: 3;
+  top: 16px;
+  left: var(--chart-left);
+  right: 20px;
+  align-items: center;
+  padding: 12px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-document);
+  box-shadow: 0 4px 20px
+    color-mix(in srgb, var(--surface-shell) 7%, transparent);
+}
+.is-chart .investigation-graph-heading h2 {
+  font-size: 18px;
+}
+.is-chart .investigation-shape-legend {
+  position: absolute;
+  z-index: 2;
+  top: 108px;
+  left: var(--chart-left);
+  max-width: calc(100% - var(--chart-left) - 40px);
+  margin: 0;
+  padding: 8px 12px;
+  gap: 8px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--surface-document);
+}
+.is-chart.has-answer-panel .investigation-shape-legend {
+  max-width: calc(100% - var(--chart-left) - var(--answer-panel-size) - 56px);
+}
+.is-chart .investigation-graph-controls {
+  position: absolute;
+  z-index: 3;
+  left: var(--chart-left);
+  bottom: 20px;
+  margin: 0;
+  gap: 8px;
+}
+.is-chart .investigation-graph-controls > span {
+  display: none;
+}
+.is-chart .react-flow__controls {
+  left: var(--chart-left);
+  bottom: 80px;
+  margin: 0;
+}
+.investigation-panel-scroll {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scroll-padding-block: 16px;
+}
+.investigation-panel-scroll > .investigation-graph-options,
+.investigation-answer-panel
+  .investigation-panel-scroll
+  > .investigation-save-status,
+.investigation-panel-scroll > [role="alert"] {
+  margin: 16px 20px;
+}
+.investigation-panel-scroll .investigation-supporting-details {
+  padding: 0 20px 20px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.investigation-panel-scroll .investigation-supporting-details summary {
+  line-height: 1.5;
+}
+.investigation-canvas-status {
+  position: absolute;
+  z-index: 2;
+  right: 20px;
+  bottom: 20px;
+  max-width: min(340px, calc(100% - 96px));
+  padding: 0 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+  background: var(--surface-document);
+}
+.investigation-graph-heading,
+.investigation-graph-options,
+.investigation-graph-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.investigation-graph-heading {
+  position: relative;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.incident-card .investigation-graph-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.investigation-graph-options input {
+  width: auto;
+}
+.investigation-shape-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+  padding: 16px 0;
+  margin-top: 20px;
+  border-block: 1px solid var(--border-default);
+}
+.investigation-shape-legend > span,
+.investigation-stage-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.investigation-shape-legend > span {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.investigation-shape-legend svg,
+.investigation-stage-mark svg {
+  width: 28px;
+  height: 22px;
+  fill: var(--surface-measurement);
+  stroke: var(--text-secondary);
+  stroke-width: 1.5px;
+}
+.investigation-shape-legend svg *,
+.investigation-stage-mark svg * {
+  vector-effect: non-scaling-stroke;
+}
+.investigation-graph .investigation-save-status {
+  color: var(--text-muted);
+  min-height: 20px;
+  margin: 12px 0;
+  font-size: 13px;
+}
+.investigation-graph-controls {
+  margin: 12px 0 16px;
+}
+.investigation-graph-controls > span {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.investigation-chart-layout {
+  position: absolute;
+  inset: 0;
+}
+.investigation-canvas {
+  height: 100%;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--surface-measurement);
+}
+.investigation-canvas .react-flow__controls {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  overflow: hidden;
+  box-shadow: none;
+}
+.investigation-canvas .react-flow__controls-button {
+  width: 44px;
+  height: 44px;
+  min-height: 44px;
+  border-radius: 0;
+  margin: 0;
+  padding: 9px;
+}
+.flowchart-node {
+  --shape-fill: color-mix(in srgb, var(--violet-600) 7%, var(--white));
+  --shape-stroke: var(--violet-600);
+  --shape-text: var(--text-primary);
+  width: 240px;
+  color: var(--shape-text);
+  animation: flowchart-arrive var(--duration-expand) ease-out both;
+}
+.flowchart-node.stage-evidence {
+  --shape-fill: color-mix(in srgb, var(--blue-600) 7%, var(--white));
+  --shape-stroke: var(--blue-600);
+}
+.flowchart-node.stage-check {
+  --shape-fill: var(--white);
+  --shape-stroke: var(--slate-700);
+}
+.flowchart-node.stage-review,
+.flowchart-node.stage-clarify {
+  --shape-fill: var(--amber-100);
+  --shape-stroke: var(--amber-800);
+}
+.flowchart-node.stage-start {
+  --shape-fill: var(--graphite-900);
+  --shape-stroke: var(--graphite-900);
+  --shape-text: var(--white);
+}
+.flowchart-node.is-active {
+  --shape-fill: var(--teal-700);
+  --shape-stroke: var(--teal-700);
+  --shape-text: var(--white);
+}
+.flowchart-node.is-answered {
+  --shape-fill: var(--green-100);
+  --shape-stroke: var(--green-700);
+}
+.flowchart-node.is-blocked,
+.flowchart-node.is-superseded {
+  --shape-fill: var(--surface-workspace);
+  --shape-stroke: var(--slate-500);
+  --shape-text: var(--text-muted);
+}
+.flowchart-node.is-blocked svg *,
+.flowchart-node.is-superseded svg * {
+  stroke-dasharray: 4 4;
+}
+.flowchart-node[data-question-type] {
+  --shape-fill: color-mix(in srgb, var(--question-color) 9%, var(--white));
+  --shape-stroke: var(--question-color);
+  --shape-text: var(--text-primary);
+}
+.flowchart-node[data-question-type].is-active {
+  --shape-fill: color-mix(in srgb, var(--question-color) 20%, var(--white));
+}
+.flowchart-node[data-question-type].is-superseded,
+.flowchart-node[data-question-type].is-blocked {
+  --shape-fill: var(--surface-workspace);
+  --shape-text: var(--text-muted);
+}
+.flowchart-node-status,
+.flowchart-node-answer {
+  display: block;
+  height: 28px;
+  line-height: 28px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.flowchart-node-status {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+.flowchart-node.is-active .flowchart-node-status {
+  color: var(--teal-700);
+}
+.flowchart-node.is-answered .flowchart-node-answer {
+  color: var(--green-700);
+  font-weight: 600;
+}
+.investigation-graph .flowchart-shape {
+  position: relative;
+  display: grid;
+  place-items: center;
+  justify-content: stretch;
+  width: 240px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  color: var(--shape-text);
+  white-space: normal;
+  text-align: center;
+  cursor: pointer;
+}
+.investigation-graph .flowchart-shape:disabled {
+  opacity: 1;
+  cursor: default;
+}
+.investigation-spotlight-circle {
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  left: 0;
+  top: 0;
+  margin: -140px;
+  border: 2px solid var(--teal-700);
+  border-radius: 50%;
+  pointer-events: none;
+  transition: transform 420ms ease-in-out;
+  animation: investigation-spotlight-circle 2s ease-out infinite;
+}
+@keyframes investigation-spotlight-circle {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--teal-700) 25%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 16px color-mix(in srgb, var(--teal-700) 0%, transparent);
+  }
+}
+.flowchart-shape > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: var(--shape-fill);
+  stroke: var(--shape-stroke);
+  stroke-width: 1.8;
+  transition:
+    fill var(--duration-feedback),
+    stroke var(--duration-feedback);
+}
+.flowchart-shape > svg * {
+  vector-effect: non-scaling-stroke;
+}
+.flowchart-node.is-inspected .flowchart-shape > svg,
+.flowchart-shape:not(:disabled):hover > svg {
+  filter: drop-shadow(
+    0 3px 4px color-mix(in srgb, var(--shape-stroke) 22%, transparent)
+  );
+  stroke-width: 2.5;
+}
+.flowchart-node.is-active .flowchart-shape > svg {
+  stroke-width: 3;
+  filter: drop-shadow(
+    0 0 5px color-mix(in srgb, var(--shape-stroke) 25%, transparent)
+  );
+}
+.flowchart-shape-text {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  width: 78%;
+  pointer-events: none;
+}
+.stage-decision .flowchart-shape-text {
+  width: 56%;
+}
+.flowchart-shape-text > span {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.flowchart-shape-text > strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+.flowchart-node .react-flow__handle {
+  width: 4px;
+  height: 4px;
+  min-width: 4px;
+  min-height: 4px;
+  border: 0;
+  background: var(--shape-stroke);
+}
+.flowchart-edge-current .react-flow__edge-path {
+  animation: flowchart-connect 360ms ease-out both;
+}
+.investigation-answer-panel {
+  position: absolute;
+  z-index: 2;
+  top: 96px;
+  right: 20px;
+  bottom: 20px;
+  width: var(--answer-panel-size);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--border-default);
+  border-top: 3px solid var(--teal-700);
+  border-radius: 10px;
+  background: var(--surface-document);
+  overflow: hidden;
+  box-shadow: 0 12px 40px
+    color-mix(in srgb, var(--surface-shell) 14%, transparent);
+}
+.investigation-answer-panel[hidden] {
+  display: none;
+}
+.investigation-panel-resize {
+  position: absolute;
+  z-index: 4;
+  inset: 0 auto 0 0;
+  width: 12px;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+.investigation-panel-resize::after {
+  content: "";
+  position: absolute;
+  top: calc(50% - 24px);
+  left: 3px;
+  width: 3px;
+  height: 48px;
+  border-radius: 3px;
+  background: var(--border-strong);
+}
+.investigation-panel-resize:hover::after,
+.investigation-panel-resize:focus-visible::after {
+  background: var(--teal-700);
+}
+.investigation-panel-resize:focus-visible {
+  outline: 2px solid var(--teal-700);
+  outline-offset: -2px;
+}
+.investigation-panel-heading {
+  flex-shrink: 0;
+  min-height: 46px;
+  padding: 6px 16px;
+  border-bottom: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--surface-measurement);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.investigation-panel-heading button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 4px 8px;
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.investigation-node {
+  min-width: 0;
+  padding: 20px;
+  background: var(--surface-document);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+.investigation-answer-panel .investigation-node {
+  padding: 16px;
+}
+.investigation-node h3 {
+  font-size: 18px;
+  line-height: 1.4;
+  margin: 12px 0;
+}
+.investigation-node p {
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 10px 0;
+}
+.investigation-node-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font: 600 11px var(--font-mono, monospace);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.investigation-stage-mark svg {
+  width: 20px;
+  height: 18px;
+}
+.investigation-node.is-active .investigation-node-meta {
+  color: var(--teal-700);
+}
+.investigation-node label {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 14px;
+}
+.investigation-node select,
+.investigation-node textarea {
+  width: 100%;
+  min-height: 44px;
+  font-size: 16px;
+}
+.investigation-node button {
+  min-height: 44px;
+  margin: 12px 8px 0 0;
+  white-space: normal;
+}
+.investigation-node form {
+  border-top: 1px solid var(--border-default);
+  padding-top: 8px;
+}
+.investigation-node form > .primary {
+  width: 100%;
+}
+.investigation-node-answer {
+  border-left: 3px solid var(--green-700);
+  padding-left: 12px;
+}
+.investigation-node .investigation-node-hint {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.investigation-node-detail {
+  font-size: 13px;
+}
+.investigation-ordered {
+  padding-left: 24px;
+  display: grid;
+  gap: 20px;
+}
+.investigation-ordered > li > p {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.investigation-ordered .investigation-node {
+  width: 100%;
+  max-width: 680px;
+  border: 1px solid var(--border-default);
+  border-radius: 10px;
+}
+.investigation-ordered .is-active {
+  border-color: var(--teal-700);
+  border-left-width: 4px;
+}
+.investigation-ordered .is-superseded,
+.investigation-ordered .is-blocked {
+  border-style: dashed;
+  background: var(--surface-measurement);
+}
+.investigation-node[data-question-type] {
+  border-left: 4px solid var(--question-color);
+}
+.investigation-ordered .investigation-node[data-question-type] {
+  border-color: var(--question-color);
+  border-left-width: 4px;
+}
+.question-purpose,
+.question-color-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.question-purpose > span,
+.question-color-item > span {
+  flex: 0 0 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--question-color);
+}
+.investigation-node .question-purpose {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.investigation-color-key > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 8px 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-document);
+  font-size: 14px;
+  cursor: pointer;
+  list-style: none;
+}
+.investigation-color-key > summary::-webkit-details-marker {
+  display: none;
+}
+.investigation-color-key > summary:hover,
+.investigation-color-key[open] > summary {
+  background: var(--surface-measurement);
+}
+.investigation-color-popover {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(360px, calc(100vw - 48px));
+  max-height: min(580px, calc(100dvh - var(--command-bar-height) - 150px));
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 16px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--surface-document);
+  box-shadow: 0 12px 32px
+    color-mix(in srgb, var(--surface-shell) 14%, transparent);
+}
+.investigation-color-popover > p {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+}
+.investigation-color-popover > p:last-child {
+  margin: 12px 0 0;
+}
+.question-color-item {
+  margin-top: 10px;
+  font-size: 13px;
+}
+.question-color-item strong,
+.question-color-item small {
+  display: block;
+}
+.question-color-item small {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.investigation-graph .why-how-toggle {
+  border-color: var(--question-why_cause);
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--question-why_cause) 8%, var(--white));
+}
+.investigation-graph .why-how-toggle[aria-pressed="true"] {
+  background: var(--question-why_cause);
+  color: var(--white);
+}
+.investigation-answer-panel.is-reasoning {
+  border-top-color: var(--question-why_cause);
+}
+.investigation-reasoning-panel {
+  padding: 16px;
+  max-width: 680px;
+  overflow-wrap: anywhere;
+}
+.investigation-reasoning-panel > label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.investigation-reasoning-panel > select {
+  width: 100%;
+  min-height: 44px;
+  font-size: 16px;
+}
+.why-how-hypothesis-status,
+.why-how-progress {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.causal-prerequisite {
+  padding: 12px;
+  background: var(--surface-measurement);
+  border-left: 3px solid var(--question-why_cause);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.why-how-reasoning h3 {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  margin: 20px 0 10px;
+  font-size: 16px;
+}
+.why-how-reasoning h3 > span {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.why-how-levels,
+.why-how-methods {
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+.why-how-methods {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.why-how-reasoning button {
+  white-space: normal;
+  min-height: 44px;
+}
+.why-how-levels button,
+.why-how-methods button {
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 4px;
+}
+.why-how-levels button > span,
+.why-how-methods button > span {
+  font-size: 12px;
+}
+.why-how-levels button > strong {
+  font-size: 18px;
+}
+.why-how-levels .is-unrecorded {
+  border-style: dashed;
+}
+.why-how-levels button[aria-pressed="true"] {
+  background: var(--question-why_cause);
+  border-color: var(--question-why_cause);
+  color: var(--white);
+}
+.why-how-methods button[aria-pressed="true"] {
+  background: var(--blue-600);
+  border-color: var(--blue-600);
+  color: var(--white);
+}
+.why-how-detail {
+  margin-top: 20px;
+  padding: 16px;
+  border-left: 3px solid var(--question-why_cause);
+  border-radius: 0 8px 8px 0;
+  background: color-mix(in srgb, var(--question-why_cause) 6%, var(--white));
+}
+.why-how-detail.is-how {
+  border-left-color: var(--blue-600);
+  background: color-mix(in srgb, var(--blue-600) 6%, var(--white));
+}
+.why-how-detail h4 {
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 8px 0;
+}
+.why-how-detail p {
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 8px 0;
+}
+.why-how-detail .why-how-status {
+  margin-top: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.investigation-graph-context {
+  margin-top: 16px;
+}
+.investigation-supporting-details > details {
+  border-top: 1px solid var(--border-default);
+}
+.investigation-supporting-details > details > summary {
+  font-weight: 600;
+}
+.investigation-question-detail {
+  padding: 4px 0 16px;
+  max-width: 680px;
+  line-height: 1.5;
+}
+.investigation-detail-category {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background: var(--surface-measurement);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.investigation-question-detail h3 {
+  margin: 8px 0 16px;
+  font-size: 17px;
+  line-height: 1.4;
+  text-wrap: balance;
+}
+.investigation-detail-section + .investigation-detail-section {
+  margin-top: 20px;
+}
+.investigation-detail-section h4 {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.investigation-question-detail p {
+  margin: 6px 0 0;
+  font-size: 14px;
+}
+.investigation-detail-blocked {
+  padding: 8px 12px;
+  border-left: 3px solid var(--state-provisional);
+  background: var(--surface-provisional);
+}
+.investigation-choice-meanings {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.investigation-choice-meanings li {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--surface-measurement);
+}
+.investigation-detail-evidence {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.investigation-detail-evidence button {
+  flex: 1 1 120px;
+  min-height: 44px;
+  white-space: normal;
+  font-size: 13px;
+}
+.investigation-detail-source {
+  border-bottom: 1px solid var(--border-default);
+}
+.investigation-detail-source > summary {
+  padding: 10px 0;
+  line-height: 1.4;
+}
+.investigation-detail-source > summary small {
+  display: block;
+  margin: 4px 0 0 18px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.investigation-detail-source[open] {
+  padding-bottom: 12px;
+}
+.investigation-question-detail .investigation-detail-meta {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.investigation-detail-metadata {
+  margin-top: 16px;
+}
+.investigation-detail-metadata > summary {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.investigation-graph-context blockquote {
+  border-left: 3px solid var(--teal-700);
+  margin: 12px 0;
+  padding-left: 12px;
+}
+.investigation-graph button:focus-visible,
+.investigation-graph summary:focus-visible,
+.investigation-graph select:focus-visible,
+.investigation-graph textarea:focus-visible {
+  outline: 3px solid var(--teal-700);
+  outline-offset: 3px;
+}
+@keyframes flowchart-arrive {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes flowchart-connect {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (max-width: 650px) {
+  .investigation-graph-options {
+    margin-top: 8px;
+  }
+  .investigation-graph-controls > span {
+    width: 100%;
+    margin-left: 0;
+  }
+  .investigation-node {
+    padding: 16px;
+  }
+  .investigation-shape-legend {
+    gap: 12px 16px;
+  }
+  .investigation-graph-controls button {
+    min-height: 44px;
+    font-size: 12px;
+  }
+}
+@media (max-width: 850px) {
+  .investigation-panel-resize {
+    display: none;
+  }
+  .incident-card.investigation-graph.is-expanded {
+    --chart-left: 72px;
+  }
+  .is-chart .investigation-graph-heading {
+    top: 12px;
+    left: 16px;
+    right: 12px;
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .is-chart .investigation-graph-heading .eyebrow,
+  .is-chart .investigation-color-key > summary > span,
+  .is-chart .investigation-view-actions button > span,
+  .is-chart .investigation-shape-legend {
+    display: none;
+  }
+  .investigation-view-actions button,
+  .investigation-color-key > summary {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
+    font-size: 12px;
+  }
+  .investigation-answer-panel {
+    top: auto;
+    left: var(--chart-left);
+    right: 12px;
+    bottom: 12px;
+    width: auto;
+    height: 48%;
+  }
+  .investigation-panel-heading {
+    padding: 6px 12px;
+  }
+  .is-chart .investigation-graph-controls {
+    left: 16px;
+    bottom: 80px;
+    flex-direction: column;
+  }
+  .is-chart .investigation-graph-controls button {
+    width: 44px;
+    height: 44px;
+    padding: 10px;
+  }
+  .is-chart .investigation-graph-controls button > span {
+    display: none;
+  }
+  .is-chart .react-flow__controls {
+    left: 16px;
+    bottom: 192px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .investigation-spotlight-circle {
+    animation: none;
+    transition: none;
+  }
+  .investigation-graph * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

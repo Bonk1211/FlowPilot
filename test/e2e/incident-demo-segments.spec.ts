@@ -64,6 +64,7 @@ test("demo segments 2 and 3 follow the script and its claims hold", async ({
   await page
     .getByRole("button", { name: "Analyze available evidence" })
     .click();
+  await page.getByRole("button", { name: "Exit full screen" }).click();
   const candidates = page.getByLabel("Candidate mechanisms", { exact: true });
   await expect(candidates.getByRole("button")).toHaveCount(3);
   const board = page.getByRole("region", {

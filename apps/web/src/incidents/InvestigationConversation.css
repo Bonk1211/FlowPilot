@@ -1,0 +1,578 @@
+.investigation-conversation {
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid var(--border-default);
+  border-radius: 20px;
+  background: linear-gradient(
+    120deg,
+    color-mix(in srgb, var(--teal-700) 12%, var(--white)),
+    color-mix(in srgb, var(--question-why_cause) 12%, var(--white)),
+    color-mix(in srgb, var(--blue-600) 12%, var(--white))
+  );
+  box-shadow: 0 8px 30px
+    color-mix(in srgb, var(--surface-shell) 12%, transparent);
+}
+.is-chart .investigation-conversation {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  z-index: 4;
+  bottom: 20px;
+  left: calc(var(--chart-left) + 64px);
+  right: 20px;
+  max-width: 720px;
+  max-height: calc(100% - 110px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  margin: 0 auto;
+}
+.is-chart .investigation-conversation > * {
+  flex-shrink: 0;
+}
+.is-chart .investigation-conversation > .investigation-response {
+  flex-shrink: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.is-chart.has-answer-panel .investigation-conversation {
+  right: calc(var(--answer-panel-size) + 40px);
+}
+.conversation-composer {
+  padding: 12px;
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  background: var(--surface-document);
+}
+.investigation-response {
+  min-width: 0;
+  padding: 0 8px 8px;
+}
+.incident-app .investigation-response form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.investigation-answer-cards {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  flex-basis: 100%;
+}
+.investigation-answer-options {
+  display: grid;
+  gap: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 3px;
+}
+.investigation-response .investigation-answer-card {
+  position: relative;
+  display: block;
+  margin: 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+.incident-app .investigation-answer-card input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+}
+.investigation-answer-card span {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 44px 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: var(--surface-document);
+  color: var(--text-primary);
+  gap: 12px;
+}
+.investigation-answer-tick {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+.investigation-answer-card input:checked + span {
+  background: linear-gradient(100deg, var(--blue-600), var(--violet-600));
+  color: var(--white);
+  font-weight: 600;
+}
+.investigation-answer-card input:focus-visible + span {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 1px;
+}
+.investigation-answer-card input:disabled + span {
+  opacity: 0.6;
+  cursor: default;
+}
+.investigation-answer-card:hover input:not(:checked):not(:disabled) + span {
+  border-color: var(--border-default);
+}
+.investigation-response form > label {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0;
+  font-size: 13px;
+  width: 100%;
+}
+.investigation-response textarea {
+  width: 100%;
+  min-height: 60px;
+  max-height: 120px;
+  resize: vertical;
+  font: inherit;
+  font-size: 16px;
+}
+.investigation-response button {
+  margin: 4px 4px 0 0;
+}
+.investigation-conversation .investigation-node-detail {
+  display: block;
+  margin: 4px auto 0;
+  padding: 4px 8px;
+  min-height: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+}
+.conversation-composer > label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.conversation-composer textarea {
+  display: block;
+  border: 0;
+  border-radius: 4px;
+  padding: 8px 0;
+  width: 100%;
+  min-height: 60px;
+  max-height: 120px;
+  resize: vertical;
+  font: inherit;
+  font-size: 14px;
+  background: transparent;
+}
+.conversation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.investigation-conversation button {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 24px;
+  white-space: normal;
+}
+.conversation-actions button[role="switch"] {
+  margin-right: auto;
+}
+.conversation-actions button[aria-checked="true"] {
+  background: var(--teal-700);
+  color: var(--white);
+  border-color: var(--teal-700);
+}
+.conversation-actions .conversation-send {
+  background: var(--question-why_cause);
+  border-color: var(--question-why_cause);
+  color: var(--white);
+}
+.conversation-status {
+  font-size: 11px;
+  margin: 6px 12px 2px;
+  color: var(--text-secondary);
+}
+.conversation-reply {
+  margin: 0 4px 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--surface-document);
+  font-size: 13px;
+}
+.conversation-reply > strong {
+  font-size: 11px;
+  color: var(--teal-700);
+}
+.conversation-reply p {
+  margin: 4px 0;
+  max-height: 100px;
+  overflow: auto;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.conversation-confirm {
+  display: flex;
+  gap: 8px;
+}
+.conversation-history {
+  max-height: 220px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-radius: 12px;
+  padding: 4px 12px;
+  background: var(--surface-document);
+  margin: 0 4px 6px;
+  font-size: 13px;
+}
+.conversation-history > div {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border-default);
+}
+.conversation-history p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.conversation-node-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.conversation-error {
+  font-size: 12px;
+  color: var(--red-700);
+  padding: 6px 12px;
+  margin: 0;
+}
+.flowchart-node.is-spotlight .flowchart-node-status {
+  color: var(--teal-700);
+  font-weight: 700;
+}
+.flowchart-node.is-spotlight .flowchart-shape > svg {
+  stroke-width: 4;
+  filter: drop-shadow(
+    0 0 8px color-mix(in srgb, var(--teal-700) 30%, transparent)
+  );
+}
+.is-chart .investigation-graph-controls {
+  bottom: 20px;
+  flex-direction: column;
+}
+.is-chart .investigation-graph-controls button {
+  width: 44px;
+  height: 44px;
+  padding: 8px;
+}
+.is-chart .investigation-graph-controls button > span {
+  display: none;
+}
+.is-chart .react-flow__controls {
+  bottom: 130px;
+}
+.is-chart .investigation-canvas-status {
+  bottom: 340px;
+}
+.investigation-conversation.is-voice {
+  background: var(--voice-background);
+  color: var(--voice-text);
+  border-color: var(--voice-border);
+  border-radius: 18px;
+  padding: 24px;
+}
+.is-chart .investigation-conversation.is-voice {
+  max-width: 520px;
+}
+.voice-message-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 18px;
+  font-size: 14px;
+}
+.voice-message-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--voice-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.voice-listening-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.voice-message-transcript {
+  min-height: 56px;
+  max-height: 140px;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  margin: 28px 0 16px;
+  font-size: 18px;
+  line-height: 1.65;
+  font-weight: 500;
+}
+.voice-waveform {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  margin-bottom: 36px;
+}
+.voice-waveform > span {
+  flex: 1;
+  min-width: 0;
+  border-radius: 20px;
+  background: var(--voice-wave);
+  transform: scaleY(0.6);
+}
+.voice-waveform.is-speaking > span {
+  animation: voice-wave 1100ms ease-in-out infinite alternate;
+}
+@keyframes voice-wave {
+  from {
+    transform: scaleY(0.45);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+.voice-message-tray {
+  padding: 10px;
+  border: 1px solid var(--voice-border);
+  border-radius: 12px;
+  background: var(--voice-surface);
+}
+.voice-evidence-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.voice-evidence-chips button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  color: var(--voice-text);
+  border: 0;
+  background: var(--voice-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  min-height: 44px;
+}
+.voice-evidence-chips svg {
+  color: var(--voice-muted);
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+.voice-evidence-chips span {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.voice-message-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.voice-message-controls .voice-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 0;
+  color: var(--voice-muted);
+  padding: 0;
+  flex-shrink: 0;
+}
+.voice-stop > span {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--voice-background);
+  background: var(--voice-text);
+}
+.voice-stop svg {
+  width: 16px;
+  height: 16px;
+}
+.voice-message-controls .voice-hands-free {
+  margin-left: auto;
+  border: 0;
+  background: transparent;
+  color: var(--voice-muted);
+  padding: 4px;
+  min-width: 0;
+}
+.voice-hands-free::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--voice-wave);
+}
+.voice-hands-free[aria-checked="true"]::after {
+  background: var(--voice-text);
+}
+.voice-message-controls .voice-send {
+  background: var(--voice-text);
+  color: var(--voice-background);
+  border: 0;
+  border-radius: 8px;
+  width: 44px;
+  height: 44px;
+  padding: 10px;
+  flex-shrink: 0;
+}
+.voice-message-controls .voice-send:disabled {
+  color: var(--voice-muted);
+  background: var(--voice-wave);
+  opacity: 1;
+}
+.voice-message-body .voice-history-toggle {
+  padding: 0;
+  border: 0;
+  color: var(--voice-muted);
+  background: transparent;
+  margin-top: 4px;
+}
+.is-voice .conversation-status {
+  color: var(--voice-muted);
+  margin: 0;
+  font-size: 12px;
+}
+.is-voice .conversation-reply,
+.is-voice .conversation-history {
+  background: var(--voice-surface);
+  color: var(--voice-text);
+  margin: 12px 0 0;
+}
+.is-voice .conversation-reply > strong {
+  color: var(--voice-muted);
+}
+.is-voice .conversation-history > div {
+  border-color: var(--voice-border);
+}
+.is-voice .conversation-confirm button,
+.is-voice .conversation-node-links button {
+  color: var(--voice-text);
+  background: var(--voice-border);
+  border-color: var(--voice-border);
+}
+.is-voice .conversation-error {
+  color: var(--voice-error);
+  padding: 8px 0 0;
+}
+.is-voice button:focus-visible {
+  outline: 2px solid var(--voice-text);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .voice-waveform > span {
+    animation: none;
+  }
+}
+@media (max-width: 1100px) {
+  .is-chart.has-answer-panel .investigation-conversation {
+    left: calc(var(--chart-left) + 8px);
+  }
+  .conversation-actions button[aria-label="Conversation history"] > span {
+    display: none;
+  }
+}
+@media (max-width: 850px) {
+  .investigation-conversation.is-voice {
+    padding: 16px;
+  }
+  .voice-message-transcript {
+    font-size: 16px;
+    margin-top: 20px;
+    max-height: 110px;
+  }
+  .voice-waveform {
+    margin-bottom: 20px;
+    gap: 2px;
+  }
+  .voice-message-controls {
+    flex-wrap: nowrap;
+  }
+  .voice-message-controls .voice-hands-free {
+    min-width: 44px;
+  }
+  .voice-message-controls .voice-hands-free > span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .voice-message-controls .voice-hands-free::after {
+    width: 24px;
+    height: 12px;
+  }
+  .voice-message-heading {
+    margin-bottom: 12px;
+  }
+  .is-chart .investigation-conversation,
+  .is-chart.has-answer-panel .investigation-conversation {
+    left: var(--chart-left);
+    right: 12px;
+    bottom: 12px;
+  }
+  .is-chart .investigation-conversation {
+    max-height: max(180px, calc(100% - 280px));
+    overflow: auto;
+  }
+  .is-chart .investigation-conversation.is-voice {
+    max-height: calc(100% - 100px);
+  }
+  .investigation-answer-options {
+    max-height: 100px;
+  }
+  .incident-app .conversation-composer {
+    gap: 6px;
+  }
+  .conversation-composer {
+    padding: 8px;
+  }
+  .conversation-actions {
+    gap: 4px;
+  }
+  .investigation-conversation button {
+    padding: 6px 8px;
+  }
+  .conversation-actions button[aria-label="Send message"] > span,
+  .conversation-actions button[aria-label="Start voice input"] > span,
+  .conversation-actions button[aria-label="Stop voice input"] > span {
+    display: none;
+  }
+  .conversation-reply p {
+    max-height: 76px;
+  }
+  .is-chart .investigation-answer-panel {
+    top: auto;
+    bottom: calc(var(--conversation-height, 300px) + 24px);
+    height: min(
+      200px,
+      max(100px, calc(100% - var(--conversation-height, 300px) - 124px))
+    );
+  }
+  .is-chart .investigation-graph-controls {
+    bottom: 20px;
+  }
+  .is-chart .react-flow__controls {
+    bottom: 130px;
+  }
+}

@@ -35,23 +35,23 @@ async function analyzeReplay(page: Page) {
   await page
     .getByRole("button", { name: "Analyze available evidence" })
     .click();
+  await page.getByRole("button", { name: "Ordered text view" }).click();
   await expect(
     page.getByRole("heading", { name: "Investigate competing causes" }),
   ).toBeVisible();
+  await expect(
+    page.locator(".investigation-node.is-active .stage-check svg rect"),
+  ).toHaveCount(1);
 }
 
 async function recordResult(page: Page, result: string) {
-  await page.getByLabel("Recorded replay outcome").selectOption(result);
-  await page
-    .getByLabel("Conditions / notes")
-    .fill("Labelled synthetic result; no physical test performed.");
+  const active = page.locator(".investigation-node.is-active");
+  await active.locator(`input[type="radio"][value="${result}"]`).check();
   const response = page.waitForResponse(
     (item) =>
       item.url().endsWith("/actions") && item.request().method() === "POST",
   );
-  await page
-    .getByRole("button", { name: "Record replay result", exact: true })
-    .click();
+  await active.locator('input[type="radio"]:checked + span').click();
   expect((await response).ok()).toBeTruthy();
   await expect(
     page.getByRole("button", { name: "Reassess evidence" }),
@@ -102,6 +102,27 @@ test("incident replay preserves the early handoff, branches, exports and survive
       name: "Review the supported explanation with engineering",
     }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Show chart" }).click();
+  const graph = page.getByRole("region", {
+    name: "Adaptive investigation",
+    exact: true,
+  });
+  await expect(
+    graph
+      .locator(".flowchart-node.stage-review")
+      .getByRole("button", { name: /supported explanation/ }),
+  ).toBeVisible();
+  await expect(graph.locator(".investigation-answer-panel form")).toHaveCount(
+    0,
+  );
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await graph.getByRole("button", { name: "Fit chart" }).click();
+  await graph.locator(".investigation-graph-context > summary").click();
+  await graph.screenshot({
+    path: testInfo.outputPath("graph-review.png"),
+    style: ".command-bar, .skip-link { visibility: hidden !important; }",
+  });
+  await graph.getByRole("button", { name: "Exit full screen" }).click();
   await expect(page.locator(".investigation-candidate").first()).toContainText(
     "Fluid-path restriction",
   );
@@ -133,6 +154,9 @@ test("incident replay preserves the early handoff, branches, exports and survive
   );
   await goToFeature(page, "Investigation");
   const download = page.waitForEvent("download");
+  await page
+    .getByRole("button", { name: "Incident details", exact: true })
+    .click();
   await page.getByRole("link", { name: "Export report", exact: true }).click();
   const file = await download;
   const text = await readFile((await file.path())!, "utf8");
@@ -152,9 +176,11 @@ test("inconclusive closure requires explicit demo review and learning stays a ca
   for (let index = 0; index < 3; index++)
     await recordResult(page, "inconclusive");
   await expect(
-    page.getByRole("heading", {
-      name: "Escalate the unresolved investigation",
-    }),
+    page
+      .getByRole("heading", {
+        name: "Escalate the unresolved investigation",
+      })
+      .last(),
   ).toBeVisible();
   await goToFeature(page, "Review");
   await page.getByLabel("Reviewer name").fill("Demo reviewer");

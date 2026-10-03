@@ -1,0 +1,12 @@
+{
+  "version": "s932-adaptive-eval-1",
+  "limitation": "Authored synthetic workflow expectations, not independently reviewed diagnostic labels. Expected answers never enter generation prompts.",
+  "scenarios": [
+    {"id": "intermittent", "arrivals": false, "answer": "intermittent", "expected_next": "pressure_trend"},
+    {"id": "sudden", "arrivals": false, "answer": "sudden", "expected_next": "material_condition"},
+    {"id": "unknown", "arrivals": false, "answer": "unknown", "expected_next": "mass_trend"},
+    {"id": "supported", "arrivals": true, "answer": "supported", "expected_next": "review_findings"},
+    {"id": "contradictory", "arrivals": true, "answer": "contradicted", "expected_next": "restriction_review"},
+    {"id": "inconclusive", "arrivals": true, "answer": "inconclusive", "expected_next": "restriction_review"}
+  ]
+}

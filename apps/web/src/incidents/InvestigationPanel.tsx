@@ -19,6 +19,7 @@ type Props = {
   selectedHypothesisId: string | null;
   onSelectEvidence?: (id: string) => void;
   busy: boolean;
+  showForms?: boolean;
 };
 
 export function InvestigationPanel({
@@ -29,6 +30,7 @@ export function InvestigationPanel({
   selectedHypothesisId,
   onSelectEvidence,
   busy,
+  showForms = true,
 }: Props) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -212,98 +214,104 @@ export function InvestigationPanel({
         </div>
       )}
 
-      <div className="investigation-next" aria-live="polite">
-        <span className="investigation-eyebrow">
-          Next useful step · {next.kind}
-        </span>
-        <h3>{next.title}</h3>
-        <p>{next.reason}</p>
-        {next.kind === "question" && (
-          <p className="investigation-muted">
-            Complete the highlighted discovery field below. Unknown is a valid
-            answer.
-          </p>
-        )}
-        {nextCheck && (
-          <>
-            <p className="investigation-badge">Synthetic replay result</p>
-            <details>
-              <summary>Method, prerequisites and expected outcomes</summary>
-              <p>{nextCheck.method}</p>
-              <p>
-                <strong>Response:</strong> {nextCheck.measured_response}
-              </p>
-              <p>
-                <strong>Responsible role:</strong> {nextCheck.responsible_role}
-              </p>
-              <ul>
-                {nextCheck.prerequisites.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-              {nextCheck.expected_outcomes.map((outcome) => (
-                <p key={outcome.value}>
-                  <strong>{outcome.label}:</strong> {outcome.interpretation}
+      {showForms && (
+        <div className="investigation-next" aria-live="polite">
+          <span className="investigation-eyebrow">
+            Next useful step · {next.kind}
+          </span>
+          <h3>{next.title}</h3>
+          <p>{next.reason}</p>
+          {next.kind === "question" && (
+            <p className="investigation-muted">
+              Complete the highlighted discovery field below. Unknown is a valid
+              answer.
+            </p>
+          )}
+          {nextCheck && (
+            <>
+              <p className="investigation-badge">Synthetic replay result</p>
+              <details>
+                <summary>Method, prerequisites and expected outcomes</summary>
+                <p>{nextCheck.method}</p>
+                <p>
+                  <strong>Response:</strong> {nextCheck.measured_response}
                 </p>
-              ))}
-              <ul>
-                {nextCheck.stopping_conditions.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-              <p>Sources: {nextCheck.source_refs.join(", ")}</p>
-            </details>
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                const form = new FormData(event.currentTarget);
-                void record({
-                  check_id: nextCheck.id,
-                  result: String(form.get("result")),
-                  notes: String(form.get("notes") ?? ""),
-                  evidence_ids: [],
-                  synthetic: true,
-                });
-              }}
-              key={nextCheck.id}
-              className="investigation-result-form"
-            >
-              <label htmlFor={`result-${nextCheck.id}`}>
-                Recorded replay outcome
-              </label>
-              <select
-                id={`result-${nextCheck.id}`}
-                name="result"
-                required
-                defaultValue=""
-              >
-                <option value="" disabled>
-                  Select an outcome
-                </option>
+                <p>
+                  <strong>Responsible role:</strong>{" "}
+                  {nextCheck.responsible_role}
+                </p>
+                <ul>
+                  {nextCheck.prerequisites.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
                 {nextCheck.expected_outcomes.map((outcome) => (
-                  <option value={outcome.value} key={outcome.value}>
-                    {outcome.label}
-                  </option>
+                  <p key={outcome.value}>
+                    <strong>{outcome.label}:</strong> {outcome.interpretation}
+                  </p>
                 ))}
-              </select>
-              <label htmlFor={`notes-${nextCheck.id}`}>
-                Conditions / notes
-              </label>
-              <textarea
-                id={`notes-${nextCheck.id}`}
-                name="notes"
-                rows={2}
-                maxLength={2000}
-                placeholder="Record comparability, missing conditions, or limitations."
-              />
-              <button type="submit" disabled={disabled || !nextCheck.eligible}>
-                {saving ? "Saving…" : "Record replay result"}
-              </button>
-            </form>
-            <p className="investigation-limit">{nextCheck.blocked_reason}</p>
-          </>
-        )}
-      </div>
+                <ul>
+                  {nextCheck.stopping_conditions.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+                <p>Sources: {nextCheck.source_refs.join(", ")}</p>
+              </details>
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  const form = new FormData(event.currentTarget);
+                  void record({
+                    check_id: nextCheck.id,
+                    result: String(form.get("result")),
+                    notes: String(form.get("notes") ?? ""),
+                    evidence_ids: [],
+                    synthetic: true,
+                  });
+                }}
+                key={nextCheck.id}
+                className="investigation-result-form"
+              >
+                <label htmlFor={`result-${nextCheck.id}`}>
+                  Recorded replay outcome
+                </label>
+                <select
+                  id={`result-${nextCheck.id}`}
+                  name="result"
+                  required
+                  defaultValue=""
+                >
+                  <option value="" disabled>
+                    Select an outcome
+                  </option>
+                  {nextCheck.expected_outcomes.map((outcome) => (
+                    <option value={outcome.value} key={outcome.value}>
+                      {outcome.label}
+                    </option>
+                  ))}
+                </select>
+                <label htmlFor={`notes-${nextCheck.id}`}>
+                  Conditions / notes
+                </label>
+                <textarea
+                  id={`notes-${nextCheck.id}`}
+                  name="notes"
+                  rows={2}
+                  maxLength={2000}
+                  placeholder="Record comparability, missing conditions, or limitations."
+                />
+                <button
+                  type="submit"
+                  disabled={disabled || !nextCheck.eligible}
+                >
+                  {saving ? "Saving…" : "Record replay result"}
+                </button>
+              </form>
+              <p className="investigation-limit">{nextCheck.blocked_reason}</p>
+            </>
+          )}
+        </div>
+      )}
       {error && (
         <p role="alert" className="investigation-error">
           {error}
@@ -316,62 +324,77 @@ export function InvestigationPanel({
       )}
 
       <details
-        open={next.kind === "question"}
+        open={showForms && next.kind === "question"}
         className="investigation-discovery"
       >
         <summary>
-          Problem discovery · confirm or correct known information
+          {showForms
+            ? "Problem discovery · confirm or correct known information"
+            : "Known context · imported and confirmed facts"}
         </summary>
-        {assessment.discovery.map((field) => (
-          <form
-            key={`${field.id}-${field.value}-${field.status}`}
-            className={`investigation-field ${next.id === field.id ? "is-next" : ""}`}
-            onSubmit={(event) => {
-              event.preventDefault();
-              const form = new FormData(event.currentTarget);
-              const value = String(form.get("value") ?? "").trim();
-              void record({
-                check_id: field.id,
-                result: value || "unknown",
-                notes: "Discovery confirmation / correction",
-                evidence_ids: [],
-                synthetic: true,
-              });
-            }}
-          >
-            <label htmlFor={field.id}>
-              {field.label} <span>· {field.status}</span>
-            </label>
-            <p className="investigation-muted">{field.question}</p>
-            <input
-              id={field.id}
-              name="value"
-              defaultValue={field.value ?? ""}
-              maxLength={1000}
-              placeholder="Unknown / not measured"
-            />
-            <div className="investigation-field-actions">
-              <button type="submit" disabled={disabled}>
-                Confirm / update
-              </button>
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() =>
-                  void record({
-                    check_id: field.id,
-                    result: "unknown",
-                    notes: "Not known / not measured",
-                    evidence_ids: [],
-                    synthetic: true,
-                  })
-                }
-              >
-                Unknown
-              </button>
-            </div>
-          </form>
-        ))}
+        {!showForms && (
+          <dl>
+            {assessment.discovery.map((field) => (
+              <div key={field.id}>
+                <dt>
+                  {field.label} · {field.status}
+                </dt>
+                <dd>{field.value ?? "Unknown"}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+        {showForms &&
+          assessment.discovery.map((field) => (
+            <form
+              key={`${field.id}-${field.value}-${field.status}`}
+              className={`investigation-field ${next.id === field.id ? "is-next" : ""}`}
+              onSubmit={(event) => {
+                event.preventDefault();
+                const form = new FormData(event.currentTarget);
+                const value = String(form.get("value") ?? "").trim();
+                void record({
+                  check_id: field.id,
+                  result: value || "unknown",
+                  notes: "Discovery confirmation / correction",
+                  evidence_ids: [],
+                  synthetic: true,
+                });
+              }}
+            >
+              <label htmlFor={field.id}>
+                {field.label} <span>· {field.status}</span>
+              </label>
+              <p className="investigation-muted">{field.question}</p>
+              <input
+                id={field.id}
+                name="value"
+                defaultValue={field.value ?? ""}
+                maxLength={1000}
+                placeholder="Unknown / not measured"
+              />
+              <div className="investigation-field-actions">
+                <button type="submit" disabled={disabled}>
+                  Confirm / update
+                </button>
+                <button
+                  type="button"
+                  disabled={disabled}
+                  onClick={() =>
+                    void record({
+                      check_id: field.id,
+                      result: "unknown",
+                      notes: "Not known / not measured",
+                      evidence_ids: [],
+                      synthetic: true,
+                    })
+                  }
+                >
+                  Unknown
+                </button>
+              </div>
+            </form>
+          ))}
       </details>
 
       <details>
