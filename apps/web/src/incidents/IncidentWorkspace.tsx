@@ -1,5 +1,7 @@
 import {
   Activity,
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useRef,
@@ -67,6 +69,12 @@ import {
   type IncidentRoute,
 } from "./navigation";
 import "./incidents.css";
+
+const IncidentLearningDatabase = lazy(() =>
+  import("./IncidentLearningDatabase").then((module) => ({
+    default: module.IncidentLearningDatabase,
+  })),
+);
 
 const featureIcons = {
   investigation: MagnifyingGlass,
@@ -508,7 +516,16 @@ function IncidentWorkspaceContent({
           <a href="/incidents" onClick={followLink}>
             Incidents
           </a>
-          <a href="/knowledge">Learning database</a>
+          <a
+            href={
+              incident
+                ? incidentPageUrl(incident.id, "knowledge")
+                : "/knowledge"
+            }
+            onClick={incident ? followLink : undefined}
+          >
+            Learning database
+          </a>
         </nav>
         <span className="demo-badge">Prototype / Simulated data</span>
       </header>
@@ -1193,6 +1210,20 @@ function IncidentWorkspaceContent({
                       className="incident-knowledge-page"
                       aria-label="Knowledge workspace"
                     >
+                      <Suspense
+                        fallback={
+                          <p role="status">Loading learning database…</p>
+                        }
+                      >
+                        <IncidentLearningDatabase
+                          key={incident.id}
+                          incident={incident}
+                          busy={busy}
+                          onAction={onAction}
+                          onRefresh={refreshSaved}
+                          followLink={followLink}
+                        />
+                      </Suspense>
                       <PastIncidents incident={incident} />
                       <KnowledgeRegistry
                         configuration={incident.configuration}

@@ -55,6 +55,17 @@ To be written by Person 2: answer a question and load a labelled check result. P
 
 If asked whether the system just follows a script, record **supported** instead of **contradicted** at the first check. The ranking, next step, handoff draft and report all change to follow that result.
 
+## Optional learning demonstration
+
+Open **Knowledge → Learning Database** during the current investigation. The overall graph includes existing reference knowledge, saved cases and discoveries from other investigations.
+
+1. Edit **Knowledge title** and **New knowledge** in the **New finding** panel. Expand **Linked evidence** to show the source records attached to the finding.
+2. Click **Demo save knowledge**. After the server saves the finding, a new node pops into the overall graph. Green connections draw one by one to its investigation, configuration, symptom and matching existing library nodes. Light travels along each line and its destination pulses; a second teal wave follows real library edges into reference sections and past cases. The three-step progress strip narrates the sequence, and the connections stay highlighted afterward. The investigation stays open.
+3. Select the new node to inspect the finding and original references. Reload to demonstrate persistence; a later investigation can browse the same finding in the overall library.
+4. Use **Replay animation** to repeat the visual without creating another record. Reduced-motion users receive the saved node and confirmation immediately.
+
+Captured findings are labelled **Demo · Pending review**. This capture does not publish an approved experience or establish a cause. Conclusion and publication remain in **Review**.
+
 ## What not to claim
 
 Synthetic data only. No real machine connection, diagnostic accuracy, email delivery or downtime saving is demonstrated. The browser timings in [S932_MOCK_EVALUATION.md](S932_MOCK_EVALUATION.md#browser-timing) come from a local loopback run, not production.

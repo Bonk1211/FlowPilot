@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { Incident, IncidentCommand } from "./api";
 import { useIncidentAccess } from "./AccessPanel";
 import "./review.css";
@@ -16,6 +16,7 @@ export function IncidentReview({
   ) => Promise<void>;
 }) {
   const access = useIncidentAccess();
+  const titleId = useId();
   const [reviewer, setReviewer] = useState("");
   const [notes, setNotes] = useState("");
   const [outcome, setOutcome] = useState<"supported" | "inconclusive">(
@@ -63,12 +64,12 @@ export function IncidentReview({
   return (
     <section
       className="incident-card incident-review"
-      aria-labelledby="incident-review-title"
+      aria-labelledby={titleId}
     >
       <div className="incident-section-title">
         <div>
           <p className="eyebrow">Human review</p>
-          <h2 id="incident-review-title">Conclusion & learning</h2>
+          <h2 id={titleId}>Conclusion & learning</h2>
         </div>
         <span className="incident-tag">
           {closed ? "Closed" : "Review required"}

@@ -286,6 +286,19 @@ class InvestigationConversationTurn(Contract):
     author: str | None = None
 
 
+class CapturedKnowledge(Contract):
+    id: str
+    title: str
+    summary: str
+    source_revision: int
+    evidence_ids: list[str]
+    source_refs: list[str]
+    created_at: str
+    created_by: str | None
+    status: Literal["draft"] = "draft"
+    demo: Literal[True] = True
+
+
 class Incident(Contract):
     schema_version: Literal["3.0"] = "3.0"
     id: str
@@ -318,6 +331,7 @@ class Incident(Contract):
     closure_history: list[Closure] = Field(default_factory=list)
     learning: LearningCandidate | None = None
     learning_history: list[LearningCandidate] = Field(default_factory=list)
+    captured_knowledge: list[CapturedKnowledge] = Field(default_factory=list)
     history: list[IncidentEvent] = Field(default_factory=list)
     simulations: list[SimulationRun] = Field(default_factory=list)
     investigation: InvestigationGraph = Field(default_factory=InvestigationGraph)
@@ -433,6 +447,14 @@ class CloseIncidentAction(RevisionAction):
     conclusion: str | None = Field(default=None, max_length=2000)
 
 
+class CaptureKnowledgeAction(RevisionAction):
+    action: Literal["capture_knowledge"]
+    knowledge_id: str = Field(pattern=r"^KN-[A-Za-z0-9-]{1,64}$")
+    title: str = Field(min_length=1, max_length=160, pattern=r".*\S.*")
+    summary: str = Field(min_length=1, max_length=2000, pattern=r"[\s\S]*\S[\s\S]*")
+    evidence_ids: list[str] = Field(min_length=1, max_length=100)
+
+
 class ReviewLearningAction(RevisionAction):
     action: Literal["review_learning"]
     reviewer: str = Field(min_length=1, max_length=100, pattern=r".*\S.*")
@@ -452,6 +474,7 @@ IncidentAction = Annotated[
     | EditHandoffAction
     | EscalateAction
     | CloseIncidentAction
+    | CaptureKnowledgeAction
     | ReviewLearningAction,
     Field(discriminator="action"),
 ]

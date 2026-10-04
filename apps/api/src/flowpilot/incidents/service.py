@@ -14,6 +14,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 from flowpilot.incidents import diagnostic
 from flowpilot.incidents.models import (
     AssessmentSnapshot,
+    CapturedKnowledge,
     Closure,
     CreateIncident,
     EvidenceInput,
@@ -541,6 +542,35 @@ def apply_action(incident: Incident, action: IncidentAction, actor: str | None =
             else {},
         )
         detail = f"{action.reviewer} closed as {action.outcome}; equipment disposition unchanged."
+    elif action.action == "capture_knowledge":
+        if incident.mode == "live":
+            raise HTTPException(
+                422, "Demo knowledge capture requires a replay or synthetic incident."
+            )
+        if len(incident.captured_knowledge) >= 100:
+            raise HTTPException(422, "This investigation already has 100 captured findings.")
+        available = {
+            item.id: item for item in active_evidence(incident) if item.status == "collected"
+        }
+        if not set(action.evidence_ids) <= available.keys():
+            raise HTTPException(
+                422, "Link the finding to collected evidence from this investigation."
+            )
+        incident.captured_knowledge.append(
+            CapturedKnowledge(
+                id=action.knowledge_id,
+                title=action.title,
+                summary=action.summary,
+                source_revision=action.revision,
+                evidence_ids=list(dict.fromkeys(action.evidence_ids)),
+                source_refs=list(
+                    dict.fromkeys(available[key].source_ref for key in action.evidence_ids)
+                ),
+                created_at=incident.updated_at,
+                created_by=actor,
+            )
+        )
+        detail = f"Captured demo knowledge: {action.title}; retained as an unreviewed finding."
     elif action.action == "review_learning":
         if incident.learning is None or incident.closure is None:
             raise HTTPException(422, "Close and capture the incident before reviewing learning.")
@@ -555,7 +585,7 @@ def apply_action(incident: Incident, action: IncidentAction, actor: str | None =
             )
         )
         detail = f"Learning {action.decision} by {action.reviewer}: {action.notes}"
-    if action.action != "edit_handoff":
+    if action.action not in {"edit_handoff", "capture_knowledge"}:
         refresh_draft(incident)
     incident.history.append(
         IncidentEvent(
@@ -571,7 +601,7 @@ def apply_action(incident: Incident, action: IncidentAction, actor: str | None =
 BACKGROUND_ACTOR = "system:incident-coordinator"
 BACKGROUND_EVENTS = {"background_analysis", "background_handoff"}
 # The intent of these actions does not depend on the assessment or draft a background job refreshed.
-REBASEABLE_ACTIONS = {"advance_replay", "analyze", "refresh_handoff"}
+REBASEABLE_ACTIONS = {"advance_replay", "analyze", "refresh_handoff", "capture_knowledge"}
 
 
 def only_background_changes(incident: Incident, since_revision: int) -> bool:
@@ -589,6 +619,21 @@ def act(incident_id: str, action: IncidentAction, actor: str | None = None) -> I
     rebaseable = action.action in REBASEABLE_ACTIONS
     for attempt in range(3):
         incident = get_incident(incident_id)
+        if action.action == "capture_knowledge":
+            previous = next(
+                (item for item in incident.captured_knowledge if item.id == action.knowledge_id),
+                None,
+            )
+            if previous:
+                if (
+                    previous.title != action.title
+                    or previous.summary != action.summary
+                    or previous.evidence_ids != list(dict.fromkeys(action.evidence_ids))
+                ):
+                    raise HTTPException(
+                        409, "This knowledge ID was already used for different content."
+                    )
+                return incident
         if action.action == "answer_investigation":
             previous = next(
                 (item for item in incident.investigation.answers if item.id == action.answer_id),

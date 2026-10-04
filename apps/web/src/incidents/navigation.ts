@@ -27,7 +27,7 @@ export const incidentPages = {
   knowledge: {
     label: "Knowledge",
     description:
-      "Review source documents and previously reviewed incident experience.",
+      "Capture a new finding and watch it join the shared knowledge graph.",
   },
   review: {
     label: "Review",

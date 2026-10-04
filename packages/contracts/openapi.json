@@ -713,6 +713,133 @@
         "title": "AttachLog",
         "type": "object"
       },
+      "CaptureKnowledgeAction": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "const": "capture_knowledge",
+            "title": "Action",
+            "type": "string"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "knowledge_id": {
+            "pattern": "^KN-[A-Za-z0-9-]{1,64}$",
+            "title": "Knowledge Id",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "summary": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "pattern": "[\\s\\S]*\\S[\\s\\S]*",
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "maxLength": 160,
+            "minLength": 1,
+            "pattern": ".*\\S.*",
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revision",
+          "action",
+          "knowledge_id",
+          "title",
+          "summary",
+          "evidence_ids"
+        ],
+        "title": "CaptureKnowledgeAction",
+        "type": "object"
+      },
+      "CapturedKnowledge": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created By"
+          },
+          "demo": {
+            "const": true,
+            "default": true,
+            "title": "Demo",
+            "type": "boolean"
+          },
+          "evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "source_refs": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Source Refs",
+            "type": "array"
+          },
+          "source_revision": {
+            "title": "Source Revision",
+            "type": "integer"
+          },
+          "status": {
+            "const": "draft",
+            "default": "draft",
+            "title": "Status",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "summary",
+          "source_revision",
+          "evidence_ids",
+          "source_refs",
+          "created_at",
+          "created_by"
+        ],
+        "title": "CapturedKnowledge",
+        "type": "object"
+      },
       "Case": {
         "additionalProperties": false,
         "properties": {
@@ -4240,6 +4367,13 @@
               "$ref": "#/components/schemas/AssessmentSnapshot"
             },
             "title": "Assessment History",
+            "type": "array"
+          },
+          "captured_knowledge": {
+            "items": {
+              "$ref": "#/components/schemas/CapturedKnowledge"
+            },
+            "title": "Captured Knowledge",
             "type": "array"
           },
           "closure": {
@@ -11422,6 +11556,7 @@
                     "advance_replay": "#/components/schemas/SimpleAction",
                     "analyze": "#/components/schemas/SimpleAction",
                     "answer_investigation": "#/components/schemas/AnswerInvestigationAction",
+                    "capture_knowledge": "#/components/schemas/CaptureKnowledgeAction",
                     "close": "#/components/schemas/CloseIncidentAction",
                     "confirm_investigation": "#/components/schemas/ConfirmInvestigationAction",
                     "correct_evidence": "#/components/schemas/CorrectEvidenceAction",
@@ -11468,6 +11603,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/CloseIncidentAction"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CaptureKnowledgeAction"
                   },
                   {
                     "$ref": "#/components/schemas/ReviewLearningAction"
