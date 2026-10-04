@@ -11,13 +11,14 @@ const copy = {
   assumption: "The location and degree are hypothetical.",
 };
 
-function run(massAt, coverageAt) {
+function run(massAt, coverageAt, channelsAt) {
   return {
     points: Array.from({ length: 13 }, (_, step) => ({
       step,
       position: step / 12,
       relative_mass: massAt(step / 12),
       coverage_fraction: coverageAt(step / 12),
+      ...(channelsAt ? channelsAt(step / 12) : {}),
     })),
   };
 }
@@ -34,7 +35,7 @@ function result(hypothesis, severity, baseline, repetition, response) {
   };
 }
 
-function experiment(overrides = {}) {
+function experiment(overrides = {}, channels = true) {
   const flat = run(
     () => 1,
     () => 0.98,
@@ -43,6 +44,16 @@ function experiment(overrides = {}) {
     run(
       (p) => 1 - 0.65 * severity * p,
       (p) => 0.98 * Math.sqrt(1 - 0.65 * severity * p),
+      channels
+        ? (p) => ({
+            supply_pressure: 1,
+            feed_flow: 1 - 0.65 * severity * p,
+            path_open: 1 - 0.65 * severity * p,
+            flow_resistance: 1,
+            valve_duty: 1,
+            spray_width: 0.98 * Math.sqrt(1 - 0.65 * severity * p),
+          })
+        : undefined,
     );
   return {
     status: "completed",
@@ -70,74 +81,104 @@ function experiment(overrides = {}) {
 
 const components = ["pickup_tube", "feed_tube", "fluid_qd", "nozzle"];
 
-test("steps follow the strongest tested severity and read every number from the saved runs", () => {
+test("eight directed shots read every number from the saved runs", () => {
   const script = experimentPlaybackSteps(
     experiment(),
     "restriction",
     copy,
     components,
+    "Mass falls in a straight line.",
   );
   assert.equal(script.ok, true);
   assert.deepEqual(
     script.steps.map((step) => step.id),
     [
-      "baseline",
+      "establish",
+      "follow",
+      "apart",
       "mechanism",
-      "position-0",
-      "position-3",
-      "position-6",
-      "position-9",
-      "position-12",
-      "summary",
+      "valve",
+      "nozzle",
+      "substrate",
+      "readout",
     ],
   );
-  const last = script.steps.find((step) => step.id === "position-12");
-  assert.match(last.narration, /severity 0\.80/);
-  assert.match(last.narration, /mass is 0\.48 \(0\.52 below the control condition\)/);
-  assert.equal(last.position, 1);
-  assert.ok(Math.abs(last.partStates["visible-fluid-core"] - 0.48) < 1e-9);
-  const start = script.steps.find((step) => step.id === "position-0");
-  assert.match(start.narration, /level with the control condition/);
+  for (const step of script.steps) assert.equal(step.shot.id, step.id);
+  // The opening shots show the start of the sequence, before the effect builds.
+  for (const id of ["establish", "follow", "apart"]) {
+    const step = script.steps.find((item) => item.id === id);
+    assert.equal(step.condition, "start");
+    assert.equal(step.fluid.length, 1);
+    assert.equal(step.fluid[0].position, 0);
+  }
+  const close = script.steps.find((step) => step.id === "mechanism");
+  assert.equal(close.condition, "tested");
+  assert.match(close.narration, /severity 0\.80/);
+  assert.match(close.narration, /open path to 0\.48/);
+  assert.match(close.narration, /location is hypothetical/);
+  const nozzle = script.steps.find((step) => step.id === "nozzle");
+  assert.match(nozzle.narration, /0\.68 against 0\.98/);
+  // The substrate shot sweeps every sequence position and the marker follows it.
+  const substrate = script.steps.find((step) => step.id === "substrate");
+  assert.equal(substrate.fluid.length, 13);
+  assert.equal(substrate.position, 1);
+  assert.match(substrate.narration, /from 0\.98 to 0\.68/);
+  assert.match(substrate.narration, /fade steadily/);
+  assert.ok(Math.abs(substrate.partStates["visible-fluid-core"] - 0.48) < 1e-9);
+  const readout = script.steps.at(-1);
+  assert.match(readout.narration, /^Predicted before the run: Mass falls/);
+  assert.match(readout.narration, /mass ends at 0\.48 against 1\.00/);
 });
 
-test("the mechanism step highlights its components and frames the camera on the nozzle", () => {
+test("runs saved before the illustrative channels fall back to mass and coverage", () => {
+  const script = experimentPlaybackSteps(
+    experiment({}, false),
+    "restriction",
+    copy,
+    components,
+  );
+  const end = script.steps.find((step) => step.id === "valve").fluid[0];
+  assert.ok(Math.abs(end.feedFlow - 0.48) < 1e-9);
+  assert.equal(end.channels, false);
+  assert.ok(Math.abs(end.sprayWidth - end.coverage) < 1e-12);
+  // No channel that was never simulated is quoted.
+  const close = script.steps.find((step) => step.id === "mechanism");
+  assert.doesNotMatch(close.narration, /open path/);
+  assert.match(
+    close.narration,
+    /saved before the model's illustrative channels/,
+  );
+});
+
+test("the teardown names this explanation's parts and the narration never claims a cause", () => {
   const script = experimentPlaybackSteps(
     experiment(),
     "restriction",
     copy,
     components,
   );
-  const step = script.steps.find((item) => item.id === "mechanism");
-  assert.deepEqual(step.highlightIds, components);
-  assert.equal(step.camera, "nozzle_closeup");
-  assert.equal(step.modelNode, "nozzle");
-  const valve = experimentPlaybackSteps(experiment(), "restriction", copy, [
-    "bfs_bottle",
-    "dj2200_valve",
-  ]).steps.find((item) => item.id === "mechanism");
-  assert.equal(valve.camera, "valve_closeup");
-  const other = experimentPlaybackSteps(experiment(), "restriction", copy, [
-    "bfs_bottle",
-    "bfs_air",
-  ]).steps.find((item) => item.id === "mechanism");
-  assert.equal(other.camera, "assembly_overview");
-});
-
-test("every step is labelled simulated and the summary never claims a cause", () => {
-  const script = experimentPlaybackSteps(
-    experiment(),
-    "restriction",
-    copy,
-    components,
+  const apart = script.steps.find((step) => step.id === "apart");
+  assert.match(
+    apart.narration,
+    /the pickup tube, the feed tube, the quick disconnect, the nozzle and the air cap/,
   );
-  for (const step of script.steps)
+  for (const step of script.steps) {
     assert.match(step.caution, /not a measurement/);
-  const summary = script.steps.at(-1).narration;
-  assert.match(summary, /do not confirm a physical cause/);
-  assert.match(summary, /raising severity from 0\.2 to 0\.8/);
-  for (const step of script.steps)
+    assert.doesNotMatch(
+      step.narration,
+      /most likely|confirmed cause|root cause is/i,
+    );
     for (const value of Object.values(step.partStates))
       assert.ok(value >= 0 && value <= 1);
+  }
+  assert.match(
+    script.steps.at(-1).narration,
+    /do not confirm a physical cause/,
+  );
+  assert.match(
+    script.steps.at(-1).narration,
+    /Raising severity from 0\.2 to 0\.8/,
+  );
 });
 
 test("an unfinished, incomplete or too-short experiment produces no playback", () => {

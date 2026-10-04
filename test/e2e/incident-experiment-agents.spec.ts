@@ -333,8 +333,9 @@ test("the playback follows the simulated values and changes what the model shows
   await expect(scene).toHaveAttribute("data-model-loaded", "true");
   const counter = playback.locator(".guided-counter");
   await expect(counter).toHaveText("Step 1 of 8");
-  await expect(playback).toContainText("The control condition");
+  await expect(playback).toContainText("The machine and the question");
   await expect(playback).toContainText("Simulated · not measured");
+  await expect(scene).toHaveAttribute("data-shot", "establish");
   const states = async () =>
     JSON.parse(
       (await scene.getAttribute("data-part-states")) ?? "{}",
@@ -351,12 +352,16 @@ test("the playback follows the simulated values and changes what the model shows
   };
 
   await step(2);
+  await expect(scene).toHaveAttribute("data-shot", "apart");
+  await expect(scene).toHaveAttribute("data-condition", "start");
   const early = await states();
   const earlyShot = await scene.screenshot({
     path: testInfo.outputPath("playback-early.png"),
   });
   expect(early["visible-fluid-core"]).toBeCloseTo(1, 5);
   await step(6);
+  await expect(scene).toHaveAttribute("data-shot", "substrate");
+  await expect(scene).toHaveAttribute("data-condition", "tested");
   const late = await states();
   const lateShot = await scene.screenshot();
   expect(late["visible-fluid-core"]).toBeLessThan(early["visible-fluid-core"]);
@@ -385,9 +390,9 @@ test("the playback follows the simulated values and changes what the model shows
   // The curve marker, narration and numbers track the step.
   await step(6);
   await expect(playback.locator(".simulation-marker")).toHaveCount(1);
-  await expect(
-    playback.getByText(/Sequence position 1\.00/).first(),
-  ).toBeVisible();
+  await expect(playback.locator(".guided-narration")).toContainText(
+    "one stripe per sequence position",
+  );
   await step(7);
   await expect(playback).toContainText("do not confirm a physical cause");
   await expect(playback).toContainText("No machine test or measurement");
@@ -408,7 +413,7 @@ test("the playback follows the simulated values and changes what the model shows
   await page
     .getByRole("list", { name: "Playback steps" })
     .getByRole("button")
-    .nth(1)
+    .nth(2)
     .click();
   await expect(scene).toHaveAttribute(
     "data-highlight-ids",
@@ -445,9 +450,10 @@ test("playback can be stepped by keyboard and played, and stops on any interacti
   await expect(
     playback.getByRole("button", { name: "Pause guide" }),
   ).toBeVisible();
-  await page.clock.fastForward(5100);
+  // Each step lasts its shot plus a short hold: 7.0 s + 1.6 s, then 9.0 s + 1.6 s.
+  await page.clock.fastForward(8700);
   await expect(counter).toHaveText("Step 2 of 8");
-  await page.clock.fastForward(5100);
+  await page.clock.fastForward(10700);
   await expect(counter).toHaveText("Step 3 of 8");
   await playback.getByRole("button", { name: "Pause guide" }).click();
   await page.clock.fastForward(12000);
@@ -524,7 +530,7 @@ test("without WebGL the schematic, steps and numbers still work", async ({
   await playback
     .getByRole("list", { name: "Playback steps" })
     .getByRole("button")
-    .nth(1)
+    .nth(3)
     .click();
   await expect(
     playback.locator('.prototype-diagram [data-highlighted="true"]'),

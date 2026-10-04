@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import type { ProcedureStep } from "@flowpilot/contracts";
 import {
+  ArrowClockwise,
   ArrowLeft,
   ArrowRight,
   Cube,
@@ -10,6 +11,7 @@ import {
 } from "@phosphor-icons/react";
 import { ProcedureDiagram } from "../prototype/ProcedureDiagram";
 import { modelNodes, type ModelNodeId } from "../prototype/model";
+import type { SceneDirection } from "../scene/stage";
 import { SceneBoundary } from "./SceneBoundary";
 import { StatusChip } from "./StatusChip";
 import { ResponsePlot } from "./SimulationPanel";
@@ -18,12 +20,21 @@ import "../components/viewer.css";
 import "./GuidedPlayback.css";
 
 const AssemblyScene = lazy(() => import("../components/AssemblyScene"));
-const STEP_MS = 5000;
+// After a shot settles, hold its last frame briefly before the next one.
+const HOLD_MS = 1600;
+
+const legend = [
+  ["liquid", "Liquid"],
+  ["reservoir", "Reservoir air"],
+  ["valve", "Valve-actuation air"],
+  ["atomizing", "Atomizing air"],
+] as const;
 
 /**
- * Plays one mechanism's simulated experiment step by step: the camera moves,
- * its parts are highlighted, illustrative levels follow the simulated values
- * and the narration says what the numbers show. Nothing here is a measurement.
+ * Plays one mechanism's simulated experiment as a short directed film: each
+ * step is a camera shot, parts come apart and go back, and the liquid, air,
+ * spray and deposit follow the saved simulated values. The viewer can take
+ * the camera at any time. Nothing here is a measurement.
  */
 export function GuidedPlayback({
   script,
@@ -36,9 +47,11 @@ export function GuidedPlayback({
   const last = steps.length - 1;
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [held, setHeld] = useState(false);
   const [twoD, setTwoD] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [reset, setReset] = useState(0);
+  const [replay, setReplay] = useState(0);
+  const [progress, setProgress] = useState(0);
   const [reduced, setReduced] = useState(
     () => matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
@@ -61,10 +74,10 @@ export function GuidedPlayback({
     if (!autoplaying) return;
     const timer = window.setTimeout(
       () => setIndex((value) => value + 1),
-      STEP_MS,
+      step.shot.durationMs + HOLD_MS,
     );
     return () => window.clearTimeout(timer);
-  }, [autoplaying, index]);
+  }, [autoplaying, index, step.shot.durationMs]);
 
   const sceneStep = useMemo<ProcedureStep>(
     () => ({
@@ -72,7 +85,7 @@ export function GuidedPlayback({
       title: step.title,
       instruction: step.narration,
       caution: step.caution,
-      camera_preset: step.camera,
+      camera_preset: "assembly_overview",
       model_node_id: (Object.hasOwn(modelNodes, step.modelNode)
         ? step.modelNode
         : "substrate_tray") as ModelNodeId,
@@ -80,11 +93,32 @@ export function GuidedPlayback({
     }),
     [step],
   );
+  const direction = useMemo<SceneDirection>(
+    () => ({
+      key: `${title}:${step.id}`,
+      shot: step.shot,
+      fluid: step.fluid,
+      control: step.control,
+      condition: step.condition,
+      mechanism: step.mechanism,
+    }),
+    [step, title],
+  );
   const highlightIds = step.highlightIds.length ? step.highlightIds : undefined;
   const go = (next: number) => {
     setPlaying(false);
+    setHeld(false);
+    setProgress(0);
     setIndex(Math.min(last, Math.max(0, next)));
   };
+  // The curve marker follows the substrate time-lapse as it sweeps the sequence.
+  const sweep = step.fluid.length > 1 && step.shot.deposit === "build";
+  const marker =
+    step.position === null
+      ? null
+      : sweep && !reduced
+        ? step.position * progress
+        : step.position;
 
   return (
     <section
@@ -109,7 +143,7 @@ export function GuidedPlayback({
         </div>
         <StatusChip kind="simulated" detail="not measured" />
       </div>
-      <div className="incident-scene procedure-viewer">
+      <div className="incident-scene procedure-viewer guided-stage">
         <div className="incident-view-toggle">
           <button
             className="secondary"
@@ -137,33 +171,65 @@ export function GuidedPlayback({
         {twoD || failed ? (
           <ProcedureDiagram step={sceneStep} highlightIds={highlightIds} />
         ) : (
-          <SceneBoundary
-            fallback={
-              <ProcedureDiagram step={sceneStep} highlightIds={highlightIds} />
-            }
-          >
-            <Suspense
-              fallback={<p role="status">Loading illustrative assembly…</p>}
+          <div className="guided-frame">
+            <SceneBoundary
+              fallback={
+                <ProcedureDiagram
+                  step={sceneStep}
+                  highlightIds={highlightIds}
+                />
+              }
             >
-              <AssemblyScene
-                step={sceneStep}
-                reset={reset}
-                reduced={reduced}
-                highlightIds={highlightIds}
-                partStates={step.partStates}
-                onFailure={() => setFailed(true)}
-                onInteract={() => setPlaying(false)}
-              />
-            </Suspense>
-          </SceneBoundary>
+              <Suspense
+                fallback={<p role="status">Loading illustrative assembly…</p>}
+              >
+                <AssemblyScene
+                  step={sceneStep}
+                  reset={replay}
+                  reduced={reduced}
+                  highlightIds={highlightIds}
+                  partStates={step.partStates}
+                  directed
+                  direction={direction}
+                  onShotProgress={sweep ? setProgress : undefined}
+                  onFailure={() => setFailed(true)}
+                  onInteract={() => {
+                    setPlaying(false);
+                    setHeld(true);
+                  }}
+                />
+              </Suspense>
+            </SceneBoundary>
+            <p className="guided-badge" aria-hidden="true">
+              Simulated · illustrative model · not a measurement
+            </p>
+            <p className="guided-shot" aria-hidden="true">
+              {step.shot.name}
+            </p>
+          </div>
         )}
+        <ul className="guided-legend" aria-label="Colours in the 3D view">
+          {legend.map(([kind, label]) => (
+            <li key={kind} data-kind={kind}>
+              {label}
+            </li>
+          ))}
+        </ul>
         <div className="assembly-tools">
-          <button className="secondary" onClick={() => setReset((n) => n + 1)}>
-            Reset view
+          <button
+            className="secondary"
+            onClick={() => {
+              setHeld(false);
+              setProgress(0);
+              setReplay((n) => n + 1);
+            }}
+          >
+            <ArrowClockwise aria-hidden="true" />
+            {held ? "Resume shot" : "Replay shot"}
           </button>
           <span className="incident-caption">
-            Glow and spray levels follow the simulated values. They are
-            illustrative, not measured.
+            Flow speed, gaps, spray width and deposit follow the simulated
+            values. Positions and parts are illustrative, not measured.
           </span>
         </div>
       </div>
@@ -187,6 +253,7 @@ export function GuidedPlayback({
             if (autoplaying) setPlaying(false);
             else {
               if (index === last) setIndex(0);
+              setHeld(false);
               setPlaying(true);
             }
           }}
@@ -224,12 +291,15 @@ export function GuidedPlayback({
               <span className="guided-step-number" aria-hidden="true">
                 {position + 1}
               </span>
-              {item.title}
+              <span className="guided-step-text">
+                {item.title}
+                <small>{item.shot.name}</small>
+              </span>
             </button>
           </li>
         ))}
       </ol>
-      <ResponsePlot run={script.run} marker={step.position} showTable={false} />
+      <ResponsePlot run={script.run} marker={marker} showTable={false} />
     </section>
   );
 }

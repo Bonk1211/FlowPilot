@@ -14,6 +14,8 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import type { ProcedureStep } from "@flowpilot/contracts";
 import { cameraPresets, modelNodes } from "../prototype/model";
+import { sampleCamera, type CameraFrame } from "../scene/shots";
+import { Stage, type SceneDirection } from "../scene/stage";
 
 type Props = {
   step: ProcedureStep;
@@ -29,6 +31,14 @@ type Props = {
    * shown as glow or opacity and never describe a measurement.
    */
   partStates?: Readonly<Record<string, number>>;
+  /**
+   * Directed mode, fixed when the scene mounts: shots move the camera, parts
+   * separate and the liquid, air, spray and deposit follow `direction`.
+   */
+  directed?: boolean;
+  direction?: SceneDirection | null;
+  /** How far the current shot has played, from 0 to 1, reported a few times a second. */
+  onShotProgress?: (progress: number) => void;
 };
 
 type Material = THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial;
@@ -45,6 +55,16 @@ type Runtime = {
   shown: Record<string, number>;
   kind: string;
   isolated: boolean;
+  stage: Stage | null;
+  director: {
+    direction: SceneDirection;
+    start: number;
+    from: CameraFrame | null;
+    paused: boolean;
+    pausedAt: number;
+    reported: number;
+  } | null;
+  pending: SceneDirection | null;
 };
 
 const detailNames = [
@@ -103,6 +123,30 @@ function dispose(root: THREE.Object3D) {
   });
 }
 
+function startShot(state: Runtime, direction: SceneDirection) {
+  state.stage?.direct(direction);
+  state.director = {
+    direction,
+    start: performance.now(),
+    from: {
+      position: state.camera.position.toArray() as [number, number, number],
+      target: state.controls.target.toArray() as [number, number, number],
+      fov: state.camera.fov,
+    },
+    paused: false,
+    pausedAt: 0,
+    reported: 0,
+  };
+}
+
+/** The viewer took the camera: hold the shot where it is. */
+function pauseShot(state: Runtime) {
+  const director = state.director;
+  if (!director || director.paused) return;
+  director.paused = true;
+  director.pausedAt = performance.now() - director.start;
+}
+
 export default function AssemblyScene({
   step,
   reset,
@@ -111,20 +155,23 @@ export default function AssemblyScene({
   onInteract,
   highlightIds,
   partStates,
+  directed = false,
+  direction = null,
+  onShotProgress,
 }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const highlightKey = highlightIds?.join(",");
   const partStatesKey = partStates ? JSON.stringify(partStates) : undefined;
   const runtime = useRef<Runtime | null>(null);
-  const callbacks = useRef({ onFailure, onInteract });
+  const callbacks = useRef({ onFailure, onInteract, onShotProgress });
   const [isolated, setIsolated] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const detail =
     typeof window !== "undefined" && window.innerWidth < 1024 ? "low" : "high";
 
   useEffect(() => {
-    callbacks.current = { onFailure, onInteract };
-  }, [onFailure, onInteract]);
+    callbacks.current = { onFailure, onInteract, onShotProgress };
+  }, [onFailure, onInteract, onShotProgress]);
 
   useEffect(() => {
     const current = runtime.current;
@@ -201,8 +248,14 @@ export default function AssemblyScene({
       shown: {},
       kind: "none",
       isolated: false,
+      stage: null,
+      director: null,
+      pending: null,
     };
     runtime.current = state;
+    // Development only: lets the camera work be inspected from the browser console.
+    if (import.meta.env.DEV && directed)
+      Object.assign(window, { __flowpilotScene: { state, renderer, scene } });
 
     new GLTFLoader().load(
       "/models/generic-fluid-dispenser.glb",
@@ -237,6 +290,11 @@ export default function AssemblyScene({
         scene.remove(state.parts);
         state.parts = parts;
         scene.add(parts);
+        if (directed) {
+          state.stage = new Stage(parts, container, detail);
+          if (state.pending) startShot(state, state.pending);
+          state.pending = null;
+        }
         setLoaded(true);
       },
       undefined,
@@ -245,6 +303,7 @@ export default function AssemblyScene({
 
     const interact = () => {
       state.moving = false;
+      pauseShot(state);
       callbacks.current.onInteract();
     };
     controls.addEventListener("start", interact);
@@ -267,8 +326,52 @@ export default function AssemblyScene({
     let lastRender = 0;
     const render = (time: number) => {
       frame = requestAnimationFrame(render);
-      if (time - lastRender < 42) return;
+      // The directed scene animates every frame; otherwise about 24 frames a second is enough.
+      if (!state.stage?.active && time - lastRender < 42) return;
       lastRender = time;
+      const director = state.director;
+      if (state.stage?.active && director) {
+        const elapsed = director.paused
+          ? director.pausedAt
+          : performance.now() - director.start;
+        const shot = sampleCamera(
+          director.direction.shot,
+          elapsed,
+          director.from,
+          state.reduced,
+        );
+        if (!director.paused) {
+          camera.position.set(...shot.position);
+          controls.target.set(...shot.target);
+          if (Math.abs(camera.fov - shot.fov) > 0.01) {
+            camera.fov = shot.fov;
+            camera.updateProjectionMatrix();
+          }
+        } else if (state.moving) {
+          camera.position.lerp(state.goal, state.reduced ? 1 : 0.1);
+          controls.target.lerp(state.target, state.reduced ? 1 : 0.1);
+          if (camera.position.distanceTo(state.goal) < 0.005)
+            state.moving = false;
+        }
+        // Reduced motion holds the flow still so each step is one steady picture.
+        state.stage.update(
+          state.reduced ? 1.3 : time / 1000,
+          shot.progress,
+          camera,
+          container.clientWidth,
+          container.clientHeight,
+        );
+        if (
+          time - director.reported > 120 ||
+          (shot.progress === 1 && director.reported >= 0)
+        ) {
+          director.reported = shot.progress === 1 ? -1 : time;
+          callbacks.current.onShotProgress?.(shot.progress);
+        }
+        controls.update();
+        renderer.render(scene, camera);
+        return;
+      }
       if (state.moving) {
         camera.position.lerp(state.goal, state.reduced ? 1 : 0.1);
         controls.target.lerp(state.target, state.reduced ? 1 : 0.1);
@@ -317,7 +420,12 @@ export default function AssemblyScene({
                   : 0;
           }
           const faded = state.isolated && owner && !state.highlight.has(owner);
-          material.transparent = faded || baseOpacity < 1;
+          const transparent = !!faded || baseOpacity < 1;
+          // Opaque materials compile alpha out, so a switch needs a (cached) recompile.
+          if (material.transparent !== transparent) {
+            material.transparent = transparent;
+            material.needsUpdate = true;
+          }
           material.opacity = faded ? Math.min(baseOpacity, 0.16) : baseOpacity;
           material.depthWrite = !faded;
           const level = state.shown[object.name] ?? state.shown[owner];
@@ -349,6 +457,7 @@ export default function AssemblyScene({
       controls.removeEventListener("start", interact);
       controls.dispose();
       renderer.domElement.removeEventListener("webglcontextlost", contextLost);
+      state.stage?.dispose();
       dispose(state.parts);
       ground.geometry.dispose();
       groundMaterial.dispose();
@@ -357,6 +466,8 @@ export default function AssemblyScene({
       renderer.domElement.remove();
       runtime.current = null;
     };
+    // `directed` is fixed for the scene's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detail]);
 
   useEffect(() => {
@@ -367,16 +478,29 @@ export default function AssemblyScene({
       callbacks.current.onFailure();
       return;
     }
-    current.goal.fromArray(preset.position);
-    current.target.fromArray(preset.target);
+    if (!current.stage) {
+      current.goal.fromArray(preset.position);
+      current.target.fromArray(preset.target);
+    }
     current.highlight = new Set(
       highlightKey ? highlightKey.split(",") : [step.model_node_id],
     );
     current.kind = step.highlight;
     current.reduced = reduced;
-    current.moving = true;
+    current.moving = !directed;
     setIsolated(false);
-  }, [step, reset, reduced, highlightKey]);
+  }, [step, reset, reduced, highlightKey, directed]);
+
+  // A new step starts its shot; Reset view (reset) replays it from the current framing.
+  const directionKey = direction?.key;
+  useEffect(() => {
+    const current = runtime.current;
+    if (!current || !direction) return;
+    if (current.stage) startShot(current, direction);
+    else current.pending = direction;
+    // The key stands in for the direction, which is recreated on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [directionKey, reset]);
 
   useEffect(() => {
     const current = runtime.current;
@@ -389,6 +513,7 @@ export default function AssemblyScene({
     const current = runtime.current;
     if (!current) return;
     current.moving = false;
+    pauseShot(current);
     callbacks.current.onInteract();
     const offset = current.camera.position.clone().sub(current.controls.target);
     if (kind === "in" || kind === "out") {
@@ -411,6 +536,10 @@ export default function AssemblyScene({
     current.goal.set(7.5, 4.8, 9.5);
     current.target.set(0, -0.15, 0);
     current.moving = true;
+    if (current.director) {
+      pauseShot(current);
+      callbacks.current.onInteract();
+    }
     setIsolated(false);
   }
 
@@ -434,6 +563,8 @@ export default function AssemblyScene({
         data-reduced-motion={reduced}
         data-model-detail={detail}
         data-model-loaded={loaded}
+        data-shot={direction?.shot.id}
+        data-condition={direction?.condition}
       />
       {!loaded && <p role="status">Loading detailed assembly…</p>}
       <div
