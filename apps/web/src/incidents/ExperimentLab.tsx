@@ -1,8 +1,10 @@
 import { useState, type MouseEvent } from "react";
 import {
+  ArrowBendUpLeft,
   CheckCircle,
   CircleNotch,
   Hourglass,
+  MinusCircle,
   Play,
   WarningCircle,
 } from "@phosphor-icons/react";
@@ -18,6 +20,8 @@ import {
 } from "./experimentDefaults";
 import { experimentPlaybackSteps, trackSummary } from "./experimentPlayback";
 import { mechanismCopy } from "./mechanismCopy";
+import { findingOf, findingState } from "./experimentFindings";
+import { handBack } from "./experimentRuns";
 import {
   trackStages,
   useExperimentRuns,
@@ -64,6 +68,75 @@ function progressOf(track: Track) {
   return { steps, total: 2 + conditions, text, saved, conditions };
 }
 
+/** How one finished experiment compares with the records, and whether it goes back. */
+function TrackFinding({
+  plan,
+  id,
+  busy,
+  onReturn,
+  onOpen,
+}: {
+  plan: NonNullable<Track["plan"]>;
+  id: MechanismId;
+  busy: boolean;
+  onReturn: () => void;
+  onOpen: () => void;
+}) {
+  const finding = findingOf(plan, id);
+  if (!finding) return null;
+  const state = findingState(plan, id);
+  const outdated = plan.source_current === false;
+  return (
+    <div className="lab-finding" data-outcome={finding.outcome}>
+      <p className="lab-finding-label">
+        {finding.outcome === "consistent" ? (
+          <CheckCircle aria-hidden="true" weight="fill" />
+        ) : finding.outcome === "conflicts" ? (
+          <WarningCircle aria-hidden="true" />
+        ) : (
+          <MinusCircle aria-hidden="true" />
+        )}
+        {finding.label}
+      </p>
+      <p>{finding.summary}</p>
+      <details>
+        <summary>How this was judged</summary>
+        <ul>
+          {finding.criteria.map((criterion) => (
+            <li key={criterion.id}>
+              {criterion.met ? "Met" : "Not met"}: {criterion.label}.{" "}
+              {criterion.detail}
+            </li>
+          ))}
+        </ul>
+      </details>
+      {outdated && (
+        <p className="lab-track-error">
+          Outdated: the evidence changed after this simulation.
+        </p>
+      )}
+      {state === "returned" ? (
+        <p className="lab-finding-returned">
+          Returned to the investigation.{" "}
+          <button type="button" className="link-button" onClick={onOpen}>
+            Open the investigation
+          </button>
+        </p>
+      ) : finding.outcome === "consistent" && !outdated ? (
+        <button className="primary" disabled={busy} onClick={onReturn}>
+          <ArrowBendUpLeft aria-hidden="true" />
+          Return to investigation with this finding
+        </button>
+      ) : (
+        <p className="incident-caption">
+          Only findings consistent with the records go back to the
+          investigation.
+        </p>
+      )}
+    </div>
+  );
+}
+
 /**
  * The suggested experiments as tracks that run together or one at a time,
  * beside a guided 3D playback of whichever finished one is open. Everything
@@ -77,6 +150,7 @@ export function ExperimentLab({
   onRefresh,
   experimentsHref,
   onOpenLink,
+  onReturn,
 }: {
   incident: Incident;
   planIds: readonly string[];
@@ -85,8 +159,12 @@ export function ExperimentLab({
   onRefresh: () => Promise<void>;
   experimentsHref: string;
   onOpenLink: (event: MouseEvent<HTMLAnchorElement>) => void;
+  /** Go back to the investigation with a returned finding. */
+  onReturn: (hypothesisId: MechanismId) => void;
 }) {
-  const { tracks, loadError, start } = useExperimentRuns({
+  const [returning, setReturning] = useState<MechanismId | null>(null);
+  const [returnError, setReturnError] = useState("");
+  const { tracks, loadError, start, replace } = useExperimentRuns({
     incidentId: incident.id,
     requested,
     planIds,
@@ -109,6 +187,10 @@ export function ExperimentLab({
       ? chosen
       : (finished[0]?.id ?? null);
   const selectedPlan = selected ? tracks[selected].plan : null;
+  const brief = (id: MechanismId) =>
+    incident.assessment?.checks.find(
+      (check) => check.id === mechanismChecks[id],
+    )?.brief;
   const script =
     selectedPlan && selected
       ? experimentPlaybackSteps(
@@ -117,12 +199,28 @@ export function ExperimentLab({
           mechanismCopy[selected],
           incident.assessment?.hypotheses.find((item) => item.id === selected)
             ?.component_ids ?? [],
+          brief(selected)?.prediction.if_holds,
+          findingOf(selectedPlan, selected)?.summary,
         )
       : null;
-  const brief = (id: MechanismId) =>
-    incident.assessment?.checks.find(
-      (check) => check.id === mechanismChecks[id],
-    )?.brief;
+  async function returnFinding(id: MechanismId) {
+    const plan = tracks[id].plan;
+    if (!plan) return;
+    setReturning(id);
+    setReturnError("");
+    try {
+      replace(id, await handBack(incident.id, plan, id, "return"));
+      onReturn(id);
+    } catch (cause) {
+      setReturnError(
+        cause instanceof Error
+          ? cause.message
+          : "The finding could not be returned to the investigation.",
+      );
+    } finally {
+      setReturning(null);
+    }
+  }
 
   return (
     <section
@@ -159,6 +257,11 @@ export function ExperimentLab({
             : "Each experiment is its own saved plan. Run them together or one at a time."}
       </p>
 
+      {returnError && (
+        <div role="alert" className="incident-experiment-error lab-error">
+          <p>{returnError}</p>
+        </div>
+      )}
       {loadError && (
         <div role="alert" className="incident-experiment-error lab-error">
           <p>{loadError}</p>
@@ -270,6 +373,15 @@ export function ExperimentLab({
                     coverage at {summary.coverage.toFixed(2)} against{" "}
                     {summary.baselineCoverage.toFixed(2)}.
                   </p>
+                )}
+                {track.stage === "done" && track.plan && (
+                  <TrackFinding
+                    plan={track.plan}
+                    id={track.id}
+                    busy={returning !== null}
+                    onReturn={() => void returnFinding(track.id)}
+                    onOpen={() => onReturn(track.id)}
+                  />
                 )}
                 {track.error && (
                   <p className="lab-track-error" role="alert">

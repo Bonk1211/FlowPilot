@@ -286,6 +286,22 @@
   color: var(--teal-700);
   font-weight: 600;
 }
+/* A simulated finding is a suggestion, never evidence: dashed, never filled solid. */
+.flowchart-node.stage-finding,
+.investigation-shape-legend .stage-finding {
+  --shape-fill: var(--surface-measurement);
+  --shape-stroke: var(--teal-700);
+}
+.flowchart-node.stage-finding .flowchart-shape > svg rect,
+.investigation-shape-legend .stage-finding svg rect {
+  stroke-dasharray: 6 4;
+}
+.flowchart-node.stage-finding .flowchart-shape-text small {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--teal-700);
+  font-weight: 600;
+}
 .investigation-response .investigation-experiment-link {
   margin-top: 8px;
   color: var(--teal-700);

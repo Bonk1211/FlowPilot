@@ -50,6 +50,8 @@ export type IncidentRoute = {
   experimentRuns: MechanismId[];
   /** `?plan=a,b`: show experiment plans that were already started. */
   experimentPlanIds: string[];
+  /** `?finding=restriction`: a simulated finding just handed back to the investigation. */
+  experimentFinding: string | null;
 };
 
 function readRuns(value: string | null): MechanismId[] {
@@ -83,6 +85,7 @@ function readRoute(): Omit<IncidentRoute, "visited"> {
       .split(",")
       .map((id) => id.trim())
       .filter(Boolean),
+    experimentFinding: query.get("finding"),
   };
   if (!path || path === "/incidents")
     return { incidentId: null, page: null, invalid: false, ...experiment };

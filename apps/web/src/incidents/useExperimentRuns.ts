@@ -264,5 +264,8 @@ export function useExperimentRuns({
       started.current.add(`${incidentId}|${id}`);
       void run(id);
     },
+    /** Show a plan saved elsewhere, such as after a hand-back. */
+    replace: (id: MechanismId, plan: IncidentExperiment) =>
+      update(id, { plan }),
   };
 }

@@ -1052,6 +1052,8 @@ function IncidentWorkspaceContent({
                           }
                           onOpenExperiment={openExperiment}
                           onRunExperiments={runExperiments}
+                          focusFinding={route.experimentFinding}
+                          onOpenLink={followLink}
                         />
                       )}
                       <div hidden={investigationCanvas}>
@@ -1207,6 +1209,11 @@ function IncidentWorkspaceContent({
                             incident.id,
                             "experiments",
                           )}
+                          onReturn={(hypothesisId) =>
+                            navigate(
+                              `${incidentPageUrl(incident.id, "investigation")}?finding=${encodeURIComponent(hypothesisId)}`,
+                            )
+                          }
                           onOpenLink={followLink}
                         />
                       )}

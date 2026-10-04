@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { IncidentExperiment } from "@flowpilot/contracts";
 import { incidentJson } from "./api";
 
@@ -62,4 +63,46 @@ export async function settledPlan(
     onProgress?.(plan);
   }
   return plan;
+}
+
+/** Return a simulated finding to the investigation, or set it aside. Recorded on the plan only. */
+export function handBack(
+  incidentId: string,
+  plan: IncidentExperiment,
+  hypothesisId: string,
+  decision: "return" | "set_aside",
+) {
+  return incidentJson<IncidentExperiment>(
+    `/api/incidents/${encodeURIComponent(incidentId)}/experiments/${encodeURIComponent(plan.id)}/handback`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        revision: plan.revision,
+        decision,
+        hypothesis_id: hypothesisId,
+      }),
+    },
+  );
+}
+
+/** The incident's saved experiment plans, read again whenever `key` changes. */
+export function useIncidentPlans(incidentId: string, key: unknown) {
+  const [plans, setPlans] = useState<IncidentExperiment[]>([]);
+  const [reload, setReload] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    incidentJson<IncidentExperiment[]>(
+      `/api/incidents/${encodeURIComponent(incidentId)}/experiments`,
+    )
+      .then((value) => {
+        if (alive) setPlans(value);
+      })
+      // Findings are an optional overlay; the investigation works without them.
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, [incidentId, key, reload]);
+  return { plans, reload: () => setReload((value) => value + 1) };
 }

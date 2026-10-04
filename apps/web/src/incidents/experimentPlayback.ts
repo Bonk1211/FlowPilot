@@ -196,6 +196,7 @@ export function experimentPlaybackSteps(
   copy: MechanismText,
   componentIds: string[],
   prediction?: string,
+  finding?: string,
 ): PlaybackScript {
   if (experiment.status !== "completed")
     return { ok: false, reason: "The experiment has not finished running." };
@@ -314,6 +315,7 @@ export function experimentPlaybackSteps(
         effect
           ? `Raising ${effect.factor.replaceAll("_", " ")} from ${effect.low_level} to ${effect.high_level} changed the mean simulated response by ${fixed(effect.main_effect)}.`
           : "",
+        finding ? `Against the records: ${finding}` : "",
         "Synthetic responses do not confirm a physical cause. No machine test or measurement was performed.",
       ]
         .filter(Boolean)

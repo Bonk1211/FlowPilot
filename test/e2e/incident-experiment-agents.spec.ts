@@ -643,3 +643,112 @@ test("the offer and the lab give every control an accessible name and a unique i
   await finished(page);
   expect(await check()).toEqual([]);
 });
+
+test("a finding consistent with the records goes back to the investigation as a simulated suggestion, never as evidence", async ({
+  page,
+  request,
+}) => {
+  const source = await incidentWith(request, ["intermittent", "unstable"]);
+  const before = source.incident();
+  await runFromInvestigation(page, before.id);
+  await finished(page);
+  const track = (title: string) =>
+    tracks(page).locator(":scope > li").filter({ hasText: title });
+  // An intermittent defect matches the oscillating response, not the two falls.
+  await expect(track("Unstable fluid delivery")).toContainText(
+    "Simulated · consistent with the records",
+  );
+  for (const title of ["Fluid-path restriction", "Material-condition change"]) {
+    await expect(track(title)).toContainText(
+      "Simulated · conflicts with the records",
+    );
+    await expect(
+      track(title).getByRole("button", { name: /Return to investigation/ }),
+    ).toHaveCount(0);
+  }
+  await track("Unstable fluid delivery")
+    .getByRole("button", { name: "Return to investigation with this finding" })
+    .click();
+  await expect(page).toHaveURL(/\/investigation\?finding=unstable_delivery$/);
+  const panel = page.getByRole("dialog", { name: "Unstable fluid delivery" });
+  await expect(panel).toBeVisible();
+  await expect(panel).toContainText("Simulated · not evidence");
+  await expect(panel).toContainText(
+    "This does not confirm unstable fluid delivery",
+  );
+  await expect(panel).toContainText(
+    "Met: The simulated shape matches a recorded or confirmed fact",
+  );
+  await expect(panel).toContainText("Suggested next manual check");
+  await expect(panel).toContainText("Compare recorded delivery evidence");
+  await expect(panel).toContainText("Physical execution blocked");
+  await page.keyboard.press("Escape");
+  await expect(panel).toHaveCount(0);
+  const node = page.getByRole("button", {
+    name: /Simulated finding · simulated: Simulated finding, not evidence/,
+  });
+  await expect(node).toHaveCount(1);
+
+  // Stateful: a reload keeps it; nothing became evidence or an observation.
+  await page.goto(`/incidents/${before.id}/investigation`);
+  await expect(node).toHaveCount(1);
+  const after: Incident = await (
+    await request.get(`/api/incidents/${before.id}`)
+  ).json();
+  expect(after.evidence).toEqual(before.evidence);
+  expect(after.observations).toEqual(before.observations);
+  expect(after.assessment!.hypotheses.map((item) => item.status)).toEqual(
+    before.assessment!.hypotheses.map((item) => item.status),
+  );
+  const saved = await plans(request, before.id);
+  const returned = saved.find((plan) => plan.handbacks?.length);
+  expect(returned!.handbacks!.map((item) => item.decision)).toEqual(["return"]);
+
+  // Setting it aside removes it from the investigation (opened by keyboard).
+  await node.focus();
+  await page.keyboard.press("Enter");
+  await page
+    .getByRole("dialog", { name: "Unstable fluid delivery" })
+    .getByRole("button", { name: "Set this finding aside" })
+    .click();
+  await expect(node).toHaveCount(0);
+});
+
+test("a returned finding is marked outdated once the evidence changes", async ({
+  page,
+  request,
+}) => {
+  const source = await incidentWith(request, ["intermittent", "unstable"]);
+  const id = source.incident().id;
+  await runFromInvestigation(page, id);
+  await finished(page);
+  await tracks(page)
+    .locator(":scope > li")
+    .filter({ hasText: "Unstable fluid delivery" })
+    .getByRole("button", { name: "Return to investigation with this finding" })
+    .click();
+  await expect(page).toHaveURL(/finding=unstable_delivery/);
+  await source.act({
+    action: "add_evidence",
+    evidence: {
+      id: "late-context",
+      kind: "context",
+      role: "context",
+      label: "Late context",
+      source_ref: "test:late",
+      synthetic: true,
+      values: { material: "flux" },
+    },
+  });
+  await page.goto(`/incidents/${id}/investigation`);
+  await expect(
+    page.getByRole("button", { name: /Simulated finding · outdated/ }),
+  ).toHaveCount(1);
+  await page
+    .getByRole("button", { name: /Simulated finding · outdated/ })
+    .focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("dialog", { name: "Unstable fluid delivery" }),
+  ).toContainText("Outdated: the evidence changed after this simulation.");
+});
