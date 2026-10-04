@@ -1,108 +1,128 @@
-import { useMemo, useState, type MouseEvent } from "react";
+import { useState, type MouseEvent } from "react";
 import {
   CheckCircle,
   CircleNotch,
   Hourglass,
+  Play,
   WarningCircle,
 } from "@phosphor-icons/react";
-import type { IncidentExperiment } from "@flowpilot/contracts";
 import type { Incident } from "./api";
 import { GuidedPlayback } from "./GuidedPlayback";
+import { SignatureSpark } from "./SignatureSpark";
 import { StatusChip } from "./StatusChip";
-import { mechanismIds, mechanismTitles } from "./experimentDefaults";
+import {
+  mechanismChecks,
+  mechanismIds,
+  mechanismTitles,
+  type MechanismId,
+} from "./experimentDefaults";
 import { experimentPlaybackSteps, trackSummary } from "./experimentPlayback";
 import { mechanismCopy } from "./mechanismCopy";
-import { suggestInvestigationExperiments } from "./investigationExperiment";
-import { runStages, useExperimentRun, type RunStage } from "./useExperimentRun";
+import {
+  trackStages,
+  useExperimentRuns,
+  type Track,
+} from "./useExperimentRuns";
 import "./ExperimentLab.css";
 
-const progressOf: Record<RunStage, number> = {
-  idle: 0,
-  proposing: 0,
-  approving: 1,
-  running: 2,
-  done: 3,
-  failed: 0,
-};
-
-function agentState(stage: RunStage, plan: IncidentExperiment | null) {
-  if (stage === "done") return "done" as const;
-  if (stage === "running") return "running" as const;
-  if (stage === "failed")
-    return plan?.status === "completed" ? "done" : "failed";
-  return "queued" as const;
-}
-
 const stateLabel = {
-  queued: "Queued",
-  running: "Running",
+  idle: "Not run",
+  saving: "Saving plan",
+  approving: "Approving",
+  simulating: "Simulating",
   done: "Done",
-  failed: "Not run",
+  failed: "Stopped",
 } as const;
 
-function StateIcon({ state }: { state: keyof typeof stateLabel }) {
-  if (state === "done") return <CheckCircle aria-hidden="true" weight="fill" />;
-  if (state === "running")
-    return <CircleNotch aria-hidden="true" className="lab-spin" />;
-  if (state === "failed") return <WarningCircle aria-hidden="true" />;
-  return <Hourglass aria-hidden="true" />;
+function StateIcon({ stage }: { stage: Track["stage"] }) {
+  if (stage === "done") return <CheckCircle aria-hidden="true" weight="fill" />;
+  if (stage === "failed") return <WarningCircle aria-hidden="true" />;
+  if (stage === "idle") return <Hourglass aria-hidden="true" />;
+  return <CircleNotch aria-hidden="true" className="lab-spin" />;
+}
+
+/** How far one experiment has got: plan saved, approved, then each condition. */
+function progressOf(track: Track) {
+  const conditions = track.plan?.matrix.length ?? 3;
+  const saved = track.plan?.results?.length ?? 0;
+  const steps = {
+    idle: 0,
+    saving: 0,
+    approving: 1,
+    simulating: 2 + saved,
+    done: 2 + conditions,
+    failed: track.plan ? 2 + saved : 0,
+  }[track.stage];
+  const text = {
+    idle: "Not run yet",
+    saving: "Saving the plan",
+    approving: "Plan saved; approving as demo engineer",
+    simulating: `Simulating: ${saved} of ${conditions} conditions saved`,
+    done: `Finished: ${saved} of ${conditions} conditions simulated`,
+    failed: `Stopped after ${saved} of ${conditions} conditions`,
+  }[track.stage];
+  return { steps, total: 2 + conditions, text, saved, conditions };
 }
 
 /**
- * The three suggested experiments, run as one saved plan and shown as three
- * agent-style tracks beside a guided 3D playback of whichever one is open.
- * Everything shown is simulated; nothing becomes recorded evidence.
+ * The suggested experiments as tracks that run together or one at a time,
+ * beside a guided 3D playback of whichever finished one is open. Everything
+ * shown is simulated; nothing becomes recorded evidence.
  */
 export function ExperimentLab({
   incident,
-  planId,
-  runRequested,
-  onPlan,
+  planIds,
+  requested,
+  onPlans,
   onRefresh,
   experimentsHref,
   onOpenLink,
 }: {
   incident: Incident;
-  planId: string | null;
-  runRequested: boolean;
-  onPlan: (planId: string) => void;
+  planIds: readonly string[];
+  requested: readonly MechanismId[];
+  onPlans: (planIds: string[]) => void;
   onRefresh: () => Promise<void>;
   experimentsHref: string;
   onOpenLink: (event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
-  const offer = suggestInvestigationExperiments(incident);
-  const checkId =
-    offer?.lead.id ??
-    incident.assessment?.checks.find((check) => check.eligible)?.id ??
-    null;
-  const { stage, plan, error, retry } = useExperimentRun({
+  const { tracks, loadError, start } = useExperimentRuns({
     incidentId: incident.id,
-    planId,
-    runRequested,
-    checkId: checkId as IncidentExperiment["proposal"]["check_id"] | null,
-    onPlan,
+    requested,
+    planIds,
+    onPlans,
     onRefresh,
   });
-  const [chosen, setChosen] = useState<string | null>(null);
-  const ids = (plan?.proposal.hypothesis_ids ?? mechanismIds) as string[];
-  const selected = chosen ?? (stage === "done" ? ids[0] : null);
-  const script = useMemo(() => {
-    if (!plan || !selected) return null;
-    const hypothesis = incident.assessment?.hypotheses.find(
-      (item) => item.id === selected,
-    );
-    return experimentPlaybackSteps(
-      plan,
-      selected,
-      mechanismCopy[selected],
-      hypothesis?.component_ids ?? [],
-    );
-  }, [plan, selected, incident.assessment]);
-  const progress = progressOf[stage];
-  const running =
-    stage === "proposing" || stage === "approving" || stage === "running";
-  const planned = plan?.matrix.length ?? 0;
-  const simulated = plan?.results?.length ?? 0;
+  const [chosen, setChosen] = useState<MechanismId | null>(null);
+  const list = mechanismIds.map((id) => tracks[id]);
+  const finished = list.filter((track) => track.stage === "done");
+  const busy = list.filter((track) =>
+    ["saving", "approving", "simulating"].includes(track.stage),
+  );
+  // Not run yet, or stopped before a plan was saved: these can start.
+  const waiting = list.filter(
+    (track) =>
+      track.stage === "idle" || (track.stage === "failed" && !track.plan),
+  );
+  const selected =
+    chosen && tracks[chosen].stage === "done"
+      ? chosen
+      : (finished[0]?.id ?? null);
+  const selectedPlan = selected ? tracks[selected].plan : null;
+  const script =
+    selectedPlan && selected
+      ? experimentPlaybackSteps(
+          selectedPlan,
+          selected,
+          mechanismCopy[selected],
+          incident.assessment?.hypotheses.find((item) => item.id === selected)
+            ?.component_ids ?? [],
+        )
+      : null;
+  const brief = (id: MechanismId) =>
+    incident.assessment?.checks.find(
+      (check) => check.id === mechanismChecks[id],
+    )?.brief;
 
   return (
     <section
@@ -114,82 +134,34 @@ export function ExperimentLab({
           <p className="eyebrow">Compare the explanations</p>
           <h2 id="experiment-lab-heading">Experiments</h2>
         </div>
-        <StatusChip kind="simulated" detail="no machine test" />
-      </div>
-
-      {stage !== "idle" && (
-        <div className="lab-progress">
-          <div
-            role="progressbar"
-            aria-label="Experiment run progress"
-            aria-valuemin={0}
-            aria-valuemax={runStages.length}
-            aria-valuenow={progress}
-            aria-valuetext={
-              stage === "done"
-                ? `Finished: ${simulated} of ${planned} conditions simulated`
-                : stage === "failed"
-                  ? "The run stopped"
-                  : `Stage ${progress + 1} of ${runStages.length}: ${runStages[progress].label}`
-            }
-            className="lab-progress-bar"
-            data-stage={stage}
-          >
-            {runStages.map((item, position) => (
-              <span
-                key={item.id}
-                data-state={
-                  position < progress
-                    ? "done"
-                    : position === progress && running
-                      ? "active"
-                      : "pending"
-                }
-              />
-            ))}
-          </div>
-          <ol className="lab-stage-list" aria-label="Run stages">
-            {runStages.map((item, position) => (
-              <li
-                key={item.id}
-                aria-current={
-                  position === progress && running ? "step" : undefined
-                }
-                data-state={
-                  position < progress
-                    ? "done"
-                    : position === progress && running
-                      ? "active"
-                      : "pending"
-                }
-              >
-                {position < progress ? (
-                  <CheckCircle aria-hidden="true" weight="fill" />
-                ) : position === progress && running ? (
-                  <CircleNotch aria-hidden="true" className="lab-spin" />
-                ) : (
-                  <Hourglass aria-hidden="true" />
-                )}
-                {item.label}
-              </li>
-            ))}
-          </ol>
-          <p className="incident-caption" role="status">
-            {stage === "done"
-              ? `${simulated} of ${planned} planned conditions simulated.${plan?.approved_by ? ` Approved by ${plan.approved_by} for simulation only.` : ""}`
-              : running
-                ? `Stage ${progress + 1} of ${runStages.length}.`
-                : ""}
-          </p>
-        </div>
-      )}
-
-      {error && (
-        <div role="alert" className="incident-experiment-error lab-error">
-          <p>{error}</p>
-          {runRequested && !planId && (
-            <button onClick={retry}>Try again</button>
+        <div className="lab-heading-actions">
+          {waiting.length > 0 && (
+            <button
+              className="primary"
+              onClick={() => waiting.forEach((track) => start(track.id))}
+            >
+              <Play aria-hidden="true" weight="fill" />
+              {waiting.length === mechanismIds.length
+                ? "Run all three experiments"
+                : waiting.length === 1
+                  ? `Run ${mechanismTitles[waiting[0].id].toLowerCase()}`
+                  : `Run the other ${waiting.length === 2 ? "two" : waiting.length}`}
+            </button>
           )}
+          <StatusChip kind="simulated" detail="no machine test" />
+        </div>
+      </div>
+      <p className="incident-caption" role="status">
+        {busy.length
+          ? `${busy.length} running, ${finished.length} of ${mechanismIds.length} finished. Each condition takes milliseconds; stages are held briefly so you can follow them.`
+          : finished.length
+            ? `${finished.length} of ${mechanismIds.length} experiments finished.`
+            : "Each experiment is its own saved plan. Run them together or one at a time."}
+      </p>
+
+      {loadError && (
+        <div role="alert" className="incident-experiment-error lab-error">
+          <p>{loadError}</p>
         </div>
       )}
 
@@ -197,54 +169,99 @@ export function ExperimentLab({
         <div className="lab-stage">
           {script?.ok ? (
             <GuidedPlayback
-              key={`${plan?.id}:${selected}`}
+              key={`${selectedPlan?.id}:${selected}`}
               script={script}
-              title={mechanismTitles[selected as keyof typeof mechanismTitles]}
+              title={mechanismTitles[selected!]}
             />
           ) : (
             <div className="lab-placeholder">
               <p>
                 {script && !script.ok
                   ? script.reason
-                  : running
-                    ? "The 3D playback opens here when the simulations finish."
-                    : "Open an experiment to play its simulated result in 3D."}
+                  : busy.length
+                    ? "The 3D playback opens here when the first experiment finishes."
+                    : "Run an experiment to play its simulated result in 3D."}
               </p>
             </div>
           )}
         </div>
         <ol className="lab-agents" aria-label="Experiment tracks">
-          {ids.map((id, position) => {
-            const state = agentState(stage, plan);
-            const summary = plan ? trackSummary(plan, id) : null;
+          {list.map((track, position) => {
+            const title = mechanismTitles[track.id];
+            const progress = progressOf(track);
+            const summary =
+              track.stage === "done" && track.plan
+                ? trackSummary(track.plan, track.id)
+                : null;
             const hypothesis = incident.assessment?.hypotheses.find(
-              (item) => item.id === id,
+              (item) => item.id === track.id,
             );
-            const title = mechanismTitles[id as keyof typeof mechanismTitles];
-            const conditions = plan?.matrix.filter(
-              (item) => item.hypothesis_id === id,
-            ).length;
+            const prediction = brief(track.id)?.prediction;
+            const running = ["saving", "approving", "simulating"].includes(
+              track.stage,
+            );
             return (
               <li
-                key={id}
+                key={track.id}
                 className="lab-agent"
-                data-state={state}
-                data-selected={selected === id || undefined}
+                data-state={track.stage}
+                data-selected={selected === track.id || undefined}
                 style={{ animationDelay: `${position * 140}ms` }}
               >
                 <div className="lab-agent-head">
+                  {prediction && <SignatureSpark prediction={prediction} />}
                   <strong>{title}</strong>
-                  <span className="incident-tag lab-state" data-state={state}>
-                    <StateIcon state={state} />
-                    {stateLabel[state]}
+                  <span
+                    className="incident-tag lab-state"
+                    data-state={track.stage}
+                  >
+                    <StateIcon stage={track.stage} />
+                    {stateLabel[track.stage]}
                   </span>
                 </div>
-                <p className="incident-caption">
-                  {conditions
-                    ? `${conditions} planned conditions, including a control condition at the plan's default settings.`
-                    : "Compares this mechanism's simulated response with its own baseline."}
-                </p>
-                {state === "done" && summary && (
+                <div
+                  role="progressbar"
+                  aria-label={`${title} progress`}
+                  aria-valuemin={0}
+                  aria-valuemax={progress.total}
+                  aria-valuenow={progress.steps}
+                  aria-valuetext={progress.text}
+                  className="lab-track-bar"
+                  data-stage={track.stage}
+                >
+                  <span
+                    style={{
+                      transform: `scaleX(${progress.steps / progress.total})`,
+                    }}
+                  />
+                </div>
+                <ol className="lab-track-stages" aria-label={`${title} stages`}>
+                  {trackStages.map((item, index) => {
+                    const reached =
+                      progress.steps > index ||
+                      (index === 2 && track.stage === "done");
+                    const active =
+                      running &&
+                      ((index === 0 && track.stage === "saving") ||
+                        (index === 1 && track.stage === "approving") ||
+                        (index === 2 && track.stage === "simulating"));
+                    return (
+                      <li
+                        key={item.id}
+                        data-state={
+                          active ? "active" : reached ? "done" : "pending"
+                        }
+                      >
+                        {item.id === "approving" && track.plan?.approved_by
+                          ? `Approved by ${track.plan.approved_by}`
+                          : item.id === "simulating" && running
+                            ? `${progress.saved} of ${progress.conditions} conditions`
+                            : item.label}
+                      </li>
+                    );
+                  })}
+                </ol>
+                {summary && (
                   <p>
                     At severity {summary.severity.toFixed(2)} the simulated mass
                     ends at {summary.mass.toFixed(2)} against{" "}
@@ -252,6 +269,11 @@ export function ExperimentLab({
                     (severity {summary.controlSeverity.toFixed(2)}), and
                     coverage at {summary.coverage.toFixed(2)} against{" "}
                     {summary.baselineCoverage.toFixed(2)}.
+                  </p>
+                )}
+                {track.error && (
+                  <p className="lab-track-error" role="alert">
+                    {track.error}
                   </p>
                 )}
                 {hypothesis && (
@@ -263,25 +285,36 @@ export function ExperimentLab({
                       : `Recorded evidence: ${hypothesis.supporting_evidence.length} supporting and ${hypothesis.conflicting_evidence.length} conflicting.`}
                   </p>
                 )}
-                {state === "done" && (
+                {track.stage === "done" ? (
                   <button
-                    aria-pressed={selected === id}
+                    aria-pressed={selected === track.id}
                     aria-label={`Open playback of ${title}`}
-                    onClick={() => setChosen(id)}
+                    onClick={() => setChosen(track.id)}
                   >
-                    {selected === id ? "Playing in 3D" : "Open playback"}
+                    {selected === track.id ? "Playing in 3D" : "Open playback"}
                   </button>
-                )}
+                ) : track.stage === "idle" || track.stage === "failed" ? (
+                  <button
+                    aria-label={`${track.stage === "failed" ? "Try again" : "Run"}: ${title}`}
+                    onClick={() => start(track.id)}
+                  >
+                    <Play aria-hidden="true" />
+                    {track.stage === "failed"
+                      ? "Try again"
+                      : "Run this experiment"}
+                  </button>
+                ) : null}
               </li>
             );
           })}
         </ol>
       </div>
       <p className="incident-caption lab-footnote">
-        Simulated responses cannot say which cause is most likely and do not
-        become recorded evidence. The assessment and an engineer decide.{" "}
+        Runs as the demo engineer. Simulated responses cannot say which cause is
+        most likely and do not become recorded evidence; the assessment and an
+        engineer decide.{" "}
         <a href={experimentsHref} onClick={onOpenLink}>
-          Open the full plan and matrix
+          Open the full plans and matrices
         </a>
       </p>
     </section>

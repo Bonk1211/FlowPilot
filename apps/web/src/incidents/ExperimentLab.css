@@ -78,58 +78,90 @@
   color: var(--text-selection);
   border-color: var(--selection-active);
 }
-.lab-progress {
-  display: grid;
+.lab-heading-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+.lab-heading-actions button {
+  display: inline-flex;
+  align-items: center;
   gap: var(--space-2);
+  min-height: var(--control-height);
 }
-.lab-progress-bar {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-1);
+.lab-agent-head strong {
+  flex: 1;
+  min-width: 0;
 }
-.lab-progress-bar span {
-  height: 8px;
-  border-radius: 4px;
+.lab-track-bar {
+  position: relative;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
   background: var(--border-default);
 }
-.lab-progress-bar span[data-state="done"] {
+.lab-track-bar span {
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
   background: var(--selection-active);
+  /* Eases to each real saved value; it never moves ahead of the server. */
+  transition: transform 420ms ease-out;
 }
-.lab-progress-bar span[data-state="active"] {
-  background: linear-gradient(
+.lab-track-bar[data-stage="failed"] span {
+  background: var(--state-conflicting);
+}
+.lab-track-bar[data-stage="simulating"] span {
+  background-image: linear-gradient(
     90deg,
-    var(--border-default),
     var(--selection-active),
-    var(--border-default)
+    color-mix(in srgb, var(--selection-active) 55%, var(--white)),
+    var(--selection-active)
   );
   background-size: 200% 100%;
   animation: lab-shimmer 1.2s linear infinite;
 }
-.lab-stage-list {
+.lab-track-stages {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-2) var(--space-4);
+  gap: var(--space-1) var(--space-3);
   margin: 0;
   padding: 0;
   list-style: none;
+  font-size: var(--font-caption);
 }
-.lab-stage-list li {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
+.lab-track-stages li {
+  margin: 0;
   color: var(--text-muted);
-  font-size: var(--font-compact);
+  line-height: 1.4;
 }
-.lab-stage-list li[data-state="done"] {
+.lab-track-stages li::before {
+  margin-right: var(--space-1);
+  content: "○";
+}
+.lab-track-stages li[data-state="done"] {
   color: var(--state-verified);
 }
-.lab-stage-list li[data-state="active"] {
+.lab-track-stages li[data-state="done"]::before {
+  content: "●";
+}
+.lab-track-stages li[data-state="active"] {
   color: var(--text-selection);
   font-weight: 600;
 }
-.lab-stage-list svg {
-  width: 16px;
-  height: 16px;
+.lab-track-stages li[data-state="active"]::before {
+  content: "◐";
+}
+.lab-track-error {
+  color: var(--state-conflicting);
+  font-size: var(--font-compact);
+}
+.lab-agent button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 .lab-error {
   display: flex;
@@ -175,14 +207,10 @@
 @media (prefers-reduced-motion: reduce) {
   .lab-agent,
   .lab-spin,
-  .lab-progress-bar span[data-state="active"] {
+  .lab-track-bar[data-stage="simulating"] span {
     animation: none;
   }
-  .lab-progress-bar span[data-state="active"] {
-    background: color-mix(
-      in srgb,
-      var(--selection-active) 55%,
-      var(--border-default)
-    );
+  .lab-track-bar span {
+    transition: none;
   }
 }

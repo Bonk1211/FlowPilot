@@ -43,9 +43,14 @@ const lab = (page: Page) =>
   page.getByRole("region", { name: "Experiments", exact: true });
 const tracks = (page: Page) =>
   page.getByRole("list", { name: "Experiment tracks", exact: true });
-const progress = (page: Page) =>
-  page.getByRole("progressbar", {
-    name: "Experiment run progress",
+const titles = [
+  "Fluid-path restriction",
+  "Unstable fluid delivery",
+  "Material-condition change",
+];
+const progress = (page: Page, title: string) =>
+  lab(page).getByRole("progressbar", {
+    name: `${title} progress`,
     exact: true,
   });
 const offer = (page: Page) =>
@@ -58,12 +63,13 @@ async function runFromInvestigation(page: Page, id: string) {
     .click();
 }
 
-async function finished(page: Page) {
-  await expect(progress(page)).toHaveAttribute(
-    "aria-valuetext",
-    /Finished: 9 of 9 conditions simulated/,
-    { timeout: 20000 },
-  );
+async function finished(page: Page, which = titles) {
+  for (const title of which)
+    await expect(progress(page, title)).toHaveAttribute(
+      "aria-valuetext",
+      "Finished: 3 of 3 conditions simulated",
+      { timeout: 20000 },
+    );
 }
 
 test("the three experiments are offered only when the answers leave explanations open", async ({
@@ -152,46 +158,50 @@ test("each suggested experiment explains why it runs, what it tests, what the mo
   ).toBeVisible();
 });
 
-test("one press runs a saved plan through real stages, shows three tracks and changes nothing recorded", async ({
+test("one press runs the three experiments at once, each as its own approved plan, and changes nothing recorded", async ({
   page,
   request,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   const source = await incidentWith(request, ["intermittent", "unstable"]);
   const before = source.incident();
-  // Hold the run request open so the in-flight state can be inspected.
+  // Hold the run requests open so the in-flight state can be inspected.
   await page.route("**/experiments/*/run", async (route) => {
     await new Promise((resolve) => setTimeout(resolve, 1500));
     await route.continue();
   });
   await runFromInvestigation(page, before.id);
-  await expect(page).toHaveURL(/\/simulation\?run=all$/);
   await expect(lab(page)).toBeVisible();
-  await expect(progress(page)).toHaveAttribute("aria-valuemax", "3");
-  await expect(progress(page)).toHaveAttribute(
-    "aria-valuetext",
-    /Stage 3 of 3: Simulating the planned conditions/,
-    { timeout: 10000 },
+  // All three are in flight together, each at its own real stage.
+  for (const title of titles)
+    await expect(progress(page, title)).toHaveAttribute(
+      "aria-valuetext",
+      /Simulating: 0 of 3 conditions saved/,
+      { timeout: 10000 },
+    );
+  await expect(lab(page).getByRole("status").first()).toContainText(
+    "3 running, 0 of 3 finished",
   );
+  await expect(lab(page)).toContainText("Each condition takes milliseconds");
+  for (const item of await tracks(page).locator(":scope > li").all())
+    await expect(item).toContainText(/Simulating/);
   await expect(
-    page.getByRole("list", { name: "Run stages", exact: true }),
-  ).toContainText("Saving the experiment plan");
-  for (const state of await tracks(page).getByRole("listitem").all())
-    await expect(state).toContainText("Running");
-  await expect(
-    page.getByText("The 3D playback opens here when the simulations finish."),
+    page.getByText(
+      "The 3D playback opens here when the first experiment finishes.",
+    ),
   ).toBeVisible();
   await lab(page).screenshot({
     path: testInfo.outputPath("lab-running.png"),
   });
 
   await finished(page);
-  await expect(page).toHaveURL(/\/simulation\?plan=DOE-[0-9a-f]+$/);
-  for (const item of await tracks(page).getByRole("listitem").all())
-    await expect(item).toContainText("Done");
-  await expect(lab(page)).toContainText(
-    "Approved by demo:engineer for simulation only",
+  await expect(page).toHaveURL(
+    /\/simulation\?plan=DOE-[0-9a-f]+,DOE-[0-9a-f]+,DOE-[0-9a-f]+$/,
   );
+  for (const title of titles)
+    await expect(
+      tracks(page).locator(":scope > li").filter({ hasText: title }),
+    ).toContainText("Approved by demo:engineer");
   await expect(lab(page)).toContainText(
     "Simulated responses cannot say which cause is most likely",
   );
@@ -202,17 +212,24 @@ test("one press runs a saved plan through real stages, shows three tracks and ch
     path: testInfo.outputPath("lab-finished.png"),
   });
 
-  // One plan, with its approval recorded, and the investigation untouched.
+  // One plan per mechanism, each with its approval recorded; the investigation is untouched.
   const saved = await plans(request, before.id);
-  expect(saved).toHaveLength(1);
-  expect(saved[0].status).toBe("completed");
-  expect(saved[0].matrix).toHaveLength(9);
-  expect(saved[0].history.map((event) => event.action)).toEqual([
-    "propose",
-    "approve",
-    "start",
-    "complete",
+  expect(saved.map((plan) => plan.proposal.hypothesis_ids).sort()).toEqual([
+    ["material_condition"],
+    ["restriction"],
+    ["unstable_delivery"],
   ]);
+  for (const plan of saved) {
+    expect(plan.status).toBe("completed");
+    expect(plan.matrix).toHaveLength(3);
+    expect(plan.approved_by).toBe("demo:engineer");
+    expect(plan.history.map((event) => event.action)).toEqual([
+      "propose",
+      "approve",
+      "start",
+      "complete",
+    ]);
+  }
   const after: Incident = await (
     await request.get(`/api/incidents/${before.id}`)
   ).json();
@@ -227,6 +244,51 @@ test("one press runs a saved plan through real stages, shows three tracks and ch
   );
 });
 
+test("experiments can also run one at a time, from the investigation or the lab", async ({
+  page,
+  request,
+}) => {
+  const source = await incidentWith(request, ["intermittent", "unstable"]);
+  const id = source.incident().id;
+  await page.goto(`/incidents/${id}/investigation`);
+  await offer(page)
+    .getByRole("button", { name: /Fluid-path restriction/ })
+    .click();
+  await offer(page)
+    .getByRole("button", {
+      name: "Run this experiment: Fluid-path restriction",
+    })
+    .click();
+  await expect(page).toHaveURL(/\/simulation\?(run=restriction|plan=DOE-)/);
+  await finished(page, ["Fluid-path restriction"]);
+  for (const title of titles.slice(1))
+    await expect(progress(page, title)).toHaveAttribute(
+      "aria-valuetext",
+      "Not run yet",
+    );
+  expect(await plans(request, id)).toHaveLength(1);
+
+  await tracks(page)
+    .getByRole("button", { name: "Run: Material-condition change" })
+    .click();
+  await finished(page, ["Fluid-path restriction", "Material-condition change"]);
+  await expect(progress(page, "Unstable fluid delivery")).toHaveAttribute(
+    "aria-valuetext",
+    "Not run yet",
+  );
+  expect(
+    (await plans(request, id)).map((plan) => plan.proposal.hypothesis_ids[0]),
+  ).toEqual(expect.arrayContaining(["restriction", "material_condition"]));
+  await expect(page).toHaveURL(/plan=DOE-[0-9a-f]+,DOE-[0-9a-f]+$/);
+  await page.reload();
+  await finished(page, ["Fluid-path restriction", "Material-condition change"]);
+  await lab(page)
+    .getByRole("button", { name: "Run unstable fluid delivery" })
+    .click();
+  await finished(page);
+  expect(await plans(request, id)).toHaveLength(3);
+});
+
 test("reloading or asking again never runs a second plan", async ({
   page,
   request,
@@ -237,19 +299,20 @@ test("reloading or asking again never runs a second plan", async ({
   await finished(page);
   await page.reload();
   await finished(page);
-  expect(await plans(request, id)).toHaveLength(1);
-  // Asking for the same run again is the same plan, not a new one.
+  expect(await plans(request, id)).toHaveLength(3);
+  // Asking for the same runs again finds the same plans, not new ones.
   await page.goto(`/incidents/${id}/simulation?run=all`);
   await finished(page);
-  expect(await plans(request, id)).toHaveLength(1);
-  // Leaving and coming back keeps the finished plan on screen.
+  expect(await plans(request, id)).toHaveLength(3);
+  // Leaving and coming back keeps the finished plans on screen.
   await page.goto(`/incidents/${id}/experiments`);
   await page
     .getByRole("navigation", { name: "Incident features", exact: true })
     .getByRole("link", { name: "Simulation", exact: true })
     .click();
   await expect(lab(page)).toBeVisible();
-  expect(await plans(request, id)).toHaveLength(1);
+  await finished(page);
+  expect(await plans(request, id)).toHaveLength(3);
 });
 
 test("the playback follows the simulated values and changes what the model shows", async ({
@@ -330,8 +393,9 @@ test("the playback follows the simulated values and changes what the model shows
   await expect(playback).toContainText("No machine test or measurement");
 
   // Another experiment opens its own playback and parts.
-  const ids = (await plans(request, incident.id))[0].proposal
-    .hypothesis_ids as string[];
+  const ids = (await plans(request, incident.id)).flatMap(
+    (plan) => plan.proposal.hypothesis_ids as string[],
+  );
   await tracks(page)
     .getByRole("button", { name: "Open playback of Unstable fluid delivery" })
     .click();
@@ -415,10 +479,12 @@ test("reduced motion disables auto-play and the progress shimmer", async ({
     await route.continue();
   });
   await runFromInvestigation(page, source.incident().id);
-  await expect(progress(page).locator('span[data-state="active"]')).toHaveCSS(
-    "animation-name",
-    "none",
-  );
+  await expect(
+    progress(page, "Fluid-path restriction").locator("span"),
+  ).toHaveCSS("animation-name", "none");
+  await expect(
+    progress(page, "Fluid-path restriction").locator("span"),
+  ).toHaveCSS("transition-duration", "0s");
   await finished(page);
   await expect(
     page
@@ -485,24 +551,29 @@ test("failures are explained and can be retried, and an unknown plan is reported
     return route.continue();
   });
   await runFromInvestigation(page, id);
-  await expect(page.getByRole("alert")).toContainText(
+  await expect(tracks(page).getByRole("alert")).toHaveCount(3);
+  await expect(tracks(page).getByRole("alert").first()).toContainText(
     "Mock experiments require an S932 synthetic incident.",
   );
-  await expect(progress(page)).toHaveAttribute(
-    "aria-valuetext",
-    "The run stopped",
-  );
-  for (const item of await tracks(page).getByRole("listitem").all())
-    await expect(item).toContainText("Not run");
+  for (const title of titles)
+    await expect(progress(page, title)).toHaveAttribute(
+      "aria-valuetext",
+      "Stopped after 0 of 3 conditions",
+    );
   expect(await plans(request, id)).toHaveLength(0);
   fail = false;
-  await page.getByRole("button", { name: "Try again" }).click();
-  await finished(page);
+  await tracks(page)
+    .getByRole("button", { name: "Try again: Fluid-path restriction" })
+    .click();
+  await finished(page, ["Fluid-path restriction"]);
   expect(await plans(request, id)).toHaveLength(1);
+  await lab(page).getByRole("button", { name: "Run the other two" }).click();
+  await finished(page);
+  expect(await plans(request, id)).toHaveLength(3);
 
   await page.goto(`/incidents/${id}/simulation?plan=DOE-missing`);
   await expect(page.getByRole("alert")).toContainText(
-    "This experiment plan was not found",
+    "These experiment plans were not found",
   );
 });
 

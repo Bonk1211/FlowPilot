@@ -48,6 +48,7 @@ import { InvestigationConversation } from "./InvestigationConversation";
 import { LiveTimeline } from "./LiveTimeline";
 import { TroubleshootingMap } from "./TroubleshootingMap";
 import { ExperimentPreview } from "./ExperimentPreview";
+import type { MechanismId } from "./experimentDefaults";
 import { ExperimentCandidatesCard } from "./ExperimentCandidatesCard";
 import type { InvestigationProgressMode } from "./InvestigationProgress";
 import { investigationLayout } from "./investigationLayout";
@@ -499,7 +500,8 @@ export function InvestigationGraph({
   onSelectEvidence: (id: string) => void;
   onOpenTimeline: () => void;
   onOpenExperiment: (experiment: InvestigationExperiment) => void;
-  onRunExperiments: () => void;
+  /** Run the given suggested experiments, or all of them. */
+  onRunExperiments: (ids?: MechanismId[]) => void;
   onUpdated: (incident: Incident) => void;
   progressMode: InvestigationProgressMode | null;
   progressError: string;

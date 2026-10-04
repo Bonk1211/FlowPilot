@@ -161,3 +161,11 @@
 .experiment-brief-facts {
   color: var(--text-secondary);
 }
+.experiment-brief-run {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: var(--space-2);
+  min-height: 44px;
+  margin-top: var(--space-3);
+}

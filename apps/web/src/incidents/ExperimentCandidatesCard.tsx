@@ -1,5 +1,6 @@
 import { useId, useState } from "react";
 import { CaretDown, CaretUp, Flask, Play } from "@phosphor-icons/react";
+import type { MechanismId } from "./experimentDefaults";
 import type { InvestigationExperiments } from "./investigationExperiment";
 import { signatureWords } from "./mechanismCopy";
 import { SignatureSpark } from "./SignatureSpark";
@@ -8,7 +9,15 @@ import "./ExperimentCandidatesCard.css";
 
 type Item = InvestigationExperiments["items"][number];
 
-function ExperimentBrief({ item }: { item: Item }) {
+function ExperimentBrief({
+  item,
+  disabled,
+  onRun,
+}: {
+  item: Item;
+  disabled: boolean;
+  onRun: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const id = useId();
   const { hypothesis, check } = item;
@@ -112,6 +121,16 @@ function ExperimentBrief({ item }: { item: Item }) {
         ) : (
           <p>{check.purpose}</p>
         )}
+        <button
+          type="button"
+          className="experiment-brief-run"
+          disabled={disabled}
+          aria-label={`Run this experiment: ${hypothesis.title}`}
+          onClick={onRun}
+        >
+          <Play aria-hidden="true" />
+          Run this experiment
+        </button>
       </div>
     </li>
   );
@@ -129,7 +148,7 @@ export function ExperimentCandidatesCard({
 }: {
   offer: InvestigationExperiments;
   disabled: boolean;
-  onRun: () => void;
+  onRun: (ids?: MechanismId[]) => void;
 }) {
   const [open, setOpen] = useState(true);
   const count = offer.items.length;
@@ -163,14 +182,19 @@ export function ExperimentCandidatesCard({
         </p>
         <ol className="experiment-offer-list">
           {offer.items.map((item) => (
-            <ExperimentBrief key={item.hypothesis.id} item={item} />
+            <ExperimentBrief
+              key={item.hypothesis.id}
+              item={item}
+              disabled={disabled}
+              onRun={() => onRun([item.hypothesis.id as MechanismId])}
+            />
           ))}
         </ol>
         <StatusChip kind="simulated" detail="no machine test" />
         <button
           className="primary experiment-offer-run"
           disabled={disabled}
-          onClick={onRun}
+          onClick={() => onRun()}
         >
           <Play aria-hidden="true" weight="fill" />
           {count === 2

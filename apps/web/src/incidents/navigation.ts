@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type MouseEvent } from "react";
+import { mechanismIds, type MechanismId } from "./experimentDefaults";
 
 export const incidentPages = {
   investigation: {
@@ -45,11 +46,31 @@ export type IncidentRoute = {
   visited: IncidentPage[];
   experimentCheckId: string | null;
   experimentAnswerId: string | null;
-  /** `?run=all`: run the three suggested experiments on arrival. */
-  experimentRun: boolean;
-  /** `?plan=`: show an experiment plan that was already run. */
-  experimentPlanId: string | null;
+  /** `?run=all` or `?run=restriction,…`: run these experiments on arrival. */
+  experimentRuns: MechanismId[];
+  /** `?plan=a,b`: show experiment plans that were already started. */
+  experimentPlanIds: string[];
 };
+
+function readRuns(value: string | null): MechanismId[] {
+  if (!value) return [];
+  if (value === "all") return [...mechanismIds];
+  const asked = new Set(value.split(","));
+  return mechanismIds.filter((id) => asked.has(id));
+}
+
+/** The query that runs the given experiments, or shows the given plans. */
+export function experimentQuery({
+  runs,
+  plans,
+}: {
+  runs?: readonly MechanismId[];
+  plans?: readonly string[];
+}) {
+  if (runs?.length)
+    return `run=${runs.length === mechanismIds.length ? "all" : runs.join(",")}`;
+  return plans?.length ? `plan=${plans.map(encodeURIComponent).join(",")}` : "";
+}
 
 function readRoute(): Omit<IncidentRoute, "visited"> {
   const path = window.location.pathname.replace(/\/$/, "");
@@ -57,8 +78,11 @@ function readRoute(): Omit<IncidentRoute, "visited"> {
   const experiment = {
     experimentCheckId: query.get("check"),
     experimentAnswerId: query.get("from"),
-    experimentRun: query.get("run") === "all",
-    experimentPlanId: query.get("plan"),
+    experimentRuns: readRuns(query.get("run")),
+    experimentPlanIds: (query.get("plan") ?? "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean),
   };
   if (!path || path === "/incidents")
     return { incidentId: null, page: null, invalid: false, ...experiment };

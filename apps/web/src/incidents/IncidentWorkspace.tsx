@@ -67,7 +67,9 @@ import {
   pageNames,
   useIncidentRoute,
   type IncidentRoute,
+  experimentQuery,
 } from "./navigation";
+import { mechanismIds, type MechanismId } from "./experimentDefaults";
 import "./incidents.css";
 
 const featureIcons = {
@@ -251,22 +253,22 @@ function IncidentWorkspaceContent({
   const [historicalRevision, setHistoricalRevision] = useState<number | null>(
     null,
   );
-  const labKey = `flowpilot.lab-plan.${route.incidentId}`;
-  // The last experiment plan run in this tab, so Simulation still shows it after a reload.
-  const [labPlanId, setLabPlanState] = useState<string | null>(() => {
+  const labKey = `flowpilot.lab-plans.${route.incidentId}`;
+  // The experiment plans started in this tab, so Simulation still shows them after a reload.
+  const [labPlanIds, setLabPlanState] = useState<string[]>(() => {
     try {
-      return sessionStorage.getItem(labKey);
+      return (sessionStorage.getItem(labKey) ?? "").split(",").filter(Boolean);
     } catch {
-      return null;
+      return [];
     }
   });
-  const setLabPlanId = (id: string | null) => {
-    setLabPlanState(id);
+  const setLabPlanIds = (ids: string[]) => {
+    setLabPlanState(ids);
     try {
-      if (id) sessionStorage.setItem(labKey, id);
+      if (ids.length) sessionStorage.setItem(labKey, ids.join(","));
       else sessionStorage.removeItem(labKey);
     } catch {
-      // Storage can be blocked; the plan is then remembered for this page only.
+      // Storage can be blocked; the plans are then remembered for this page only.
     }
   };
   const featureHeading = useRef<HTMLHeadingElement>(null);
@@ -442,16 +444,22 @@ function IncidentWorkspaceContent({
       `${incidentPageUrl(incident.id, "simulation")}?${new URLSearchParams({ check: experiment.check.id, from: experiment.answer.id })}`,
     );
   }
-  function runExperiments() {
+  function runExperiments(ids: readonly MechanismId[] = mechanismIds) {
     if (!incident) return;
-    setLabPlanId(null);
+    setLabPlanIds([]);
     setHistoricalRevision(null);
-    navigate(`${incidentPageUrl(incident.id, "simulation")}?run=all`);
+    navigate(
+      `${incidentPageUrl(incident.id, "simulation")}?${experimentQuery({ runs: ids })}`,
+    );
   }
   // A plan id in the address wins; otherwise the lab keeps showing the plan it just ran.
-  const labPlan =
-    route.experimentPlanId ?? (route.experimentRun ? null : labPlanId);
-  const showLab = !!incident && (route.experimentRun || labPlan !== null);
+  const labPlans = route.experimentPlanIds.length
+    ? route.experimentPlanIds
+    : route.experimentRuns.length
+      ? []
+      : labPlanIds;
+  const showLab =
+    !!incident && (route.experimentRuns.length > 0 || labPlans.length > 0);
   const closed = incident?.status === "closed";
   const incidentId = incident?.id;
   const refreshSaved = useCallback(async () => {
@@ -1179,13 +1187,19 @@ function IncidentWorkspaceContent({
                       {showLab && (
                         <ExperimentLab
                           incident={incident}
-                          planId={labPlan}
-                          runRequested={route.experimentRun}
-                          onPlan={(id) => {
-                            setLabPlanId(id);
-                            if (route.experimentRun && !route.experimentPlanId)
+                          planIds={labPlans}
+                          requested={route.experimentRuns}
+                          onPlans={(ids) => {
+                            setLabPlanIds(ids);
+                            // Record the plans in the address so a reload follows them
+                            // instead of running again; never while another page is shown.
+                            const page = incidentPageUrl(
+                              incident.id,
+                              "simulation",
+                            );
+                            if (window.location.pathname === page)
                               replace(
-                                `${incidentPageUrl(incident.id, "simulation")}?plan=${encodeURIComponent(id)}`,
+                                `${page}?${experimentQuery({ plans: ids })}`,
                               );
                           }}
                           onRefresh={refreshSaved}
