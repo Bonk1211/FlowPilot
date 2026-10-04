@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   suggestInvestigationExperiment,
+  suggestInvestigationExperiments,
   resolveInvestigationExperiment,
 } from "../apps/web/src/incidents/investigationExperiment.ts";
 
@@ -106,4 +107,46 @@ test("the current check takes priority and deep links validate the check and sou
     resolveInvestigationExperiment(value, "delivery-check", "a2"),
     null,
   );
+});
+
+test("one experiment per explanation is offered under the same conditions as a single suggestion", () => {
+  const value = incident();
+  value.assessment.hypotheses.push({
+    id: "material",
+    status: "inconclusive",
+    rank: 3,
+  });
+  value.assessment.checks.push({
+    id: "material-check",
+    hypothesis_id: "material",
+    eligible: true,
+  });
+  const offer = suggestInvestigationExperiments(value);
+  assert.deepEqual(
+    offer.items.map((item) => [item.hypothesis.id, item.check.id]),
+    [
+      ["restriction", "restriction-check"],
+      ["delivery", "delivery-check"],
+      ["material", "material-check"],
+    ],
+  );
+  assert.equal(offer.lead.id, "restriction-check");
+  assert.equal(offer.answer.id, "a2");
+  value.investigation.answers.pop();
+  assert.equal(suggestInvestigationExperiments(value), null);
+});
+
+test("ineligible checks and closed or escalated incidents offer no experiments", () => {
+  const value = incident();
+  value.assessment.checks[0].eligible = false;
+  assert.equal(suggestInvestigationExperiments(value), null);
+  for (const change of [{ status: "closed" }, { escalated: true }]) {
+    assert.equal(
+      suggestInvestigationExperiments({ ...incident(), ...change }),
+      null,
+    );
+  }
+  const review = incident();
+  review.assessment.next_step.kind = "review";
+  assert.equal(suggestInvestigationExperiments(review), null);
 });

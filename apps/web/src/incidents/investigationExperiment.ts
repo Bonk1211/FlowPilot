@@ -73,3 +73,34 @@ export function suggestInvestigationExperiment(
     })[0];
   return check ? { ...latest, check } : null;
 }
+
+type Assessment = NonNullable<Incident["assessment"]>;
+export type ExperimentCandidate = {
+  hypothesis: Assessment["hypotheses"][number];
+  check: Assessment["checks"][number];
+};
+
+/**
+ * One experiment per competing explanation, offered together once the single
+ * suggestion's conditions hold. `lead` is the check the investigation would
+ * run first; `items` follow the assessment's ranking.
+ */
+export function suggestInvestigationExperiments(incident: Incident) {
+  const lead = suggestInvestigationExperiment(incident);
+  const assessment = incident.assessment;
+  if (!lead || !assessment) return null;
+  const items = [...assessment.hypotheses]
+    .sort((a, b) => a.rank - b.rank)
+    .flatMap((hypothesis) => {
+      const check = assessment.checks.find(
+        (item) => item.hypothesis_id === hypothesis.id && item.eligible,
+      );
+      return check ? [{ hypothesis, check }] : [];
+    });
+  if (items.length < 2) return null;
+  return { answer: lead.answer, node: lead.node, lead: lead.check, items };
+}
+
+export type InvestigationExperiments = NonNullable<
+  ReturnType<typeof suggestInvestigationExperiments>
+>;
