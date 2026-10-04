@@ -57,7 +57,7 @@ an existing checkout. `/prototype` provides the version 2 offline storyboard, an
 `/log-preview` retains the standalone log viewer. `/?samples=raster` retains the
 older controlled-raster intake for regression and existing demonstrations. M2 adds reviewed Gemini findings,
 audited evidence corrections, and an interactive 3D guide with 2D/text fallback.
-The home page and `/incidents` open the new incident workspace. Additive migrations
+The home page presents a scroll-driven Three.js story: the dispensing machine transforms into an evidence timeline, investigation plan and report. Scroll backward to reverse the scene, or use the four chapter links. It uses the existing design system, with reduced-motion support and a fallback when WebGL is unavailable. Open `/incidents` (or choose **Open workspace**) for the incident workspace. `/landing` also opens the landing page. Additive migrations
 preserve old case records. The incident replay uses
 bundled illustrative images and does not require the vision model download.
 Copy `.env.example` to the ignored `.env`, set `GEMINI_API_KEY`, and enable

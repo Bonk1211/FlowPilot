@@ -14,7 +14,13 @@ import "@fontsource/ibm-plex-mono/400.css";
 import { App } from "./App";
 import { CaseApp } from "./CaseApp";
 import { Prototype } from "./prototype/Prototype";
+import { WorkspaceLoading } from "./components/WorkspaceLoading";
 import "./styles.css";
+
+// eslint-disable-next-line react-refresh/only-export-components -- Application entry point.
+const LandingPage = lazy(() =>
+  import("./LandingPage").then((module) => ({ default: module.LandingPage })),
+);
 
 // eslint-disable-next-line react-refresh/only-export-components -- This entry point mounts the app below.
 const LearningDatabase = lazy(() =>
@@ -72,12 +78,24 @@ createRoot(document.getElementById("root")!).render(
         </Suspense>
       ) : window.location.pathname === "/log-preview" ? (
         <App />
-      ) : (window.location.pathname === "/" && !window.location.search) ||
-        window.location.pathname.startsWith("/incidents") ? (
+      ) : (window.location.pathname === "/" &&
+          !new URLSearchParams(window.location.search).has("case") &&
+          !new URLSearchParams(window.location.search).has("samples")) ||
+        window.location.pathname.replace(/\/$/, "") === "/landing" ? (
         <Suspense
           fallback={
             <main className="fatal-error" role="status">
-              Loading incident workspace…
+              Loading FlowPilot…
+            </main>
+          }
+        >
+          <LandingPage />
+        </Suspense>
+      ) : window.location.pathname.startsWith("/incidents") ? (
+        <Suspense
+          fallback={
+            <main>
+              <WorkspaceLoading />
             </main>
           }
         >

@@ -12,6 +12,9 @@ test("source owner registers exact secondary text and reviews it without grantin
     .getByRole("navigation", { name: "Incident features" })
     .getByRole("link", { name: "Knowledge", exact: true })
     .click();
+  await page
+    .getByText("Sources & past investigations", { exact: true })
+    .click();
   const panel = page.locator(
     'details[aria-label="Controlled source registry"]',
   );

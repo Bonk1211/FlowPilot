@@ -81,12 +81,10 @@ export function HandoffReport({
   }
   return (
     <section className="handoff-report" aria-labelledby="handoff-report-title">
-      <p className="eyebrow">Technical assessment</p>
-      <h3 id="handoff-report-title">Report preview</h3>
-      <p>
-        Assessment diagrams, evidence links, experiment timelines and result
-        charts, with recommended next steps.
-      </p>
+      <div className="handoff-panel-heading">
+        <h3 id="handoff-report-title">Report preview</h3>
+        <span className="incident-caption">A4 portrait</span>
+      </div>
       <div className="incident-actions">
         <button
           type="button"
@@ -122,9 +120,8 @@ export function HandoffReport({
         </button>
       </div>
       <p className="incident-caption">
-        Print or save as PDF in A4 portrait (210 × 297 mm). The email keeps your
-        saved message and adds a recorded-work summary, with the complete report
-        attached.
+        Print or save as PDF from the report. The email draft includes the
+        report as an attachment.
       </p>
       {loading && (
         <p role="status">Preparing the saved report and experiment history…</p>
@@ -138,8 +135,7 @@ export function HandoffReport({
       {preview && (
         <>
           <p className="incident-caption">
-            Preview of revision {preview.incident.revision}. Refresh the preview
-            after saving edits or recording new experiments.
+            Saved assessment · revision {preview.incident.revision}
           </p>
           <iframe
             title="Technical assessment report preview"

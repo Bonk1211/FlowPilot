@@ -43,7 +43,7 @@ def analyzed(client):
     return act(client, incident, "analyze")
 
 
-def test_demo_knowledge_capture_preserves_open_incident_and_is_idempotent(client):
+def test_demo_knowledge_capture_requires_review_and_preserves_closure_on_retry(client):
     incident = replay(client)
     evidence = [item for item in incident["evidence"] if item["status"] == "collected"]
     payload = {
@@ -56,10 +56,25 @@ def test_demo_knowledge_capture_preserves_open_incident_and_is_idempotent(client
     }
     path = f"/api/incidents/{incident['id']}/actions"
     response = client.post(path, json=payload)
+    assert response.status_code == 422
+    assert "review and outcome" in response.json()["detail"]
+    assert client.get(f"/api/incidents/{incident['id']}").json() == incident
+    incident = act(
+        client,
+        incident,
+        "close",
+        role="engineer",
+        reviewer="Reviewer",
+        outcome="inconclusive",
+        notes="Material history still needs confirmation.",
+    )
+    payload["revision"] = incident["revision"]
+    response = client.post(path, json=payload)
     assert response.status_code == 200, response.text
     saved = response.json()
-    assert saved["status"] == incident["status"]
-    assert saved["closure"] is None and saved["learning"] is None
+    assert saved["status"] == "closed"
+    assert saved["closure"] == incident["closure"]
+    assert saved["learning"] == incident["learning"]
     assert saved["handoff"] == incident["handoff"]
     finding = saved["captured_knowledge"][0]
     assert finding["status"] == "draft" and finding["demo"] is True
@@ -70,11 +85,31 @@ def test_demo_knowledge_capture_preserves_open_incident_and_is_idempotent(client
     assert client.post(path, json=payload).json() == saved
     assert client.post(path, json={**payload, "summary": "Different content"}).status_code == 409
     assert client.post(path, json={**payload, "knowledge_id": "KN-stale"}).status_code == 409
+    reopened = act(client, saved, "advance_replay")
+    assert reopened["closure"] is None
+    response = client.post(
+        path,
+        json={
+            **payload,
+            "revision": reopened["revision"],
+            "knowledge_id": "KN-after-reopen",
+        },
+    )
+    assert response.status_code == 422
+    assert "review and outcome" in response.json()["detail"]
 
 
 @pytest.mark.parametrize("evidence_ids", [[], ["unknown-source"], ["machine-log-pending"]])
 def test_demo_knowledge_capture_requires_collected_incident_sources(client, evidence_ids):
-    incident = replay(client)
+    incident = act(
+        client,
+        replay(client),
+        "close",
+        role="engineer",
+        reviewer="Reviewer",
+        outcome="inconclusive",
+        notes="Source comparison remains inconclusive.",
+    )
     response = client.post(
         f"/api/incidents/{incident['id']}/actions",
         json={

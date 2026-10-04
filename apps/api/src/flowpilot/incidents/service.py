@@ -543,6 +543,10 @@ def apply_action(incident: Incident, action: IncidentAction, actor: str | None =
         )
         detail = f"{action.reviewer} closed as {action.outcome}; equipment disposition unchanged."
     elif action.action == "capture_knowledge":
+        if incident.status != "closed" or incident.closure is None:
+            raise HTTPException(
+                422, "Record an investigation review and outcome before saving knowledge."
+            )
         if incident.mode == "live":
             raise HTTPException(
                 422, "Demo knowledge capture requires a replay or synthetic incident."

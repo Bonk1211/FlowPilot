@@ -19,7 +19,7 @@ async function goToFeature(page: Page, name: string) {
 test("demo segments 2 and 3 follow the script and its claims hold", async ({
   page,
 }, testInfo) => {
-  await page.goto("/");
+  await page.goto("/incidents");
   await page.getByRole("button", { name: "Start S932 replay" }).click();
   await expect(page).toHaveURL(/\/incidents\/INC-/);
   const started = Date.now();

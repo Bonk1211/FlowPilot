@@ -14,7 +14,7 @@ async function goToFeature(page: Page, name: string) {
 }
 
 async function startReplay(page: Page) {
-  await page.goto("/");
+  await page.goto("/incidents");
   await page.getByRole("button", { name: "Start S932 replay" }).click();
   await expect(page).toHaveURL(/\/incidents\/INC-/);
   await expect(
@@ -163,7 +163,7 @@ test("incident replay preserves the early handoff, branches, exports and survive
   await page.getByRole("link", { name: "Export report", exact: true }).click();
   const file = await download;
   const text = await readFile((await file.path())!, "utf8");
-  expect(text).toContain("Fluid-path restriction — supported");
+  expect(text).toContain("Fluid-path restriction · supported");
   expect(text).not.toContain(
     "Engineer note: preserve the material container identity.",
   );
@@ -185,7 +185,7 @@ test("inconclusive closure requires explicit demo review and learning stays a ca
       })
       .last(),
   ).toBeVisible();
-  await goToFeature(page, "Review");
+  await goToFeature(page, "Knowledge");
   await page.getByLabel("Reviewer name").fill("Demo reviewer");
   await page
     .getByLabel("Findings and unresolved questions")
@@ -223,9 +223,15 @@ test("inconclusive closure requires explicit demo review and learning stays a ca
   await expect(
     page.getByText("Experience: withdrawn", { exact: true }),
   ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Incident details", exact: true })
+    .click();
   await expect(
     page.getByText("Equipment disposition: not assessed", { exact: true }),
   ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Close incident details", exact: true })
+    .click();
   await goToFeature(page, "Evidence");
   await page
     .locator("summary")
@@ -279,6 +285,9 @@ test("narrow workspace retains evidence, accessible schematic and recovery from 
   await page.route("**/api/incidents/*/experience", (route) =>
     route.fulfill({ status: 503, body: "{}" }),
   );
+  await page
+    .getByText("Sources & past investigations", { exact: true })
+    .click();
   await page.getByRole("button", { name: "Refresh experience" }).click();
   await expect(
     page
@@ -586,7 +595,7 @@ test("mock factorial plan is previewed, authorized, executed once and preserved 
   expect(report).toContain("Technical assessment report");
   expect(report).not.toContain("Drafted email");
   expect(report).toContain(planId);
-  expect(report).toContain("All conditions and responses are simulated.");
+  expect(report).toContain("Experiment design · simulated conditions");
   await page.setViewportSize({ width: 390, height: 844 });
   expect(
     await page.evaluate(

@@ -1,6 +1,14 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import {
   ArrowUpRight,
+  X,
   ArrowsClockwise,
   CheckCircle,
   Database,
@@ -11,10 +19,19 @@ import {
 import type { LibraryOverview } from "@flowpilot/contracts";
 import { KnowledgeGraph } from "../components/KnowledgeGraph";
 import { graphConnectivity } from "../knowledgeGraph";
-import { incidentJson, type Incident, type IncidentCommand } from "./api";
+import {
+  actOnIncident,
+  loadIncident,
+  incidentJson,
+  type Incident,
+  type IncidentCommand,
+} from "./api";
 import { useIncidentAccess } from "./AccessPanel";
 import { incidentKnowledgeGraph } from "./incidentKnowledgeGraph";
 import { incidentPageUrl } from "./navigation";
+import { IncidentReview } from "./IncidentReview";
+import { PastIncidents } from "./PastIncidents";
+import { KnowledgeRegistry } from "./KnowledgeRegistry";
 import "../knowledge.css";
 import "./IncidentLearningDatabase.css";
 
@@ -26,10 +43,15 @@ export function IncidentLearningDatabase({
   onAction,
   onRefresh,
   followLink,
+  children,
 }: {
+  children?: ReactNode;
   incident: Incident;
   busy: boolean;
-  onAction: (command: IncidentCommand) => Promise<void>;
+  onAction: (
+    command: IncidentCommand,
+    role?: "technician" | "engineer",
+  ) => Promise<void>;
   onRefresh: () => Promise<void>;
   followLink: (event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
@@ -43,12 +65,18 @@ export function IncidentLearningDatabase({
   const [saveError, setSaveError] = useState("");
   const [attempt, setAttempt] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [demoRunning, setDemoRunning] = useState(false);
+  const [contributionOpen, setContributionOpen] = useState(
+    () => !window.matchMedia("(max-width: 700px)").matches,
+  );
+  const demoInFlight = useRef(false);
   const [arrival, setArrival] = useState<{
     id: string;
     sequence: number;
   } | null>(null);
   const request = useRef<{ content: string; id: string } | null>(null);
   const map = useRef<HTMLElement>(null);
+  const findingsPanel = useRef<HTMLDetailsElement>(null);
   const evidence = (incident.evidence ?? []).filter(
     (item) =>
       item.status === "collected" &&
@@ -140,11 +168,17 @@ export function IncidentLearningDatabase({
   const arrivalLibraryLinks = graph.edges.filter(
     (item) => item.source === arrived?.graphId && libraryIds.has(item.target),
   );
-  const canSave =
+  const reviewed = incident.status === "closed" && !!incident.closure;
+  const canCapture =
     access.permissions.includes("edit") && incident.mode !== "live";
+  const canSave = canCapture && reviewed;
 
   function showArrival(id: string) {
     setSelected(id);
+    if (window.matchMedia("(max-width: 700px)").matches) {
+      setContributionOpen(false);
+      if (findingsPanel.current) findingsPanel.current.open = false;
+    }
     setArrival((previous) => ({ id, sequence: (previous?.sequence ?? 0) + 1 }));
     if (window.matchMedia("(max-width: 900px)").matches)
       map.current?.scrollIntoView({ behavior: "instant", block: "start" });
@@ -180,341 +214,415 @@ export function IncidentLearningDatabase({
     }
   }
 
+  async function recordDemo(
+    review: Extract<IncidentCommand, { action: "close" }>,
+  ) {
+    if (demoInFlight.current || busy || saving || loading || error) return;
+    if (access.mode !== "demo" || !canCapture || !evidence.length)
+      throw new Error(
+        "The demo needs a replay or synthetic investigation with collected evidence.",
+      );
+    demoInFlight.current = true;
+    setDemoRunning(true);
+    setSaveError("");
+    setTitle(`Demo finding: ${incident.symptom}`.slice(0, 160));
+    setSummary(review.conclusion || review.notes);
+    setEvidenceIds(evidence.slice(0, 100).map((item) => item.id));
+    try {
+      // Each command uses the revision returned by the preceding request.
+      let current = await loadIncident(incident.id);
+      if (current.mode === "live")
+        throw new Error("Demo capture is unavailable for live investigations.");
+      const sourceIds = (current.evidence ?? [])
+        .filter(
+          (item) =>
+            item.status === "collected" &&
+            !current.evidence?.some((other) => other.supersedes_id === item.id),
+        )
+        .slice(0, 100)
+        .map((item) => item.id);
+      if (!sourceIds.length)
+        throw new Error("Collect evidence before running the demo.");
+      if (current.status !== "closed" || !current.closure)
+        current = await actOnIncident(
+          current.id,
+          { ...review, revision: current.revision },
+          "engineer",
+        );
+      const closure = current.closure!;
+      const id = `KN-demo-${current.id}-${closure.evidence_revision}`;
+      const previous = current.captured_knowledge?.find(
+        (finding) => finding.id === id,
+      );
+      const payload = previous ?? {
+        title: `Demo finding: ${current.symptom}`.slice(0, 160),
+        summary: closure.conclusion || closure.notes,
+        evidence_ids: sourceIds,
+      };
+      setTitle(payload.title);
+      setSummary(payload.summary);
+      setEvidenceIds(payload.evidence_ids);
+      if (!previous)
+        await actOnIncident(current.id, {
+          action: "capture_knowledge",
+          revision: current.revision,
+          knowledge_id: id,
+          title: payload.title,
+          summary: payload.summary,
+          evidence_ids: payload.evidence_ids,
+        });
+      await onRefresh();
+      showArrival(`knowledge:${current.id}:${id}`);
+    } catch (cause) {
+      // A close or capture may have committed even if its response was interrupted.
+      await onRefresh().catch(() => undefined);
+      throw cause;
+    } finally {
+      demoInFlight.current = false;
+      setDemoRunning(false);
+    }
+  }
+
   return (
     <section className="incident-learning" aria-label="Learning Database">
-      <header className="incident-learning-heading">
-        <div>
-          <p className="eyebrow">Every investigation adds to what we know</p>
-          <h2 id="incident-learning-title">
-            <Database aria-hidden="true" /> Learning Database
-          </h2>
-        </div>
-        <button
-          className="secondary"
-          disabled={loading || saving}
-          onClick={() => {
-            setLoading(true);
-            setAttempt((value) => value + 1);
-          }}
-        >
-          <ArrowsClockwise aria-hidden="true" /> Refresh database
-        </button>
-      </header>
-      {error && (
-        <p role="alert">
-          {error}{" "}
-          <button
-            disabled={loading}
-            onClick={() => {
-              setLoading(true);
-              setAttempt((value) => value + 1);
-            }}
-          >
-            Retry database
-          </button>
-        </p>
-      )}
       <div className="knowledge-demo-workspace">
-        <aside
-          className="knowledge-capture-panel"
-          aria-label="New knowledge from this investigation"
+        <details
+          className="knowledge-contribution"
+          open={contributionOpen}
+          onToggle={(event) => setContributionOpen(event.currentTarget.open)}
         >
-          <div className="knowledge-capture-kicker">
-            <span className="knowledge-capture-dot" /> New finding
-          </div>
-          <h3>
-            One discovery.
-            <br />A smarter next investigation.
-          </h3>
-          <p>
-            Capture what you learned here. Watch it join the shared knowledge
-            graph.
-          </p>
-          <p className="knowledge-capture-source">
-            {incident.id} <span>Current investigation</span>
-          </p>
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (
-                canSave &&
-                !saving &&
-                !busy &&
-                !loading &&
-                !error &&
-                !existing &&
-                linkedEvidenceIds.length
-              )
-                void save();
-            }}
-          >
-            <label>
-              Knowledge title
-              <input
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                maxLength={160}
-                required
-              />
-            </label>
-            <label>
-              New knowledge
-              <textarea
-                value={summary}
-                onChange={(event) => setSummary(event.target.value)}
-                rows={5}
-                maxLength={2000}
-                required
-              />
-            </label>
-            <details className="knowledge-capture-evidence">
-              <summary>Linked evidence · {linkedEvidenceIds.length}</summary>
-              {evidence.map((item) => (
-                <label key={item.id}>
-                  <input
-                    type="checkbox"
-                    checked={evidenceIds.includes(item.id)}
-                    onChange={(event) =>
-                      setEvidenceIds((ids) =>
-                        event.target.checked
-                          ? [...ids, item.id]
-                          : ids.filter((id) => id !== item.id),
-                      )
-                    }
-                  />
-                  {item.label}
-                </label>
-              ))}
-              {!evidence.length && (
-                <p>Collect source evidence before saving a finding.</p>
-              )}
-            </details>
-            {saveError && <p role="alert">{saveError}</p>}
-            <button
-              className="knowledge-demo-save"
-              type="submit"
-              disabled={
-                !canSave ||
-                saving ||
-                busy ||
-                loading ||
-                !!error ||
-                !!existing ||
-                !title.trim() ||
-                !summary.trim() ||
-                !linkedEvidenceIds.length
+          <summary>Conclusion & save</summary>
+          <div className="knowledge-contribution-body">
+            <IncidentReview
+              incident={incident}
+              busy={busy || saving || demoRunning}
+              onAction={onAction}
+              onDemo={
+                access.mode === "demo" && canCapture ? recordDemo : undefined
               }
-            >
-              {saving ? (
-                <ArrowsClockwise aria-hidden="true" />
-              ) : existing ? (
-                <CheckCircle aria-hidden="true" />
-              ) : (
-                <Plus aria-hidden="true" />
-              )}
-              {saving ? "Saving knowledge…" : "Demo save knowledge"}
-              <ArrowRight aria-hidden="true" />
-            </button>
-            {existing && (
-              <p className="knowledge-saved-inline">
-                <CheckCircle aria-hidden="true" /> This finding is saved in the
-                graph.
-              </p>
-            )}
-            {(existing || arrived) && (
-              <button
-                className="knowledge-replay"
-                type="button"
-                onClick={() => showArrival((existing ?? arrived)!.graphId)}
-              >
-                <Play aria-hidden="true" /> Replay animation
-              </button>
-            )}
-            {!canSave && (
-              <p className="incident-muted">
-                Demo capture requires edit access and a replay or synthetic
-                investigation.
-              </p>
-            )}
-            <p className="knowledge-capture-note">
-              Saved as demo knowledge, pending review.{" "}
-              {incident.status === "closed"
-                ? "The recorded conclusion stays unchanged."
-                : "Your investigation stays open."}
-            </p>
-          </form>
-        </aside>
-        <section
-          ref={map}
-          className="knowledge-global-stage"
-          aria-label="Overall knowledge graph"
-          data-arrival={arrived ? "saved" : "idle"}
-        >
-          <div className="knowledge-global-heading">
-            <div>
-              <span className="eyebrow">Shared memory</span>
-              <h3>The overall knowledge graph</h3>
-            </div>
-            <span className="knowledge-live-label">
-              <span />
-              {loading
-                ? "Loading library"
-                : error
-                  ? "Library unavailable"
-                  : "Connected library"}
-            </span>
-          </div>
-          <KnowledgeGraph
-            graph={graph}
-            connectivity={connectivity}
-            selected={selected}
-            onSelect={setSelected}
-            arrival={arrival}
-            preserveLayout
-          />
-          <div
-            className="knowledge-arrival-notice"
-            role="status"
-            key={arrival?.sequence ?? 0}
-          >
-            {arrived ? (
-              <>
-                <CheckCircle aria-hidden="true" />
-                <div>
-                  <strong>New knowledge added</strong>
-                  <span>{arrived.title}</span>
-                </div>
-                <b>
-                  +{connectivity.get(arrived.graphId)?.connections ?? 0}{" "}
-                  connections
-                </b>
-              </>
-            ) : (
-              <>
-                <Database aria-hidden="true" />
-                <div>
-                  <strong>
-                    {findings.length} captured findings · {graph.nodes.length}{" "}
-                    connected nodes
-                  </strong>
-                  <span>Save a discovery to see the library grow.</span>
-                </div>
-              </>
-            )}
-          </div>
-          {arrived && (
-            <div
-              className="knowledge-linked-library"
-              aria-label="Connections to the main library"
-            >
-              <span>
-                {arrivalLibraryLinks.length
-                  ? "Linked to existing knowledge"
-                  : "No matching library topics yet"}
-              </span>
-              {arrivalLibraryLinks.map((link) => (
-                <button
-                  key={link.id}
-                  onClick={() => setSelected(link.id)}
-                  title={`${link.relation}: ${graph.nodes.find((item) => item.id === link.target)?.label}`}
-                >
-                  <CheckCircle aria-hidden="true" />
-                  {graph.nodes.find((item) => item.id === link.target)?.label}
-                </button>
-              ))}
-              <small>Context matches · finding pending review</small>
-            </div>
-          )}
-        </section>
-      </div>
-      <div className="knowledge-library-details">
-        <section aria-label="Captured knowledge">
-          <div className="incident-section-title">
-            <h3>
-              Captured knowledge <span>{findings.length}</span>
-            </h3>
-            <label className="sr-only" htmlFor="knowledge-search">
-              Search captured knowledge
-            </label>
-            <input
-              id="knowledge-search"
-              type="search"
-              placeholder="Find a discovery"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              demoDisabled={loading || !!error || !evidence.length}
+              demoRunning={demoRunning}
             />
+            <aside
+              className="knowledge-capture-panel"
+              aria-label="New knowledge from this investigation"
+            >
+              <details className="knowledge-capture-fields" open={reviewed}>
+                <summary>Save a finding</summary>
+                <form
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    if (
+                      canSave &&
+                      !saving &&
+                      !busy &&
+                      !demoRunning &&
+                      !loading &&
+                      !error &&
+                      !existing &&
+                      linkedEvidenceIds.length
+                    )
+                      void save();
+                  }}
+                >
+                  <label>
+                    Knowledge title
+                    <input
+                      value={title}
+                      onChange={(event) => setTitle(event.target.value)}
+                      maxLength={160}
+                      required
+                    />
+                  </label>
+                  <label>
+                    New knowledge
+                    <textarea
+                      value={summary}
+                      onChange={(event) => setSummary(event.target.value)}
+                      rows={3}
+                      maxLength={2000}
+                      required
+                    />
+                  </label>
+                  <details className="knowledge-capture-evidence">
+                    <summary>
+                      Linked evidence · {linkedEvidenceIds.length}
+                    </summary>
+                    {evidence.map((item) => (
+                      <label key={item.id}>
+                        <input
+                          type="checkbox"
+                          checked={evidenceIds.includes(item.id)}
+                          onChange={(event) =>
+                            setEvidenceIds((ids) =>
+                              event.target.checked
+                                ? [...ids, item.id]
+                                : ids.filter((id) => id !== item.id),
+                            )
+                          }
+                        />
+                        {item.label}
+                      </label>
+                    ))}
+                    {!evidence.length && (
+                      <p>Collect source evidence before saving a finding.</p>
+                    )}
+                  </details>
+                  {saveError && <p role="alert">{saveError}</p>}
+                  <button
+                    className="knowledge-demo-save"
+                    type="submit"
+                    disabled={
+                      !canSave ||
+                      saving ||
+                      busy ||
+                      demoRunning ||
+                      loading ||
+                      !!error ||
+                      !!existing ||
+                      !title.trim() ||
+                      !summary.trim() ||
+                      !linkedEvidenceIds.length
+                    }
+                  >
+                    {saving ? (
+                      <ArrowsClockwise aria-hidden="true" />
+                    ) : existing ? (
+                      <CheckCircle aria-hidden="true" />
+                    ) : (
+                      <Plus aria-hidden="true" />
+                    )}
+                    {saving ? "Saving knowledge…" : "Save knowledge"}
+                    <ArrowRight aria-hidden="true" />
+                  </button>
+                  {existing && (
+                    <p className="knowledge-saved-inline">
+                      <CheckCircle aria-hidden="true" /> This finding is saved
+                      in the graph.
+                    </p>
+                  )}
+                  {(existing || arrived) && (
+                    <button
+                      className="knowledge-replay"
+                      type="button"
+                      onClick={() =>
+                        showArrival((existing ?? arrived)!.graphId)
+                      }
+                    >
+                      <Play aria-hidden="true" /> Replay animation
+                    </button>
+                  )}
+                  {!canCapture && (
+                    <p className="incident-muted">
+                      Demo capture requires edit access and a replay or
+                      synthetic investigation.
+                    </p>
+                  )}
+                  <p className="knowledge-capture-note">
+                    Demo draft · publication requires review.
+                  </p>
+                </form>
+              </details>
+              {!reviewed && (
+                <p className="knowledge-capture-note" role="status">
+                  Record a conclusion or an inconclusive outcome before saving
+                  knowledge.{" "}
+                  <a href="#knowledge-review">Complete the review above</a>.
+                </p>
+              )}
+            </aside>
           </div>
-          {!matching.length && (
-            <p className="incident-muted">
-              {findings.length
-                ? "No findings match this search."
-                : "Your first discovery will appear here with its source investigation."}
+        </details>
+        <div className="knowledge-base">
+          <header className="incident-learning-heading">
+            <div>
+              <h2 id="incident-learning-title">Knowledge base</h2>
+            </div>
+            <button
+              className="secondary"
+              aria-label="Refresh database"
+              disabled={loading || saving || demoRunning}
+              onClick={() => {
+                setLoading(true);
+                setAttempt((value) => value + 1);
+              }}
+            >
+              <ArrowsClockwise aria-hidden="true" /> Refresh
+            </button>
+          </header>
+          {error && (
+            <p className="knowledge-load-error" role="alert">
+              {error}{" "}
+              <button
+                disabled={loading}
+                onClick={() => {
+                  setLoading(true);
+                  setAttempt((value) => value + 1);
+                }}
+              >
+                Retry database
+              </button>
             </p>
           )}
-          <ul className="knowledge-findings-list">
-            {matching.map((finding) => (
-              <li key={finding.graphId}>
-                <button
-                  onClick={() => setSelected(finding.graphId)}
-                  aria-pressed={selected === finding.graphId}
-                >
-                  <span className="knowledge-finding-icon">
-                    <Database aria-hidden="true" />
-                  </span>
-                  <span>
-                    <strong>{finding.title}</strong>
-                    <small>{finding.incident.id} · Demo · Pending review</small>
-                  </span>
-                  <ArrowUpRight aria-hidden="true" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-        <aside aria-label="Selected knowledge details">
-          <p className="eyebrow">Trace it to the source</p>
-          <h3>{node?.label ?? edge?.relation ?? "Knowledge with context"}</h3>
-          <p className="knowledge-detail-text">
-            {node?.detail ??
-              (edge
-                ? `${edge.citation}${edge.matched_text ? `\nContext match: ${edge.matched_text}. This association does not establish a cause.` : ""}${edge.evidence_ids.length ? `\n${edge.evidence_ids.join(", ")}` : ""}`
-                : "Select any node or connection to inspect its source. Saved findings link to their investigation and matching topics in the shared library.")}
-          </p>
-          {selectedFinding && (
-            <>
-              <p>
-                Source revision {selectedFinding.source_revision} ·{" "}
-                {selectedFinding.evidence_ids.length} evidence references
-              </p>
-              <ul>
-                {selectedFinding.source_refs.map((ref) => (
-                  <li key={ref}>{ref}</li>
-                ))}
-              </ul>
-              <a
-                href={incidentPageUrl(
-                  selectedFinding.incident.id,
-                  "investigation",
-                )}
-                onClick={followLink}
-              >
-                Open source investigation <ArrowUpRight aria-hidden="true" />
-              </a>
-            </>
-          )}
-          <a
-            className="knowledge-review-link"
-            href={incidentPageUrl(incident.id, "review")}
-            onClick={followLink}
+          <section
+            ref={map}
+            className="knowledge-global-stage"
+            aria-label="Overall knowledge graph"
+            data-arrival={arrived ? "saved" : "idle"}
           >
-            Conclusion & publication review <ArrowUpRight aria-hidden="true" />
-          </a>
-        </aside>
+            {loading && <p role="status">Loading knowledge…</p>}
+            <KnowledgeGraph
+              graph={graph}
+              connectivity={connectivity}
+              selected={selected}
+              onSelect={setSelected}
+              arrival={arrival}
+              preserveLayout
+            />
+            {arrived && (
+              <div
+                className="knowledge-arrival-notice"
+                role="status"
+                key={arrival?.sequence ?? 0}
+              >
+                <>
+                  <CheckCircle aria-hidden="true" />
+                  <div>
+                    <strong>New knowledge added</strong>
+                    <span>{arrived.title}</span>
+                  </div>
+                  <b>
+                    +{connectivity.get(arrived.graphId)?.connections ?? 0}{" "}
+                    connections
+                  </b>
+                </>
+              </div>
+            )}
+            {arrived && (
+              <details
+                className="knowledge-linked-library"
+                aria-label="Connections to the main library"
+              >
+                <summary>
+                  {arrivalLibraryLinks.length
+                    ? "Linked to existing knowledge"
+                    : "No matching library topics yet"}
+                </summary>
+                {arrivalLibraryLinks.map((link) => (
+                  <button
+                    key={link.id}
+                    onClick={() => setSelected(link.id)}
+                    title={`${link.relation}: ${graph.nodes.find((item) => item.id === link.target)?.label}`}
+                  >
+                    <CheckCircle aria-hidden="true" />
+                    {graph.nodes.find((item) => item.id === link.target)?.label}
+                  </button>
+                ))}
+                <small>Context matches · finding pending review</small>
+              </details>
+            )}
+          </section>
+          <div className="knowledge-library-details">
+            <details ref={findingsPanel} className="knowledge-saved-findings">
+              <summary>Saved findings ({findings.length})</summary>
+              <section aria-label="Captured knowledge">
+                <div className="incident-section-title">
+                  <h3>
+                    Captured knowledge <span>{findings.length}</span>
+                  </h3>
+                  <label className="sr-only" htmlFor="knowledge-search">
+                    Search captured knowledge
+                  </label>
+                  <input
+                    id="knowledge-search"
+                    type="search"
+                    placeholder="Find a discovery"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                  />
+                </div>
+                {!matching.length && (
+                  <p className="incident-muted">
+                    {findings.length
+                      ? "No findings match this search."
+                      : "Your first discovery will appear here with its source investigation."}
+                  </p>
+                )}
+                <ul className="knowledge-findings-list">
+                  {matching.map((finding) => (
+                    <li key={finding.graphId}>
+                      <button
+                        onClick={() => setSelected(finding.graphId)}
+                        aria-pressed={selected === finding.graphId}
+                      >
+                        <span className="knowledge-finding-icon">
+                          <Database aria-hidden="true" />
+                        </span>
+                        <span>
+                          <strong>{finding.title}</strong>
+                          <small>
+                            {finding.incident.id} · Demo · Pending review
+                          </small>
+                        </span>
+                        <ArrowUpRight aria-hidden="true" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+              <details className="knowledge-supporting">
+                <summary>Sources & past investigations</summary>
+                <PastIncidents incident={incident} />
+                <KnowledgeRegistry configuration={incident.configuration} />
+                {children}
+              </details>
+            </details>
+            {selected && (
+              <aside aria-label="Selected knowledge details">
+                <button
+                  className="knowledge-inspector-close"
+                  aria-label="Close knowledge details"
+                  onClick={() => setSelected("")}
+                >
+                  <X aria-hidden="true" />
+                </button>
+                <h3>
+                  {node?.label ?? edge?.relation ?? "Knowledge with context"}
+                </h3>
+                <p className="knowledge-detail-text">
+                  {node?.detail ??
+                    (edge
+                      ? `${edge.citation}${edge.matched_text ? `\nContext match: ${edge.matched_text}. This association does not establish a cause.` : ""}${edge.evidence_ids.length ? `\n${edge.evidence_ids.join(", ")}` : ""}`
+                      : "Select any node or connection to inspect its source. Saved findings link to their investigation and matching topics in the shared library.")}
+                </p>
+                {selectedFinding && (
+                  <>
+                    <p>
+                      Source revision {selectedFinding.source_revision} ·{" "}
+                      {selectedFinding.evidence_ids.length} evidence references
+                    </p>
+                    <ul>
+                      {selectedFinding.source_refs.map((ref) => (
+                        <li key={ref}>{ref}</li>
+                      ))}
+                    </ul>
+                    <a
+                      href={incidentPageUrl(
+                        selectedFinding.incident.id,
+                        "investigation",
+                      )}
+                      onClick={followLink}
+                    >
+                      Open source investigation{" "}
+                      <ArrowUpRight aria-hidden="true" />
+                    </a>
+                  </>
+                )}
+              </aside>
+            )}
+          </div>
+        </div>
       </div>
-      <p className="incident-muted incident-caption">
-        The map includes reference knowledge, up to 40 case groups and the 100
-        most recent investigations. New findings are unreviewed demo knowledge.
-      </p>
     </section>
   );
 }

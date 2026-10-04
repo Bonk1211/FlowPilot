@@ -79,7 +79,7 @@ async function openFeature(page: Page, name: string) {
 }
 
 async function measure(page: Page) {
-  await page.goto("/");
+  await page.goto("/incidents");
   const created = page.waitForResponse(
     (item) =>
       item.url().endsWith("/api/incidents/replay") &&

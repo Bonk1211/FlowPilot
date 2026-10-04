@@ -57,6 +57,26 @@ test("handoff exports a complete report and attached email draft, preserving wor
       exact: true,
     }),
   ).toBeVisible();
+  await expect(page.locator("#incident-overview")).toBeHidden();
+  const emailBounds = await page.locator(".handoff-email").boundingBox();
+  const reportBounds = await page.locator(".handoff-report").boundingBox();
+  expect(emailBounds!.y).toBeLessThan(260);
+  expect(reportBounds!.y).toBe(emailBounds!.y);
+  expect(emailBounds!.x + emailBounds!.width).toBeLessThanOrEqual(
+    reportBounds!.x,
+  );
+  await page
+    .getByRole("button", { name: "Incident details", exact: true })
+    .click();
+  await expect(page.locator("#incident-overview")).toBeVisible();
+  await expect(
+    page.locator("#incident-overview .incident-jobs summary"),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Close incident details", exact: true })
+    .click();
+  await expect(page.locator("#incident-overview")).toBeHidden();
+  await page.screenshot({ path: testInfo.outputPath("compact-handoff.png") });
   await expect(
     frame.locator(`[data-card-id="experiment-${plan.id}"]`),
   ).toContainText("6/6 runs recorded");

@@ -23,26 +23,25 @@ export function HandoffPage({
 
   return (
     <section className="incident-handoff-page" aria-labelledby="handoff-title">
-      <div className="incident-section-title">
+      <div className="incident-section-title handoff-toolbar">
         <div>
-          <p className="eyebrow">Ready before the cause is known</p>
           <h2 id="handoff-title">Engineer handoff</h2>
+          <p className="incident-caption">{incident.symptom}</p>
         </div>
-      </div>
-      <div className="incident-inline">
-        <TroubleshootingMap incident={incident} />
-        <span className="incident-tag">{draftStatus}</span>
-        <span className="incident-caption">
-          Version {incident.handoff.version} · based on revision{" "}
-          {incident.handoff.source_revision}
-        </span>
+        <div className="incident-inline">
+          <TroubleshootingMap incident={incident} />
+          <span className="incident-tag">{draftStatus}</span>
+          <span className="incident-caption">
+            Version {incident.handoff.version} · based on revision{" "}
+            {incident.handoff.source_revision}
+          </span>
+        </div>
       </div>
       <div className="handoff-workspace">
         <section
           className="handoff-email"
           aria-labelledby="handoff-email-title"
         >
-          <p className="eyebrow">Draft for engineering</p>
           <h3 id="handoff-email-title">Drafted email</h3>
           <p>
             <strong>Subject:</strong> {incident.handoff.subject}

@@ -184,3 +184,97 @@ test("connection animation follows real edges outward into reference sections an
   }
   assert.deepEqual(knowledgeArrivalConnections(graph, "missing"), []);
 });
+
+const { default: cytoscape } = await import("cytoscape");
+const { attachElasticDrag } =
+  await import("../apps/web/src/components/elasticGraph.ts");
+
+test("elastic dragging pulls nearby nodes, settles, and stops for reduced motion or cleanup", () => {
+  const originalWindow = globalThis.window;
+  const frames = new Map();
+  let nextFrame = 0;
+  let now = performance.now();
+  globalThis.window = {
+    requestAnimationFrame(callback) {
+      frames.set(++nextFrame, callback);
+      return nextFrame;
+    },
+    cancelAnimationFrame(id) {
+      frames.delete(id);
+    },
+  };
+  const advance = () => {
+    now = Math.max(now, performance.now()) + 1000 / 60;
+    const callbacks = [...frames.values()];
+    frames.clear();
+    callbacks.forEach((callback) => callback(now));
+  };
+  const motion = Object.assign(new EventTarget(), { matches: false });
+  const cy = cytoscape({
+    headless: true,
+    layout: { name: "preset" },
+    elements: [
+      ...["root", "neighbor", "nearby", "unrelated"].map((id, index) => ({
+        data: { id },
+        position: { x: index * 100, y: 0 },
+      })),
+      { data: { id: "first", source: "root", target: "neighbor" } },
+      { data: { id: "second", source: "neighbor", target: "nearby" } },
+    ],
+  });
+  const detach = attachElasticDrag(cy, motion, () => {});
+  try {
+    const root = cy.getElementById("root");
+    const neighbor = cy.getElementById("neighbor");
+    root.emit("grab");
+    root.position({ x: 120, y: 30 }).emit("drag");
+    advance();
+    assert.ok(neighbor.position("x") > 100 && neighbor.position("x") < 136);
+    root.emit("free");
+    let peak = neighbor.position("x");
+    for (let index = 0; frames.size && index < 300; index++) {
+      advance();
+      peak = Math.max(peak, neighbor.position("x"));
+    }
+    assert.ok(peak > 136, "the spring overshoots slightly before settling");
+    assert.equal(frames.size, 0, "idle graphs must stop scheduling frames");
+    assert.deepEqual(root.position(), { x: 120, y: 30 });
+    assert.deepEqual(neighbor.position(), { x: 136, y: 9 });
+    assert.deepEqual(cy.getElementById("nearby").position(), { x: 212, y: 3 });
+    assert.deepEqual(cy.getElementById("unrelated").position(), {
+      x: 300,
+      y: 0,
+    });
+    assert.equal(root.hasClass("elastic-root"), false);
+
+    root.emit("grab");
+    root.position({ x: 200, y: 30 }).emit("drag");
+    advance();
+    motion.matches = true;
+    motion.dispatchEvent(new Event("change"));
+    assert.equal(frames.size, 0);
+    const settled = { ...neighbor.position() };
+    root.emit("grab");
+    root.position({ x: 250, y: 30 }).emit("drag").emit("free");
+    assert.deepEqual(neighbor.position(), settled);
+    assert.equal(frames.size, 0);
+
+    motion.matches = false;
+    root.emit("grab");
+    root.position({ x: 280, y: 30 }).emit("drag");
+    assert.ok(frames.size > 0);
+    cy.emit("layoutstart");
+    assert.equal(frames.size, 0, "a new layout cancels the old springs");
+    root.emit("grab");
+    root.position({ x: 300, y: 30 }).emit("drag");
+    detach();
+    assert.equal(frames.size, 0);
+    root.emit("grab").emit("drag");
+    assert.equal(frames.size, 0, "cleanup removes drag listeners");
+  } finally {
+    detach();
+    cy.destroy();
+    if (originalWindow === undefined) delete globalThis.window;
+    else globalThis.window = originalWindow;
+  }
+});

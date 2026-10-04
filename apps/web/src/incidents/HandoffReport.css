@@ -1,8 +1,34 @@
+.incident-handoff-focus .incident-main {
+  padding-top: 16px;
+}
+.handoff-toolbar {
+  align-items: center;
+  margin-bottom: 12px;
+}
+.handoff-toolbar h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.handoff-toolbar p {
+  margin: 4px 0 0;
+}
+.handoff-toolbar > div:first-child {
+  min-width: 0;
+}
+.handoff-toolbar .incident-inline {
+  justify-content: flex-end;
+}
+.handoff-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
 .handoff-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
-  gap: 24px;
-  margin-block: 24px;
+  gap: 20px;
+  margin-block: 12px 24px;
 }
 .handoff-email,
 .handoff-report {
@@ -48,6 +74,12 @@
   background: white;
 }
 @media (max-width: 1024px) {
+  .handoff-toolbar {
+    flex-wrap: wrap;
+  }
+  .handoff-toolbar .incident-inline {
+    justify-content: flex-start;
+  }
   .handoff-workspace {
     grid-template-columns: minmax(0, 1fr);
   }

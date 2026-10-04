@@ -1363,3 +1363,54 @@
     display: none;
   }
 }
+
+.learning-graph-stage {
+  cursor: grab;
+}
+.learning-graph-stage[data-hovering="true"] {
+  cursor: pointer;
+}
+.learning-graph-stage:active {
+  cursor: grabbing;
+}
+.knowledge-graph-preview {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 3;
+  max-width: min(360px, calc(100% - 32px));
+  padding: 10px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-document);
+  color: var(--text-primary);
+  box-shadow: 0 4px 20px rgb(0 0 0 / 18%);
+  pointer-events: none;
+  overflow-wrap: anywhere;
+  animation: graph-preview-in 160ms ease-out;
+}
+.knowledge-graph-preview strong,
+.knowledge-graph-preview span {
+  display: block;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.knowledge-graph-preview span {
+  margin-top: 3px;
+  color: var(--text-secondary);
+}
+@keyframes graph-preview-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .knowledge-graph-preview {
+    animation: none;
+  }
+}

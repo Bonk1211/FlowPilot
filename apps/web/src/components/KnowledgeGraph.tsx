@@ -1,16 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import cytoscape, {
   type Core,
+  type Layouts,
+  type CoseLayoutOptions,
+  type AnimationOptions,
   type StylesheetStyle,
   type Css,
 } from "cytoscape";
 import type { KnowledgeGraph as Graph } from "@flowpilot/contracts";
+import { attachElasticDrag } from "./elasticGraph";
 import {
   knowledgeArrivalConnections,
   type graphConnectivity,
 } from "../knowledgeGraph";
 import {
   ArrowsOut,
+  ArrowsClockwise,
   MagnifyingGlassPlus,
   MagnifyingGlassMinus,
   Crosshair,
@@ -63,6 +68,44 @@ const nodeTypes: {
   { kind: "Outcome", token: "outcome", shape: "pentagon", glyph: "pentagon" },
 ];
 
+function forceLayout(
+  width: number,
+  height: number,
+): Omit<CoseLayoutOptions, "animate"> & { animate: false | "end" } {
+  return {
+    name: "cose",
+    animate: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? false
+      : "end",
+    animationDuration: 700,
+    animationEasing: "ease-out-cubic",
+    randomize: true,
+    padding: 36,
+    boundingBox: {
+      x1: 0,
+      y1: 0,
+      w: Math.max(280, width - 140),
+      h: Math.max(240, height - 100),
+    },
+    nodeRepulsion: () => 11000,
+    idealEdgeLength: (edge) =>
+      96 + Math.max(edge.source().data("size"), edge.target().data("size")),
+    componentSpacing: 110,
+    nodeOverlap: 24,
+    nodeDimensionsIncludeLabels: true,
+  };
+}
+
+function moveViewport(cy: Core, options: AnimationOptions) {
+  cy.stop(true, false);
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    if (options.fit) cy.fit(options.fit.eles, options.fit.padding);
+    if (options.zoom) cy.zoom(options.zoom);
+  } else {
+    cy.animate(options, { duration: 400, easing: "ease-out-cubic" });
+  }
+}
+
 export function KnowledgeGraph({
   graph,
   connectivity,
@@ -80,6 +123,7 @@ export function KnowledgeGraph({
 }) {
   const container = useRef<HTMLDivElement>(null);
   const arrivalHalo = useRef<HTMLDivElement>(null);
+  const [hovered, setHovered] = useState("");
   const arrivalPaths = useRef<SVGSVGElement>(null);
   const connections = useMemo(
     () => knowledgeArrivalConnections(graph, arrival?.id ?? ""),
@@ -93,6 +137,7 @@ export function KnowledgeGraph({
   ).length;
   const libraryCount = connections.length - directCount;
   const instance = useRef<Core | null>(null);
+  const runningLayout = useRef<Layouts | null>(null);
   const positions = useRef(new Map<string, { x: number; y: number }>());
   const viewport = useRef<{
     zoom: number;
@@ -153,8 +198,13 @@ export function KnowledgeGraph({
     const cy = cytoscape({
       container: container.current,
       elements: [
-        ...graph.nodes.map((node) => ({
-          position: positionFor(node.id),
+        ...graph.nodes.map((node, index) => ({
+          position: positionFor(node.id) ?? {
+            x: (index % Math.ceil(Math.sqrt(graph.nodes.length))) * 160,
+            y:
+              Math.floor(index / Math.ceil(Math.sqrt(graph.nodes.length))) *
+              140,
+          },
           data: {
             ...node,
             size: connectivity.get(node.id)?.size ?? 34,
@@ -173,26 +223,7 @@ export function KnowledgeGraph({
       ],
       minZoom: 0.2,
       maxZoom: 2.5,
-      layout: {
-        name: reuseLayout ? "preset" : "cose",
-        fit: !reuseLayout,
-        animate: false,
-        padding: 28,
-        boundingBox: {
-          x1: 0,
-          y1: 0,
-          w: Math.max(280, container.current.clientWidth - 140),
-          h: Math.max(240, container.current.clientHeight - 100),
-        },
-        // Labels must stay legible on a projector, so keep nodes apart enough
-        // that the fit zoom does not have to shrink the map to read it.
-        nodeRepulsion: () => 11000,
-        idealEdgeLength: (edge) =>
-          96 + Math.max(edge.source().data("size"), edge.target().data("size")),
-        componentSpacing: 110,
-        nodeOverlap: 24,
-        nodeDimensionsIncludeLabels: true,
-      },
+      layout: { name: "preset", fit: !reuseLayout, padding: 36 },
       style: [
         {
           selector: "node",
@@ -215,6 +246,13 @@ export function KnowledgeGraph({
             height: "data(height)",
             "border-width": 2,
             "border-color": color("--surface-document"),
+            "transition-property":
+              "opacity, border-width, border-color, overlay-opacity",
+            "transition-duration": window.matchMedia(
+              "(prefers-reduced-motion: reduce)",
+            ).matches
+              ? 0
+              : 180,
           },
         },
         ...categoryStyles,
@@ -259,6 +297,35 @@ export function KnowledgeGraph({
         },
         { selector: "node.dim", style: { opacity: 0.35, "z-index": 1 } },
         { selector: "node.active", style: { "z-index": 10 } },
+        {
+          selector: "node.hovered",
+          style: {
+            "border-width": 4,
+            "border-color": color("--text-primary"),
+            "overlay-color": color("--graph-reference"),
+            "overlay-opacity": 0.15,
+            "overlay-padding": 10,
+            "z-index": 25,
+          },
+        },
+        {
+          selector: "node.elastic-root",
+          style: {
+            "overlay-color": color("--graph-reference"),
+            "overlay-opacity": 0.2,
+            "overlay-padding": 16,
+            "z-index": 30,
+          },
+        },
+        {
+          selector: "edge.elastic-link",
+          style: {
+            width: 3,
+            opacity: 1,
+            "line-color": color("--graph-reference"),
+            "target-arrow-color": color("--graph-reference"),
+          },
+        },
         { selector: "edge.dim", style: { opacity: 0.12 } },
         {
           selector: "node.chosen",
@@ -267,6 +334,9 @@ export function KnowledgeGraph({
             "border-width": 4,
             "border-color": color("--text-primary"),
             "border-style": "double",
+            "overlay-color": color("--graph-reference"),
+            "overlay-opacity": 0.12,
+            "overlay-padding": 12,
           },
         },
         {
@@ -274,8 +344,8 @@ export function KnowledgeGraph({
           style: {
             width: 2.2,
             opacity: 0.9,
-            "line-color": color("--slate-500"),
-            "target-arrow-color": color("--slate-500"),
+            "line-color": color("--graph-reference"),
+            "target-arrow-color": color("--graph-reference"),
           },
         },
         {
@@ -318,7 +388,35 @@ export function KnowledgeGraph({
     });
     if (reuseLayout && viewport.current) cy.viewport(viewport.current);
     instance.current = cy;
+    if (!reuseLayout) {
+      runningLayout.current = cy.layout(forceLayout(cy.width(), cy.height()));
+      runningLayout.current.run();
+    }
     cy.on("tap", "node, edge", (event) => onSelect(event.target.id()));
+    cy.on("tap", (event) => {
+      if (event.target === cy) {
+        setHovered("");
+        onSelect("");
+      }
+    });
+    cy.on("mouseover", "node, edge", (event) => setHovered(event.target.id()));
+    cy.on("mouseout", "node, edge", () => setHovered(""));
+    cy.on("grab dragpan zoom", () => setHovered(""));
+    const motion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const detachElasticDrag = attachElasticDrag(cy, motion, () => {
+      runningLayout.current?.stop();
+      cy.stop(true, false);
+      cy.elements().stop(true, false);
+    });
+    const updateMotion = () => {
+      cy.nodes().style("transition-duration", motion.matches ? 0 : 180);
+      if (motion.matches) {
+        runningLayout.current?.stop();
+        cy.stop(true, true);
+        cy.elements().stop(true, true);
+      }
+    };
+    motion.addEventListener("change", updateMotion);
     let resizeFrame = 0;
     const resize = new ResizeObserver(() => {
       window.cancelAnimationFrame(resizeFrame);
@@ -329,6 +427,10 @@ export function KnowledgeGraph({
     });
     resize.observe(container.current);
     return () => {
+      motion.removeEventListener("change", updateMotion);
+      detachElasticDrag();
+      runningLayout.current?.stop();
+      runningLayout.current = null;
       resize.disconnect();
       window.cancelAnimationFrame(resizeFrame);
       positions.current = new Map(
@@ -348,15 +450,15 @@ export function KnowledgeGraph({
     const cy = instance.current;
     if (!cy) return;
     cy.elements().removeClass(
-      "dim active chosen knowledge-link knowledge-context",
+      "dim active chosen hovered knowledge-link knowledge-context",
     );
-    const target = cy.getElementById(selected);
+    const target = cy.getElementById(hovered || selected);
     if (target.length) {
       let related = target.data("kind")
         ? target.closedNeighborhood()
         : cy.collection(target).union(cy.collection(target).connectedNodes());
       if (target.data("kind") === "Knowledge") {
-        for (const link of knowledgeArrivalConnections(graph, selected)) {
+        for (const link of knowledgeArrivalConnections(graph, target.id())) {
           const edge = cy.getElementById(link.edge.id);
           related = related.union(edge).union(cy.getElementById(link.to));
           edge.addClass(
@@ -366,9 +468,10 @@ export function KnowledgeGraph({
       }
       cy.elements().difference(related).addClass("dim");
       related.addClass("active");
-      target.addClass("chosen");
+      if (target.id() === selected) target.addClass("chosen");
+      if (hovered) target.addClass("hovered");
     }
-  }, [selected, graph]);
+  }, [selected, hovered, graph]);
   useEffect(() => {
     const cy = instance.current;
     if (!cy || !arrival) return;
@@ -535,11 +638,22 @@ export function KnowledgeGraph({
   const zoom = (factor: number) => {
     const cy = instance.current;
     if (cy)
-      cy.zoom({
-        level: cy.zoom() * factor,
-        renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 },
+      moveViewport(cy, {
+        zoom: {
+          level: Math.max(
+            cy.minZoom(),
+            Math.min(cy.maxZoom(), cy.zoom() * factor),
+          ),
+          renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 },
+        },
       });
   };
+  const previewNode = graph.nodes.find(
+    (node) => node.id === (hovered || selected),
+  );
+  const previewEdge = graph.edges.find(
+    (edge) => edge.id === (hovered || selected),
+  );
   return (
     <>
       <div className="graph-toolbar" aria-label="Graph controls">
@@ -572,7 +686,10 @@ export function KnowledgeGraph({
             onClick={() => {
               const cy = instance.current;
               const target = cy?.getElementById(selected);
-              if (target?.length) cy?.fit(target.closedNeighborhood(), 45);
+              if (cy && target?.length)
+                moveViewport(cy, {
+                  fit: { eles: target.closedNeighborhood(), padding: 65 },
+                });
             }}
             disabled={!selected}
           >
@@ -581,11 +698,34 @@ export function KnowledgeGraph({
           <button
             className="secondary"
             onClick={() => {
+              setHovered("");
               onSelect("");
-              instance.current?.fit(undefined, 42);
+              const cy = instance.current;
+              if (cy)
+                moveViewport(cy, { fit: { eles: cy.elements(), padding: 42 } });
             }}
           >
             <ArrowsOut aria-hidden="true" /> Full graph
+          </button>
+          <button
+            className="secondary"
+            aria-label="Rearrange graph"
+            title="Rearrange graph"
+            disabled={!graph.nodes.length || (!!arrival && phase < 3)}
+            onClick={() => {
+              const cy = instance.current;
+              if (!cy) return;
+              setHovered("");
+              runningLayout.current?.stop();
+              cy.stop(true, false);
+              cy.elements().stop(true, false);
+              runningLayout.current = cy.layout(
+                forceLayout(cy.width(), cy.height()),
+              );
+              runningLayout.current.run();
+            }}
+          >
+            <ArrowsClockwise aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -630,13 +770,32 @@ export function KnowledgeGraph({
           </p>
         </div>
       )}
-      <div className="knowledge-graph-viewport">
+      <div
+        className="knowledge-graph-viewport"
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            setHovered("");
+            onSelect("");
+          }
+        }}
+      >
         <div
           ref={container}
           className="learning-graph-stage"
+          data-hovering={!!hovered}
           role="img"
           aria-label={`Knowledge graph with ${graph.nodes.length} nodes. Use the node and relationship lists below for keyboard access.`}
         />
+        {(previewNode || previewEdge) && (
+          <div className="knowledge-graph-preview" aria-label="Graph preview">
+            <strong>{previewNode?.label ?? previewEdge?.relation}</strong>
+            <span>
+              {previewNode
+                ? `${previewNode.kind} · ${connectivity.get(previewNode.id)?.connections ?? 0} connections`
+                : `${graph.nodes.find((node) => node.id === previewEdge?.source)?.label} → ${graph.nodes.find((node) => node.id === previewEdge?.target)?.label}`}
+            </span>
+          </div>
+        )}
         {arrival && (
           <svg
             ref={arrivalPaths}
@@ -700,7 +859,15 @@ export function KnowledgeGraph({
           inspector.
         </p>
       </div>
-      <div className="graph-accessible-slot">
+      <div
+        className="graph-accessible-slot"
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            setHovered("");
+            onSelect("");
+          }
+        }}
+      >
         <details className="graph-accessible">
           <summary>Browse nodes and relationships with keyboard</summary>
           <h3>Nodes</h3>
