@@ -23,6 +23,12 @@ type Props = {
   onInteract: () => void;
   /** Extra parts to highlight with the step's part; defaults to that part alone. */
   highlightIds?: readonly string[];
+  /**
+   * Illustrative levels from 0 to 1 for named meshes, such as simulated mass
+   * for the fluid core or simulated coverage for the spray cone. They are
+   * shown as glow or opacity and never describe a measurement.
+   */
+  partStates?: Readonly<Record<string, number>>;
 };
 
 type Material = THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial;
@@ -35,6 +41,8 @@ type Runtime = {
   moving: boolean;
   reduced: boolean;
   highlight: ReadonlySet<string>;
+  targets: Record<string, number>;
+  shown: Record<string, number>;
   kind: string;
   isolated: boolean;
 };
@@ -99,9 +107,11 @@ export default function AssemblyScene({
   onFailure,
   onInteract,
   highlightIds,
+  partStates,
 }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const highlightKey = highlightIds?.join(",");
+  const partStatesKey = partStates ? JSON.stringify(partStates) : undefined;
   const runtime = useRef<Runtime | null>(null);
   const callbacks = useRef({ onFailure, onInteract });
   const [isolated, setIsolated] = useState(false);
@@ -184,6 +194,8 @@ export default function AssemblyScene({
       moving: false,
       reduced: false,
       highlight: new Set<string>(),
+      targets: {},
+      shown: {},
       kind: "none",
       isolated: false,
     };
@@ -263,6 +275,14 @@ export default function AssemblyScene({
         )
           state.moving = false;
       }
+      for (const name of Object.keys(state.shown))
+        if (!(name in state.targets)) delete state.shown[name];
+      for (const [name, target] of Object.entries(state.targets)) {
+        const shown = state.shown[name] ?? target;
+        state.shown[name] = state.reduced
+          ? target
+          : shown + (target - shown) * 0.25;
+      }
       state.parts.traverse((object) => {
         if (!(object instanceof THREE.Mesh)) return;
         const owner = semanticOwner(object, state.parts);
@@ -293,6 +313,16 @@ export default function AssemblyScene({
           material.transparent = faded || baseOpacity < 1;
           material.opacity = faded ? Math.min(baseOpacity, 0.16) : baseOpacity;
           material.depthWrite = !faded;
+          const level = state.shown[object.name];
+          if (level !== undefined && !faded) {
+            if (object.name === "spray-cone") {
+              material.transparent = true;
+              material.opacity = 0.03 + 0.4 * level;
+            } else if (material.emissive) {
+              material.emissive.setHex(0xe0a23c);
+              material.emissiveIntensity = 0.08 + 0.7 * level;
+            }
+          }
         }
       });
       controls.update();
@@ -336,6 +366,13 @@ export default function AssemblyScene({
     setIsolated(false);
   }, [step, reset, reduced, highlightKey]);
 
+  useEffect(() => {
+    const current = runtime.current;
+    if (current) current.targets = partStates ? { ...partStates } : {};
+    // The key stands in for the object, which is recreated on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partStatesKey]);
+
   function adjust(kind: "left" | "right" | "up" | "down" | "in" | "out") {
     const current = runtime.current;
     if (!current) return;
@@ -376,9 +413,10 @@ export default function AssemblyScene({
             .map((id) => modelNodes[id as keyof typeof modelNodes]?.label)
             .filter(Boolean)
             .join(", ") || "unknown"
-        }`}
+        }.${partStatesKey ? " Glow and spray levels are simulated and illustrative, not measured." : ""}`}
         data-node-id={step.model_node_id}
         data-highlight-ids={highlightKey}
+        data-part-states={partStatesKey}
         data-camera-preset={step.camera_preset}
         data-highlighted={step.highlight !== "none"}
         data-reduced-motion={reduced}
