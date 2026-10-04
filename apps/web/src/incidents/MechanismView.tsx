@@ -1,16 +1,8 @@
-import {
-  Component,
-  lazy,
-  Suspense,
-  useEffect,
-  useId,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { lazy, Suspense, useEffect, useId, useMemo, useState } from "react";
 import type { ProcedureStep } from "@flowpilot/contracts";
 import { Columns, Cube, Path } from "@phosphor-icons/react";
 import { StatusChip } from "./StatusChip";
+import { SceneBoundary } from "./SceneBoundary";
 import { MechanismCompare } from "./MechanismCompare";
 import type { DiagnosticAssessment } from "./api";
 import { ProcedureDiagram } from "../prototype/ProcedureDiagram";
@@ -23,19 +15,6 @@ import "../components/viewer.css";
 import { mechanismCopy } from "./mechanismCopy";
 
 const AssemblyScene = lazy(() => import("../components/AssemblyScene"));
-
-class SceneBoundary extends Component<
-  { children: ReactNode; fallback: ReactNode },
-  { failed: boolean }
-> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-  render() {
-    return this.state.failed ? this.props.fallback : this.props.children;
-  }
-}
 
 export function MechanismView({
   hypothesisId,

@@ -31,7 +31,16 @@ const lines = [
   },
 ] as const;
 
-function ResponsePlot({ run }: { run: SimulationRun }) {
+export function ResponsePlot({
+  run,
+  marker = null,
+  showTable = true,
+}: {
+  run: SimulationRun;
+  /** Normalized sequence position to mark on the curves. */
+  marker?: number | null;
+  showTable?: boolean;
+}) {
   const x = (value: number) => 50 + value * 500;
   const y = (value: number) => 225 - (value / 1.5) * 190;
   return (
@@ -77,6 +86,15 @@ function ResponsePlot({ run }: { run: SimulationRun }) {
         <text x="300" y="272" textAnchor="middle">
           Normalized sequence position · not elapsed time
         </text>
+        {marker !== null && (
+          <line
+            x1={x(marker)}
+            y1={y(1.5)}
+            x2={x(marker)}
+            y2={y(0)}
+            className="simulation-marker"
+          />
+        )}
         {lines.map((line) => (
           <polyline
             key={line.key}
@@ -87,43 +105,46 @@ function ResponsePlot({ run }: { run: SimulationRun }) {
           />
         ))}
       </svg>
-      <details>
-        <summary>
-          Exact simulated values · {run.points.length} positions
-        </summary>
-        <div
-          className="incident-simulation-table"
-          tabIndex={0}
-          role="region"
-          aria-label="Scrollable simulated values"
-        >
-          <table>
-            <caption>
-              Dimensionless synthetic responses; no physical measurement units.
-            </caption>
-            <thead>
-              <tr>
-                <th scope="col">Position</th>
-                {lines.map((line) => (
-                  <th key={line.key} scope="col">
-                    {line.label}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {run.points.map((point) => (
-                <tr key={point.step}>
-                  <th scope="row">{point.position.toFixed(3)}</th>
+      {showTable && (
+        <details>
+          <summary>
+            Exact simulated values · {run.points.length} positions
+          </summary>
+          <div
+            className="incident-simulation-table"
+            tabIndex={0}
+            role="region"
+            aria-label="Scrollable simulated values"
+          >
+            <table>
+              <caption>
+                Dimensionless synthetic responses; no physical measurement
+                units.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Position</th>
                   {lines.map((line) => (
-                    <td key={line.key}>{point[line.key].toFixed(4)}</td>
+                    <th key={line.key} scope="col">
+                      {line.label}
+                    </th>
                   ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
+              </thead>
+              <tbody>
+                {run.points.map((point) => (
+                  <tr key={point.step}>
+                    <th scope="row">{point.position.toFixed(3)}</th>
+                    {lines.map((line) => (
+                      <td key={line.key}>{point[line.key].toFixed(4)}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      )}
     </div>
   );
 }

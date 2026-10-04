@@ -53,6 +53,11 @@
     12px "IBM Plex Sans",
     sans-serif;
 }
+.simulation-marker {
+  stroke: var(--text-selection);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+}
 .simulation-grid {
   stroke: var(--border-default);
   stroke-width: 1;
