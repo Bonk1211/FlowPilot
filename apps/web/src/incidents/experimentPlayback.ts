@@ -62,13 +62,14 @@ function levels(point: SimulationRun["points"][number]) {
   return {
     "visible-fluid-core": clamp(point.relative_mass),
     "spray-cone": clamp(point.coverage_fraction),
+    substrate_tray: clamp(point.coverage_fraction),
   };
 }
 
 function direction(value: number, baseline: number) {
   const change = value - baseline;
-  if (Math.abs(change) < 0.005) return "level with the baseline";
-  return `${fixed(Math.abs(change))} ${change < 0 ? "below" : "above"} the baseline`;
+  if (Math.abs(change) < 0.005) return "level with the control condition";
+  return `${fixed(Math.abs(change))} ${change < 0 ? "below" : "above"} the control condition`;
 }
 
 /** What one mechanism's saved simulation shows, for a short card summary. */
@@ -86,6 +87,7 @@ export function trackSummary(
   );
   return {
     severity: strongest.condition.parameters.severity,
+    controlSeverity: baseline.condition.parameters.severity,
     mass: end.relative_mass,
     baselineMass: reference.relative_mass,
     coverage: end.coverage_fraction,
@@ -134,8 +136,8 @@ export function experimentPlaybackSteps(
   const steps: PlaybackStep[] = [
     {
       id: "baseline",
-      title: "Without the fault",
-      narration: `The same plan with the fault not applied. Across the sequence the simulated mass stays near ${fixed(baseEnd.relative_mass)} and coverage near ${fixed(baseEnd.coverage_fraction)}. This is the reference the next steps are compared with.`,
+      title: "The control condition",
+      narration: `The plan's control condition for this mechanism, at severity ${fixed(baseline.condition.parameters.severity)} with the other settings held fixed. By the end of the sequence the simulated mass is ${fixed(baseEnd.relative_mass)} and coverage ${fixed(baseEnd.coverage_fraction)}. The tested conditions are compared with it.`,
       caution: SIMULATED,
       camera: "assembly_overview",
       modelNode: first,

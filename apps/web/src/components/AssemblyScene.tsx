@@ -63,6 +63,9 @@ function isDetailName(name: string) {
   );
 }
 
+const lowLevel = new THREE.Color(0xe0a23c);
+const fullLevel = new THREE.Color(0x35d6c8);
+
 function materials(mesh: THREE.Mesh) {
   return (
     Array.isArray(mesh.material) ? mesh.material : [mesh.material]
@@ -285,6 +288,10 @@ export default function AssemblyScene({
       }
       state.parts.traverse((object) => {
         if (!(object instanceof THREE.Mesh)) return;
+        if (object.name === "spray-cone") {
+          const width = 0.5 + 0.5 * (state.shown[object.name] ?? 1);
+          object.scale.set(width, 1, width);
+        }
         const owner = semanticOwner(object, state.parts);
         const active =
           !!owner && state.highlight.has(owner) && state.kind !== "none";
@@ -313,14 +320,19 @@ export default function AssemblyScene({
           material.transparent = faded || baseOpacity < 1;
           material.opacity = faded ? Math.min(baseOpacity, 0.16) : baseOpacity;
           material.depthWrite = !faded;
-          const level = state.shown[object.name];
+          const level = state.shown[object.name] ?? state.shown[owner];
           if (level !== undefined && !faded) {
             if (object.name === "spray-cone") {
               material.transparent = true;
-              material.opacity = 0.03 + 0.4 * level;
+              material.opacity = Math.min(1, 0.05 + 0.75 * level);
             } else if (material.emissive) {
-              material.emissive.setHex(0xe0a23c);
-              material.emissiveIntensity = 0.08 + 0.7 * level;
+              // Full levels glow teal; low levels dim toward amber.
+              material.emissive.copy(lowLevel).lerp(fullLevel, level);
+              // A large surface needs a gentler glow than a thin line.
+              material.emissiveIntensity =
+                owner === "substrate_tray"
+                  ? 0.05 + 0.55 * level
+                  : 0.2 + 1.4 * level;
             }
           }
         }

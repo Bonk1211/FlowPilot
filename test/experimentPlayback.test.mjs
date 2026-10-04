@@ -93,11 +93,11 @@ test("steps follow the strongest tested severity and read every number from the 
   );
   const last = script.steps.find((step) => step.id === "position-12");
   assert.match(last.narration, /severity 0\.80/);
-  assert.match(last.narration, /mass is 0\.48 \(0\.52 below the baseline\)/);
+  assert.match(last.narration, /mass is 0\.48 \(0\.52 below the control condition\)/);
   assert.equal(last.position, 1);
   assert.ok(Math.abs(last.partStates["visible-fluid-core"] - 0.48) < 1e-9);
   const start = script.steps.find((step) => step.id === "position-0");
-  assert.match(start.narration, /level with the baseline/);
+  assert.match(start.narration, /level with the control condition/);
 });
 
 test("the mechanism step highlights its components and frames the camera on the nozzle", () => {
@@ -177,6 +177,7 @@ test("the card summary compares the strongest run with its baseline", () => {
   assert.equal(summary.severity, 0.8);
   assert.ok(Math.abs(summary.mass - 0.48) < 1e-9);
   assert.equal(summary.baselineMass, 1);
+  assert.equal(summary.controlSeverity, 0.7);
   assert.equal(summary.mainEffect, -0.2);
   assert.equal(trackSummary(experiment(), "unstable_delivery"), null);
 });
