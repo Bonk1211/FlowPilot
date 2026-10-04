@@ -168,6 +168,3 @@ export async function downloadIncidentFile(path: string, filename: string) {
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-
-export const downloadIncidentReport = (id: string) =>
-  downloadIncidentFile(incidentReportUrl(id), `${id}-report.md`);

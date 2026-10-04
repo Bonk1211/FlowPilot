@@ -640,16 +640,15 @@ def save_incident(incident: Incident, expected_revision: int, actor: str | None 
     return saved
 
 
-def report_markdown(incident: Incident, communications=(), experiments=()) -> str:
+def report_markdown(incident: Incident, experiments=()) -> str:
     snapshot = digest(
         {
             "incident": incident.model_dump(mode="json"),
-            "communications": [item.model_dump(mode="json") for item in communications],
             "experiments": [item.model_dump(mode="json") for item in experiments],
         }
     )
     lines = [
-        f"# Incident {incident.id}",
+        f"# Technical assessment report — {incident.id}",
         "",
         f"Recorded revision: {incident.revision}",
         f"Report snapshot SHA-256: {snapshot}",
@@ -715,9 +714,10 @@ def report_markdown(incident: Incident, communications=(), experiments=()) -> st
                     f"Sources: {', '.join(check.source_refs)}.",
                 ]
             )
-    if incident.conversation:
+    assessment_turns = [turn for turn in incident.conversation if turn.node_ids or turn.sources]
+    if assessment_turns:
         lines.extend(["", "## Investigation conversation", ""])
-        for turn in incident.conversation:
+        for turn in assessment_turns:
             lines.extend(
                 [
                     f"- {turn.id} at {turn.recorded_at}; {turn.input_mode}; {turn.author}; "
@@ -921,56 +921,4 @@ def report_markdown(incident: Incident, communications=(), experiments=()) -> st
         )
     else:
         lines.append("Investigation open; no final conclusion.")
-    if incident.learning:
-        lines.extend(
-            [
-                "",
-                "## Reviewed learning",
-                "",
-                f"Status: {incident.learning.status}; "
-                f"source revision {incident.learning.source_revision}.",
-                "Recorded source fingerprint: " + incident.learning.source_fingerprint,
-                *[
-                    f"- Review {review.version}: {review.decision} by {review.reviewer} "
-                    f"at {review.timestamp}; {review.notes}"
-                    for review in incident.learning.reviews
-                ],
-            ]
-        )
-    lines.extend(
-        ["", "## Handoff (draft only)", "", incident.handoff.subject, "", incident.handoff.body]
-    )
-    if communications:
-        lines.extend(["", "## Communication snapshots", ""])
-        for message in communications:
-            label = "SIMULATED — no email sent" if message.transport == "mock" else "SMTP"
-            lines.extend(
-                [
-                    f"### {message.id} — {label}",
-                    "",
-                    f"Status: {message.status}; communication revision: {message.revision}; "
-                    f"incident revision: {message.incident_revision}; "
-                    f"draft version: {message.draft_version}.",
-                    f"Approval: {message.approved_by} at {message.approved_at}.",
-                    "Recipients: " + ", ".join(message.recipients),
-                    *[
-                        f"- Attempt {attempt.number}: {attempt.status}; {attempt.detail}"
-                        for attempt in message.attempts
-                    ],
-                    *[
-                        f"- Receipt: {receipt.status}; {receipt.reference}; "
-                        f"recorded by {receipt.actor}; {receipt.notes}"
-                        for receipt in message.receipts
-                    ],
-                    "",
-                    "Preserved communication content:",
-                    "",
-                    message.subject,
-                    "",
-                    message.body,
-                    "",
-                ]
-            )
-    lines.extend(["", "## Application audit", ""])
-    lines.extend(f"- r{e.revision} {e.timestamp}: {e.detail}" for e in incident.history)
     return "\n".join(lines) + "\n"

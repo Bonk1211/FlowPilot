@@ -78,14 +78,11 @@ def action(
 
 @router.get("/{incident_id}/report.md")
 def report(incident_id: str):
-    from flowpilot.incidents.communication import list_communications
     from flowpilot.incidents.experiments import list_plans
 
     incident = get_incident(incident_id)
     return Response(
-        report_markdown(
-            incident, list_communications(incident_id, None), list_plans(incident_id, None)
-        ),
+        report_markdown(incident, experiments=list_plans(incident_id, None)),
         media_type="text/markdown; charset=utf-8",
         headers={
             "Content-Disposition": f'attachment; filename="{incident.id}-r{incident.revision}.md"'

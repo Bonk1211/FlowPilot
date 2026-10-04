@@ -167,6 +167,28 @@ class DiagnosticAssessment(Contract):
 REFERENCE = "docs/Asymtek_S932_Consolidated_Reference.md"
 SOURCE_SEEDS = [
     SourcePassage(
+        id="s932-records",
+        document_id="S932-CONSOLIDATED",
+        revision="1.0 (2026-09-30)",
+        title="Recipe and controller record availability",
+        section="13.1",
+        file_path=REFERENCE,
+        configurations=["S932"],
+        authority="secondary_summary",
+        approval_status="unverified",
+        passage=(
+            "These are labels and concepts reported by the conversations, not a verified export "
+            "schema. Availability, sampling rate, clock alignment, permissions and "
+            "machine/software applicability must be established from actual files or interfaces. "
+            "“Actual pressure” "
+            "may be a separate instrument reading rather than a logged sensor channel."
+        ),
+        limitation=(
+            "Candidate recipe and event fields are unverified; missing logs cannot exclude "
+            "software faults."
+        ),
+    ),
+    SourcePassage(
         id="s932-defects",
         document_id="S932-CONSOLIDATED",
         revision="1.0 (2026-09-30)",
@@ -690,6 +712,8 @@ def analyze(
         if field.status in {"missing", "unknown"}
     ]
     unresolved = unknowns + [
+        "Software remains open: compare recipe/parameter records and controller logs; "
+        "the scored mechanisms below cover hardware and material conditions.",
         "Controlled operating methods and original source revisions are unavailable.",
         "Occurrence, inspection escape and systemic causes require separate review.",
     ]
@@ -698,7 +722,8 @@ def analyze(
         if step.kind in {"review", "escalate"}
         else ("insufficient_evidence" if not records or unanswered else "investigating"),
         summary=(
-            "Three competing mechanisms remain under investigation. "
+            "Investigate hardware and software, then narrow with evidence. "
+            "Three hardware/material mechanisms are currently assessed. "
             "Synthetic results demonstrate branching, not real-machine diagnostic accuracy."
         ),
         hypotheses=hypotheses,
@@ -842,8 +867,10 @@ evidence, and explain what the allowed answers would support, weaken or leave un
 Match the existing target_fact and its exact option meanings; never rephrase a single-fact
 question into a compound question whose answers no longer have those meanings.
 For a defined target_fact, copy choices, hypothesis_ids and component_ids from its supplied
-fact_definition exactly. Rival explanations may appear in why, but must not change that fact's
-hypothesis/component mapping. Cite only the supplied evidence and applicable source IDs.
+fact_definition exactly, including its branch. Hardware and software remain open possibilities;
+software record questions may have no scored hypothesis IDs. Rival explanations may appear
+in why, but must not change that fact's hypothesis/component mapping. Cite only the supplied
+evidence and applicable source IDs.
 Every prompt must explicitly mention existing records, logs, images, samples or notes.
 Rewrite the technician-facing prompt around the specific affected samples, time interval,
 recorded change or conflicting records in THIS incident. Do not simply copy a fact definition's
@@ -1038,7 +1065,13 @@ async def interpret_answer(incident, node, answer, fingerprint, generate=None, s
 
 
 def question_payload(incident, baseline):
-    from flowpilot.incidents.graph import FACTS, current_answers, facts, question_for
+    from flowpilot.incidents.graph import (
+        FACTS,
+        SOFTWARE_FACTS,
+        current_answers,
+        facts,
+        question_for,
+    )
     from flowpilot.incidents.models import AnswerChoice
     from flowpilot.incidents.service import active_evidence, active_observations
 
@@ -1049,7 +1082,16 @@ def question_payload(incident, baseline):
     ]
     observations = [item.model_dump(mode="json") for item in active_observations(incident)]
     known = facts(incident)
-    definitions = {key: question_for(key, incident.assessment) for key in FACTS if key not in known}
+    definitions = {
+        key: question_for(key, incident.assessment, baseline.branch)
+        for key in FACTS
+        if key not in known
+        and (
+            key in SOFTWARE_FACTS
+            if baseline.branch == "software"
+            else key not in SOFTWARE_FACTS[:2]
+        )
+    }
     reference_choices = [
         AnswerChoice(
             value="observed",
@@ -1111,7 +1153,6 @@ async def generate_questions(incident, baseline, fingerprint, generate=None, set
 def validate_questions(result, payload, metadata):
     import re
 
-    from flowpilot.incidents.graph import FACT_HYPOTHESES
     from flowpilot.incidents.models import AnswerChoice, InvestigationQuestion
 
     known = payload["known_facts"]
@@ -1141,7 +1182,12 @@ def validate_questions(result, payload, metadata):
             and metadata.retrieval.status == "retrieved"
             and set(candidate.source_refs).intersection(metadata.retrieval.source_refs)
         ):
-            definition = candidate.model_copy(update={"choices": reference_choices})
+            definition = candidate.model_copy(
+                update={
+                    "choices": reference_choices,
+                    "branch": payload["eligible_baseline"].get("branch", "hardware"),
+                }
+            )
         text = " ".join(
             [
                 candidate.prompt,
@@ -1154,7 +1200,11 @@ def validate_questions(result, payload, metadata):
             text,
             re.I,
         )
-        allowed_hypotheses = set(FACT_HYPOTHESES.get(candidate.target_fact, HYPOTHESES))
+        allowed_hypotheses = set(
+            definitions[candidate.target_fact].hypothesis_ids
+            if candidate.target_fact in definitions
+            else HYPOTHESES
+        )
         allowed_components = {
             component for key in allowed_hypotheses for component in HYPOTHESES[key][2]
         }
@@ -1169,7 +1219,7 @@ def validate_questions(result, payload, metadata):
             and candidate.id not in ids
             and set(values) == {choice.value for choice in definition.choices}
             and len(values) == len(set(values))
-            and bool(candidate.hypothesis_ids)
+            and (bool(candidate.hypothesis_ids) or not allowed_hypotheses)
             and set(candidate.hypothesis_ids) <= allowed_hypotheses
             and set(candidate.component_ids) <= allowed_components
             and set(candidate.evidence_ids) <= valid_ids
@@ -1186,6 +1236,7 @@ def validate_questions(result, payload, metadata):
             continue
         # Model wording cannot silently change a structured option's diagnostic meaning.
         candidate.choices = definition.choices
+        candidate.branch = definition.branch
         ids.add(candidate.id)
         if candidate.id == result.preferred_id:
             preferred = f"generated_{candidate.target_fact}"

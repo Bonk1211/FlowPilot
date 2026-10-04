@@ -33,6 +33,8 @@ QUESTION_TYPES = {
 }
 
 FACT_QUESTION_TYPES: dict[str, QuestionType] = {
+    "recipe_change": "what",
+    "controller_events": "what",
     "frequency": "when",
     "material": "which",
     "coverage": "what",

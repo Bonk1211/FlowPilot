@@ -8,6 +8,24 @@
   min-width: 0;
   margin-bottom: 20px;
 }
+.investigation-branch-navigation {
+  display: none;
+}
+@media (max-width: 850px) {
+  .investigation-branch-navigation {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .investigation-branch-navigation button {
+    flex: 1;
+    min-height: 44px;
+  }
+  .investigation-branch-navigation button[aria-pressed="true"] {
+    border-color: var(--text-secondary);
+    font-weight: 600;
+  }
+}
 .incident-investigation-page.incident-timeline-page .incident-main {
   overflow: hidden;
 }

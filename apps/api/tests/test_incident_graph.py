@@ -42,7 +42,11 @@ def answer(client, incident, value=None, **kwargs):
 def test_root_saved_answer_branches_selection_reload_and_correction(client):
     incident = act(client, replay(client), "analyze")
     root = active(incident)
-    assert len(incident["investigation"]["nodes"]) == 1
+    assert len(incident["investigation"]["nodes"]) == 2
+    assert {node["branch"] for node in incident["investigation"]["nodes"]} == {
+        "hardware",
+        "software",
+    }
     assert root["target_fact"] == "frequency"
     assert root["question_type"] == "when"
     legacy = {key: value for key, value in root.items() if key != "question_type"}
@@ -130,6 +134,85 @@ def test_replaced_evidence_supersedes_dependent_answers_and_retains_originals(cl
     )
 
 
+def test_software_branch_records_evidence_keeps_hardware_open_and_survives_correction(client):
+    incident = act(client, replay(client), "analyze")
+    hardware = active(incident)
+    software = next(
+        node for node in incident["investigation"]["nodes"] if node["branch"] == "software"
+    )
+    assert software["parent_id"] is None
+    assert software["hypothesis_ids"] == []
+    incident = act(client, incident, "select_investigation", node_id=software["id"])
+    assert incident["investigation"]["answers"] == []
+    incident = answer(client, incident, "changed")
+    original = incident["investigation"]["answers"][0]
+    assert active(incident)["target_fact"] == "controller_events"
+    assert active(incident)["branch"] == "software"
+    assert all(h["status"] == "possible" for h in incident["assessment"]["hypotheses"])
+    assert all(
+        node["hypothesis_ids"] == []
+        for node in incident["investigation"]["nodes"]
+        if node["branch"] == "software"
+    )
+    for value in ("absent", "unknown", "not_comparable"):
+        incident = answer(client, incident, value)
+    step = incident["assessment"]["next_step"]
+    assert step["kind"] == "review"
+    assert (
+        next(node for node in incident["investigation"]["nodes"] if node["id"] == step["id"])[
+            "target_fact"
+        ]
+        == "software_review"
+    )
+    assert client.get(f"/api/incidents/{incident['id']}").json() == incident
+    assert (
+        next(node for node in incident["investigation"]["nodes"] if node["id"] == hardware["id"])[
+            "status"
+        ]
+        == "proposed"
+    )
+    incident = act(client, incident, "select_investigation", node_id=hardware["id"])
+    assert active(incident)["target_fact"] == "frequency"
+    incident = act(
+        client,
+        incident,
+        "answer_investigation",
+        answer_id=f"ANS-{uuid4()}",
+        node_id=software["id"],
+        choice="unchanged",
+        supersedes_id=original["id"],
+    )
+    assert active(incident)["branch"] == "software"
+    assert incident["investigation"]["answers"][0] == original
+    assert graph.facts(service.get_incident(incident["id"]))["recipe_change"] == "unchanged"
+
+
+def test_older_hardware_path_gains_software_branch_without_replacing_answers(client):
+    incident = answer(client, act(client, replay(client), "analyze"), "intermittent")
+    saved = service.get_incident(incident["id"])
+    saved.investigation.nodes = [
+        node for node in saved.investigation.nodes if node.branch != "software"
+    ]
+    ids = {node.id for node in saved.investigation.nodes}
+    for expansion in saved.investigation.expansions:
+        expansion.child_ids = [node_id for node_id in expansion.child_ids if node_id in ids]
+    previous = saved.investigation.active_node_id
+    answers = saved.investigation.answers.copy()
+    asyncio.run(
+        graph.advance(saved, "legacy-branch-update", settings=Settings(reasoning_enabled=False))
+    )
+    assert saved.investigation.active_node_id == previous
+    assert saved.investigation.answers == answers
+    software = [node for node in saved.investigation.nodes if node.branch == "software"]
+    assert len(software) == 1
+    assert software[0].parent_id is None
+    assert software[0].status == "proposed"
+    asyncio.run(
+        graph.advance(saved, "legacy-branch-update", settings=Settings(reasoning_enabled=False))
+    )
+    assert len([node for node in saved.investigation.nodes if node.branch == "software"]) == 1
+
+
 def test_raw_text_stays_saved_without_invented_observations(client):
     incident = act(client, replay(client), "analyze")
     incident = answer(client, incident, text="It seems odd, maybe sometimes")
@@ -201,7 +284,7 @@ def test_late_expansion_cannot_override_a_corrected_answer(client):
 
     assert coordinator.process_next_job("analysis", concurrent).state == "superseded"
     current = service.get_incident(saved.id)
-    assert len(current.investigation.nodes) == 1
+    assert len(current.investigation.nodes) == 2
     current = service.act(current.id, SimpleAction(action="analyze", revision=current.revision))
     assert active(current.model_dump(mode="json"))["target_fact"] == "material_condition"
 

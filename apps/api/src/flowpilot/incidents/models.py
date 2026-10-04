@@ -158,6 +158,7 @@ class AnswerChoice(Contract):
 
 class InvestigationQuestion(Contract):
     id: str = Field(min_length=1, max_length=100, pattern=r"^[A-Za-z0-9_.:-]+$")
+    branch: Literal["hardware", "software"] = "hardware"
     kind: Literal["question", "check", "review", "escalate"] = "question"
     target_fact: str = Field(min_length=1, max_length=100)
     prompt: str = Field(min_length=1, max_length=500)
@@ -272,6 +273,7 @@ class InvestigationConversationTurn(Contract):
     id: str
     text: str
     input_mode: Literal["text", "voice"]
+    hands_free: bool = False
     reply: str
     intent: Literal["answer", "switch", "discuss", "clarify", "confirm", "cancel"]
     node_ids: list[str] = Field(default_factory=list)

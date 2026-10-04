@@ -89,8 +89,10 @@ test("configured access gates loading, preserves the tab session, and signs out"
   ).toBeVisible();
   const download = page.waitForEvent("download");
   await page.getByRole("link", { name: "Export report", exact: true }).click();
-  expect((await download).suggestedFilename()).toBe(`${incident.id}-report.md`);
-  expect(requests.some((path) => path.endsWith("/report.md"))).toBeTruthy();
+  expect((await download).suggestedFilename()).toMatch(
+    new RegExp(`${incident.id}-r[0-9]+-handoff.html`),
+  );
+  expect(requests.some((path) => path.endsWith("/experiments"))).toBeTruthy();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Sign in to investigate" }),

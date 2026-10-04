@@ -1,4 +1,4 @@
-"""Route conversational answers, then confirm them through the saved graph's rules."""
+"""Route conversational answers through the saved graph's rules."""
 
 import re
 from typing import Literal
@@ -25,6 +25,7 @@ class ConversationRequest(Contract):
     turn_id: str = Field(pattern=r"^TURN-[A-Za-z0-9-]{1,64}$")
     text: str = Field(min_length=1, max_length=2000, pattern=r"(?s).*\S.*")
     input_mode: Literal["text", "voice"] = "text"
+    hands_free: bool = False
     spotlight_node_id: str | None = Field(default=None, max_length=100)
 
 
@@ -51,7 +52,7 @@ An uncertain possibility is discussion, never an observation. If multiple nodes 
 clarifying question. Bare yes/no is ambiguous unless the saved question makes it unambiguous.
 Never silently overwrite an answered node: ask the technician to use its correction control.
 For switching without an answer, return switch and one eligible node_id. For a clear answer,
-return answer and its mappings; a separate technician confirmation will be required.
+return answer and its mappings. The application handles recording and any confirmation.
 Use brief, natural replies grounded in the saved evidence and question rationale. For discussion,
 identify relevant nodes and explain what evidence would distinguish the possibilities.
 Never invent observations, a confirmed cause, machine instructions, tests, adjustments or limits.
@@ -160,12 +161,46 @@ def validate_plan(incident, request, plan, source_ids=None):
         raise ValueError("Unsupported source citation")
 
 
+def record_answers(incident, mappings, turn_id, actor):
+    work = incident.model_copy(deep=True)
+    work.revision += 1
+    for index, mapping in enumerate(mappings):
+        if work.investigation.active_node_id != mapping.node_id:
+            graph.apply_graph_action(
+                work,
+                SelectInvestigationAction(
+                    action="select_investigation",
+                    revision=work.revision,
+                    node_id=mapping.node_id,
+                ),
+                actor,
+            )
+        graph.apply_graph_action(
+            work,
+            AnswerInvestigationAction(
+                action="answer_investigation",
+                revision=work.revision,
+                answer_id=f"ANS-{turn_id.removeprefix('TURN-')}-{index}",
+                node_id=mapping.node_id,
+                choice=mapping.choice,
+            ),
+            actor,
+        )
+    service.invalidate_conclusion(work)
+    service.refresh_draft(work)
+    return work
+
+
 async def converse(incident_id, request, actor, settings=None, generate=None):
     settings = settings or Settings()
     incident = service.get_incident(incident_id)
     previous = next((turn for turn in incident.conversation if turn.id == request.turn_id), None)
     if previous:
-        if previous.text != request.text or previous.input_mode != request.input_mode:
+        if (
+            previous.text != request.text
+            or previous.input_mode != request.input_mode
+            or previous.hands_free != request.hands_free
+        ):
             raise HTTPException(409, "This turn ID was already used for different content.")
         return incident
     if incident.revision != request.revision:
@@ -204,37 +239,8 @@ async def converse(incident_id, request, actor, settings=None, generate=None):
                 "Please answer again against the current question."
             )
         else:
-            work = incident.model_copy(deep=True)
             try:
-                work.revision += 1
-                for index, mapping in enumerate(pending.mappings):
-                    node = next(
-                        item for item in work.investigation.nodes if item.id == mapping.node_id
-                    )
-                    if work.investigation.active_node_id != node.id:
-                        graph.apply_graph_action(
-                            work,
-                            SelectInvestigationAction(
-                                action="select_investigation",
-                                revision=work.revision,
-                                node_id=node.id,
-                            ),
-                            actor,
-                        )
-                    graph.apply_graph_action(
-                        work,
-                        AnswerInvestigationAction(
-                            action="answer_investigation",
-                            revision=work.revision,
-                            answer_id=f"ANS-{request.turn_id.removeprefix('TURN-')}-{index}",
-                            node_id=node.id,
-                            choice=mapping.choice,
-                        ),
-                        actor,
-                    )
-                incident = work
-                service.invalidate_conclusion(incident)
-                service.refresh_draft(incident)
+                incident = record_answers(incident, pending.mappings, request.turn_id, actor)
                 status, changed = "recorded", True
                 mappings, node_ids = pending.mappings, [item.node_id for item in pending.mappings]
                 reply = "Recorded your confirmed answer. I'm preparing the next useful question."
@@ -320,21 +326,33 @@ async def converse(incident_id, request, actor, settings=None, generate=None):
         ]
         mappings = plan.mappings
         if intent == "answer":
-            status = "pending"
-            catalogue = {node.id: node for node in available_nodes(incident)}
-            descriptions = []
-            for mapping in mappings:
-                node = catalogue[mapping.node_id]
-                label = next(
-                    choice.label for choice in node.choices if choice.value == mapping.choice
+            if request.hands_free and request.input_mode == "voice":
+                try:
+                    incident = record_answers(incident, mappings, request.turn_id, actor)
+                    status, changed = "recorded", True
+                    reply = "Answer recorded. Moving to the next question."
+                except HTTPException:
+                    intent, status = "clarify", "clarification"
+                    reply = (
+                        "That branch now needs review or has a pending answer. "
+                        "Resolve it before recording this answer."
+                    )
+            else:
+                status = "pending"
+                catalogue = {node.id: node for node in available_nodes(incident)}
+                descriptions = []
+                for mapping in mappings:
+                    node = catalogue[mapping.node_id]
+                    label = next(
+                        choice.label for choice in node.choices if choice.value == mapping.choice
+                    )
+                    descriptions.append(f"{node.prompt} → {label}")
+                reply = (
+                    "I heard: "
+                    + "; ".join(descriptions)
+                    + ". Say ‘confirm’ to record, or ‘cancel’ to correct me."
                 )
-                descriptions.append(f"{node.prompt} → {label}")
             node_ids = [mapping.node_id for mapping in mappings]
-            reply = (
-                "I heard: "
-                + "; ".join(descriptions)
-                + ". Say ‘confirm’ to record, or ‘cancel’ to correct me."
-            )
         elif intent == "switch":
             work = incident.model_copy(deep=True)
             try:
@@ -363,6 +381,7 @@ async def converse(incident_id, request, actor, settings=None, generate=None):
             id=request.turn_id,
             text=request.text,
             input_mode=request.input_mode,
+            hands_free=request.hands_free,
             reply=reply,
             intent=intent,
             node_ids=node_ids,

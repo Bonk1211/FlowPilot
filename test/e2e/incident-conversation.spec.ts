@@ -436,7 +436,7 @@ test("chat routes another node and preserves the confirmed conversation on reloa
   });
 });
 
-test("hands-free sends only committed speech, accepts spoken confirmation and closes the microphone session", async ({
+test("hands-free records committed answers once, advances nodes without confirmation and closes the microphone session", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1080 });
@@ -496,9 +496,7 @@ test("hands-free sends only committed speech, accepts spoken confirmation and cl
     "intermittent",
   );
   const voice = graph.locator(".investigation-conversation.is-voice");
-  await expect(
-    voice.getByText("Hands-free session", { exact: true }),
-  ).toBeVisible();
+  await expect(voice.locator(".voice-message-heading > strong")).toBeVisible();
   await expect(voice.locator(".voice-waveform > span")).toHaveCount(28);
   await expect(voice).toHaveCSS("background-color", "rgb(255, 255, 255)");
   const averageScale = () =>
@@ -535,7 +533,7 @@ test("hands-free sends only committed speech, accepts spoken confirmation and cl
   await expect(voice.locator("time")).not.toHaveText("0:00");
   await expect(
     voice.getByRole("button", { name: "Stop voice input" }),
-  ).toContainText("End session");
+  ).toContainText("Stop");
   await voice.screenshot({
     path: testInfo.outputPath("voice-card-desktop.png"),
   });
@@ -558,16 +556,33 @@ test("hands-free sends only committed speech, accepts spoken confirmation and cl
   });
   await page.setViewportSize({ width: 1440, height: 1080 });
   expect(requests).toHaveLength(0);
+  const recordedResponse = page.waitForResponse("**/conversation");
   emit!("It is intermittent");
-  await expect(graph.locator(".conversation-reply")).toContainText(
-    "Say ‘confirm’",
+  const recorded: Incident = await (await recordedResponse).json();
+  expect(recorded.conversation?.at(-1)?.status).toBe("recorded");
+  expect(recorded.conversation?.at(-1)?.hands_free).toBe(true);
+  expect(recorded.investigation?.answers.at(-1)?.confirmed_value).toBe(
+    "intermittent",
   );
-  await expect(graph.locator(".voice-message-time")).toContainText("Listening");
-  emit!("Confirm my answer.");
+  await expect(graph.locator(".conversation-reply")).toContainText(
+    "Answer recorded",
+  );
+  await expect(
+    graph.getByRole("button", { name: "Confirm answer" }),
+  ).toHaveCount(0);
   await expect(
     graph.locator(".flowchart-node.is-spotlight button"),
   ).toHaveAttribute("title", new RegExp("pressure"));
-  expect(requests).toEqual(["It is intermittent", "Confirm my answer."]);
+  await expect(graph.locator(".voice-message-time")).toContainText("Listening");
+  const nextResponse = page.waitForResponse("**/conversation");
+  emit!("stable");
+  const next: Incident = await (await nextResponse).json();
+  expect(next.investigation?.answers.at(-1)?.node_id).toBe(
+    recorded.investigation?.active_node_id,
+  );
+  expect(next.investigation?.answers.at(-1)?.confirmed_value).toBe("stable");
+  expect(next.investigation?.answers).toHaveLength(2);
+  expect(requests).toEqual(["It is intermittent", "stable"]);
   await expect(graph.locator(".voice-message-time")).toContainText("Listening");
   expect(
     await page.evaluate(() => (window as SpeechTestWindow).speechTest.replies),
@@ -586,7 +601,7 @@ test("hands-free sends only committed speech, accepts spoken confirmation and cl
   await expect(graph.locator(".conversation-status")).toContainText("paused");
 });
 
-test("hands-free shows conversational stages, highlights speech and supports interrupt and replay on mobile", async ({
+test("compact hands-free preserves live transcription, speech highlighting, interrupt and replay", async ({
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1080 });
@@ -609,51 +624,51 @@ test("hands-free shows conversational stages, highlights speech and supports int
   });
   await graph.getByRole("switch", { name: "Hands-free" }).click();
   await expect(voice).toHaveAttribute("data-voice-phase", "listening");
+  await expect(voice.locator(".voice-message-time")).toContainText("Listening");
   await expect(
-    voice.getByRole("heading", { name: "Tell me what you see." }),
-  ).toBeVisible();
+    voice.locator(".hands-free-stage, .hands-free-orb, .hands-free-steps"),
+  ).toHaveCount(0);
+  expect((await voice.boundingBox())!.height).toBeLessThan(230);
   emit("intermittent", "partial_transcript");
-  await expect(
-    voice.getByText("Hearing you live", { exact: true }),
-  ).toBeVisible();
+  await expect(voice.locator(".voice-message-transcript")).toHaveText(
+    "intermittent",
+  );
   await voice.screenshot({
     path: testInfo.outputPath("hands-free-listening.png"),
   });
   emit("intermittent");
   await expect(voice).toHaveAttribute("data-voice-phase", "thinking");
-  await expect(voice.locator(".hands-free-steps [aria-current]")).toHaveText(
-    "Think",
-  );
+  await expect(voice.locator(".voice-message-time")).toContainText("Thinking");
   await expect(
     voice.getByRole("button", { name: "Stop voice input" }),
   ).toBeEnabled();
   release();
   await expect(voice).toHaveAttribute("data-voice-phase", "speaking");
-  await expect(voice.locator(".hands-free-steps [aria-current]")).toHaveText(
-    "Reply",
-  );
+  await expect(voice.locator(".voice-message-time")).toContainText("Speaking");
   await page.evaluate(() => {
     const utterance = (window as SpeechTestWindow).speechTest.active!;
     utterance.dispatchEvent(
       new SpeechSynthesisEvent("boundary", {
         utterance,
         name: "word",
-        charIndex: 2,
-        charLength: 5,
+        charIndex: 7,
+        charLength: 8,
       }),
     );
   });
-  await expect(voice.locator(".conversation-reply mark")).toHaveText("heard");
+  await expect(voice.locator(".conversation-reply mark")).toHaveText(
+    "recorded",
+  );
   await voice.screenshot({
     path: testInfo.outputPath("hands-free-speaking-desktop.png"),
   });
   const interrupt = voice.getByRole("button", { name: "Interrupt reply" });
   await interrupt.focus();
   await page.keyboard.press("Enter");
-  await expect(voice).toHaveAttribute("data-voice-phase", "confirming");
+  await expect(voice).toHaveAttribute("data-voice-phase", "listening");
   await expect(
-    voice.getByRole("heading", { name: "Did I get that right?" }),
-  ).toBeVisible();
+    voice.getByRole("button", { name: "Confirm answer" }),
+  ).toHaveCount(0);
   await expect(voice.locator(".conversation-reply mark")).toHaveCount(0);
   expect(
     await page.evaluate(
@@ -694,7 +709,7 @@ test("hands-free shows conversational stages, highlights speech and supports int
     ).toBe(true);
   }
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await expect(voice.locator(".hands-free-orb-ring")).toHaveCSS(
+  await expect(voice.locator(".voice-waveform > span").first()).toHaveCSS(
     "animation-name",
     "none",
   );
@@ -708,10 +723,11 @@ test("hands-free shows conversational stages, highlights speech and supports int
     voice.getByRole("button", { name: "Stop voice input" }),
   ).toBeInViewport();
   await voice.getByRole("button", { name: "Conversation history" }).click();
-  // A button answer also interrupts playback, without waiting for its final word.
-  await voice.getByRole("button", { name: "Correct me" }).click();
-  await expect(voice.locator(".conversation-reply")).toContainText("Discarded");
-  expect(requests).toBe(2);
+  await voice.getByRole("button", { name: "Stop voice input" }).click();
+  expect(
+    await page.evaluate(() => (window as SpeechTestWindow).speechTest.active),
+  ).toBeNull();
+  expect(requests).toBe(1);
 });
 
 test("hands-free speaks saved replies, suppresses feedback, recovers playback errors and keeps dictation silent", async ({
@@ -769,7 +785,7 @@ test("hands-free speaks saved replies, suppresses feedback, recovers playback er
     ),
   ).toBe(true);
 
-  emit("cancel");
+  emit("not sure");
   await expect(status).toContainText("Speaking");
   await page.evaluate(() =>
     (window as SpeechTestWindow).speechTest.finish(true),
@@ -784,7 +800,7 @@ test("hands-free speaks saved replies, suppresses feedback, recovers playback er
     ),
   ).toBe(true);
 
-  emit("sudden");
+  emit("switch to material");
   await expect(status).toContainText("Speaking");
   await toggle.click();
   await expect(toggle).not.toBeChecked();
@@ -797,12 +813,24 @@ test("hands-free speaks saved replies, suppresses feedback, recovers playback er
       () => (window as SpeechTestWindow).speechTest.track?.enabled,
     ),
   ).toBe(true);
+  emit("flux");
+  await expect(graph.locator(".voice-message-transcript")).toHaveText("flux");
+  emit("send message");
+  await expect(graph.locator(".conversation-reply")).toContainText(
+    "Say ‘confirm’",
+  );
   emit("cancel");
   await expect(graph.locator(".conversation-reply")).toContainText("Discarded");
   expect(
     await page.evaluate(() => (window as SpeechTestWindow).speechTest.replies),
   ).toHaveLength(3);
-  expect(requests).toEqual(["intermittent", "cancel", "sudden", "cancel"]);
+  expect(requests).toEqual([
+    "intermittent",
+    "not sure",
+    "switch to material",
+    "flux",
+    "cancel",
+  ]);
 });
 
 for (const action of ["stop", "hide", "navigate"] as const) {
@@ -918,11 +946,13 @@ test("hands-free keeps listening when browser speech synthesis is unavailable", 
     "Spoken replies are unavailable",
   );
   await expect(graph.locator(".conversation-reply")).toContainText(
-    "Say ‘confirm’",
+    "Answer recorded",
   );
   await expect(graph.locator(".voice-message-time")).toContainText("Listening");
-  emit("cancel");
-  await expect(graph.locator(".conversation-reply")).toContainText("Discarded");
+  const nextResponse = page.waitForResponse("**/conversation");
+  emit("stable");
+  const next: Incident = await (await nextResponse).json();
+  expect(next.investigation?.answers).toHaveLength(2);
 });
 
 test("voice card sends the live dictated text and keeps its voice provenance", async ({

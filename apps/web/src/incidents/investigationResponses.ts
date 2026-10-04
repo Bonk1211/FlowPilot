@@ -4,6 +4,14 @@ import type {
 } from "@flowpilot/contracts";
 
 const statements: Record<string, Record<string, string>> = {
+  recipe_change: {
+    changed: "A recipe or parameter change is recorded.",
+    unchanged: "No recipe or parameter change is recorded.",
+  },
+  controller_events: {
+    present: "Controller errors or sequence interruptions are recorded.",
+    absent: "No controller errors or sequence interruptions are recorded.",
+  },
   frequency: {
     progressive: "The defect develops progressively.",
     intermittent: "The defect occurs intermittently.",

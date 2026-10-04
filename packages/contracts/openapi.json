@@ -1772,6 +1772,11 @@
       "ConversationRequest": {
         "additionalProperties": false,
         "properties": {
+          "hands_free": {
+            "default": false,
+            "title": "Hands Free",
+            "type": "boolean"
+          },
           "input_mode": {
             "default": "text",
             "enum": [
@@ -6059,6 +6064,11 @@
               }
             ]
           },
+          "hands_free": {
+            "default": false,
+            "title": "Hands Free",
+            "type": "boolean"
+          },
           "id": {
             "title": "Id",
             "type": "string"
@@ -6380,6 +6390,15 @@
               }
             ],
             "title": "Blocked Reason"
+          },
+          "branch": {
+            "default": "hardware",
+            "enum": [
+              "hardware",
+              "software"
+            ],
+            "title": "Branch",
+            "type": "string"
           },
           "choices": {
             "items": {

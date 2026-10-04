@@ -27,8 +27,6 @@ import {
 import {
   actOnIncident,
   createIncident,
-  downloadIncidentReport,
-  incidentReportUrl,
   listIncidents,
   loadIncident,
   startReplay,
@@ -37,6 +35,7 @@ import {
   type Incident,
   type IncidentCommand,
 } from "./api";
+import { downloadIncidentReport } from "./reportExports";
 import { EvidenceExplorer } from "./EvidenceExplorer";
 import { displayTime } from "./time";
 import { MechanismView } from "./MechanismView";
@@ -750,7 +749,7 @@ function IncidentWorkspaceContent({
                   </span>
                   <a
                     className="incident-button-link"
-                    href={incidentReportUrl(incident.id)}
+                    href={incidentPageUrl(incident.id, "handoff")}
                     download
                     onClick={(event) => {
                       event.preventDefault();

@@ -164,7 +164,7 @@ test("incident replay preserves the early handoff, branches, exports and survive
   const file = await download;
   const text = await readFile((await file.path())!, "utf8");
   expect(text).toContain("Fluid-path restriction — supported");
-  expect(text).toContain(
+  expect(text).not.toContain(
     "Engineer note: preserve the material container identity.",
   );
   expect(text).toContain("Investigation open; no final conclusion.");
@@ -583,7 +583,8 @@ test("mock factorial plan is previewed, authorized, executed once and preserved 
   await page.getByRole("link", { name: "Export report", exact: true }).click();
   const download = await downloadPromise;
   const report = await readFile((await download.path())!, "utf8");
-  expect(report).toContain("## Mock experiment plans and results");
+  expect(report).toContain("Technical assessment report");
+  expect(report).not.toContain("Drafted email");
   expect(report).toContain(planId);
   expect(report).toContain("All conditions and responses are simulated.");
   await page.setViewportSize({ width: 390, height: 844 });

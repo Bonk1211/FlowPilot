@@ -1703,6 +1703,11 @@ export interface components {
         /** ConversationRequest */
         ConversationRequest: {
             /**
+             * Hands Free
+             * @default false
+             */
+            hands_free: boolean;
+            /**
              * Input Mode
              * @default text
              * @enum {string}
@@ -3309,6 +3314,11 @@ export interface components {
             /** Author */
             author?: string | null;
             generation?: components["schemas"]["InvestigationGeneration"] | null;
+            /**
+             * Hands Free
+             * @default false
+             */
+            hands_free: boolean;
             /** Id */
             id: string;
             /** Input Fingerprint */
@@ -3433,6 +3443,12 @@ export interface components {
         InvestigationNode: {
             /** Blocked Reason */
             blocked_reason?: string | null;
+            /**
+             * Branch
+             * @default hardware
+             * @enum {string}
+             */
+            branch: "hardware" | "software";
             /** Choices */
             choices?: components["schemas"]["AnswerChoice"][];
             /** Clarification For */
