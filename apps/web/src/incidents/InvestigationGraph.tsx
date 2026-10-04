@@ -48,11 +48,13 @@ import { InvestigationConversation } from "./InvestigationConversation";
 import { LiveTimeline } from "./LiveTimeline";
 import { TroubleshootingMap } from "./TroubleshootingMap";
 import { ExperimentPreview } from "./ExperimentPreview";
+import { ExperimentCandidatesCard } from "./ExperimentCandidatesCard";
 import type { InvestigationProgressMode } from "./InvestigationProgress";
 import { investigationLayout } from "./investigationLayout";
 import { responseNodeId, responseStatement } from "./investigationResponses";
 import {
   suggestInvestigationExperiment,
+  suggestInvestigationExperiments,
   type InvestigationExperiment,
 } from "./investigationExperiment";
 import "@xyflow/react/dist/style.css";
@@ -481,6 +483,7 @@ export function InvestigationGraph({
   onSelectEvidence,
   onOpenTimeline,
   onOpenExperiment,
+  onRunExperiments,
   onUpdated,
   progressMode,
   progressError,
@@ -496,6 +499,7 @@ export function InvestigationGraph({
   onSelectEvidence: (id: string) => void;
   onOpenTimeline: () => void;
   onOpenExperiment: (experiment: InvestigationExperiment) => void;
+  onRunExperiments: () => void;
   onUpdated: (incident: Incident) => void;
   progressMode: InvestigationProgressMode | null;
   progressError: string;
@@ -592,6 +596,7 @@ export function InvestigationGraph({
     visibleNodes[visibleNodes.length - 1];
   const hypotheses = incident.assessment?.hypotheses ?? [];
   const experiment = suggestInvestigationExperiment(incident);
+  const experimentOffer = suggestInvestigationExperiments(incident);
   const experimentId = experiment
     ? `experiment-${experiment.answer.id}-${experiment.check.id}`
     : null;
@@ -1868,6 +1873,15 @@ export function InvestigationGraph({
               </ReactFlow>
             </div>
             <LiveTimeline
+              banner={
+                experimentOffer && (
+                  <ExperimentCandidatesCard
+                    offer={experimentOffer}
+                    disabled={!!activity || readOnly}
+                    onRun={onRunExperiments}
+                  />
+                )
+              }
               incident={incident}
               syncing={!!activity}
               onOpen={(id) => (id ? onSelectEvidence(id) : onOpenTimeline())}

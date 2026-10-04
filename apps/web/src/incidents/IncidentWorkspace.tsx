@@ -442,6 +442,12 @@ function IncidentWorkspaceContent({
       `${incidentPageUrl(incident.id, "simulation")}?${new URLSearchParams({ check: experiment.check.id, from: experiment.answer.id })}`,
     );
   }
+  function runExperiments() {
+    if (!incident) return;
+    setLabPlanId(null);
+    setHistoricalRevision(null);
+    navigate(`${incidentPageUrl(incident.id, "simulation")}?run=all`);
+  }
   // A plan id in the address wins; otherwise the lab keeps showing the plan it just ran.
   const labPlan =
     route.experimentPlanId ?? (route.experimentRun ? null : labPlanId);
@@ -1037,6 +1043,7 @@ function IncidentWorkspaceContent({
                             navigate(incidentPageUrl(incident.id, "evidence"))
                           }
                           onOpenExperiment={openExperiment}
+                          onRunExperiments={runExperiments}
                         />
                       )}
                       <div hidden={investigationCanvas}>

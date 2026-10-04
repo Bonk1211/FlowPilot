@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowUpRight,
   CaretDown,
@@ -19,10 +19,13 @@ export function LiveTimeline({
   incident,
   syncing,
   onOpen,
+  banner,
 }: {
   incident: Incident;
   syncing: boolean;
   onOpen: (id?: string) => void;
+  /** Something to act on, shown above the events. */
+  banner?: ReactNode;
 }) {
   const events = timelineEvents(incident).filter((item) => !item.superseded);
   const signature = JSON.stringify(
@@ -156,6 +159,7 @@ export function LiveTimeline({
           <CaretDown aria-hidden="true" />
         </button>
       </header>
+      {banner}
       <ol
         ref={list}
         id="live-timeline-events"
