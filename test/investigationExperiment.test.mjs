@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   suggestInvestigationExperiment,
-  resolveInvestigationExperiment,
+  suggestInvestigationExperiments,
 } from "../apps/web/src/incidents/investigationExperiment.ts";
 
 function incident() {
@@ -59,10 +59,6 @@ test("unconfirmed or corrected responses and completed investigations do not pro
   const value = incident();
   value.investigation.nodes[0].status = "superseded";
   assert.equal(suggestInvestigationExperiment(value), null);
-  assert.equal(
-    resolveInvestigationExperiment(value, "restriction-check", "a1"),
-    null,
-  );
   value.investigation.nodes[0].status = "answered";
   value.investigation.answers.push({
     id: "a2-new",
@@ -70,40 +66,62 @@ test("unconfirmed or corrected responses and completed investigations do not pro
     status: "confirmed",
     supersedes_id: "a2",
   });
-  assert.equal(
-    resolveInvestigationExperiment(value, "restriction-check", "a2"),
-    null,
-  );
   assert.equal(suggestInvestigationExperiment(value).answer.id, "a2-new");
   value.status = "closed";
   assert.equal(suggestInvestigationExperiment(value), null);
 });
 
-test("the current check takes priority and deep links validate the check and source", () => {
+test("the current check takes priority and only eligible checks are suggested", () => {
   const value = incident();
   value.investigation.nodes[2].target_fact = "delivery-check";
   assert.equal(
     suggestInvestigationExperiment(value).check.id,
     "delivery-check",
   );
-  assert.equal(
-    resolveInvestigationExperiment(value, "delivery-check", "a2").node.id,
-    "q2",
-  );
-  assert.equal(
-    resolveInvestigationExperiment(value, "invented-check", "a2"),
-    null,
-  );
-  assert.equal(
-    resolveInvestigationExperiment(value, "delivery-check", "invented-answer"),
-    null,
-  );
   value.assessment.checks.forEach((check) => {
     check.eligible = false;
   });
   assert.equal(suggestInvestigationExperiment(value), null);
-  assert.equal(
-    resolveInvestigationExperiment(value, "delivery-check", "a2"),
-    null,
+});
+
+test("one experiment per explanation is offered under the same conditions as a single suggestion", () => {
+  const value = incident();
+  value.assessment.hypotheses.push({
+    id: "material",
+    status: "inconclusive",
+    rank: 3,
+  });
+  value.assessment.checks.push({
+    id: "material-check",
+    hypothesis_id: "material",
+    eligible: true,
+  });
+  const offer = suggestInvestigationExperiments(value);
+  assert.deepEqual(
+    offer.items.map((item) => [item.hypothesis.id, item.check.id]),
+    [
+      ["restriction", "restriction-check"],
+      ["delivery", "delivery-check"],
+      ["material", "material-check"],
+    ],
   );
+  assert.equal(offer.lead.id, "restriction-check");
+  assert.equal(offer.answer.id, "a2");
+  value.investigation.answers.pop();
+  assert.equal(suggestInvestigationExperiments(value), null);
+});
+
+test("ineligible checks and closed or escalated incidents offer no experiments", () => {
+  const value = incident();
+  value.assessment.checks[0].eligible = false;
+  assert.equal(suggestInvestigationExperiments(value), null);
+  for (const change of [{ status: "closed" }, { escalated: true }]) {
+    assert.equal(
+      suggestInvestigationExperiments({ ...incident(), ...change }),
+      null,
+    );
+  }
+  const review = incident();
+  review.assessment.next_step.kind = "review";
+  assert.equal(suggestInvestigationExperiments(review), null);
 });

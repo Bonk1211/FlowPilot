@@ -1,0 +1,206 @@
+.guided-playback {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.guided-playback-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.guided-playback-head h3 {
+  margin: var(--space-1) 0 0;
+}
+.guided-playback .assembly-canvas {
+  position: relative;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  min-height: 240px;
+}
+.guided-frame {
+  position: relative;
+}
+/* Every frame stays marked as simulated, whatever the camera shows. */
+.guided-badge,
+.guided-shot {
+  position: absolute;
+  z-index: 2;
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: var(--font-caption);
+  pointer-events: none;
+}
+.guided-badge {
+  top: var(--space-3);
+  left: var(--space-3);
+  border: 1px solid var(--amber-300);
+  background: color-mix(in srgb, var(--surface-instrument) 82%, transparent);
+  color: var(--amber-300);
+}
+.guided-shot {
+  top: var(--space-3);
+  right: var(--space-3);
+  background: color-mix(in srgb, var(--surface-instrument) 70%, transparent);
+  color: var(--text-secondary-on-instrument);
+}
+.assembly-labels {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.assembly-label-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.assembly-label-lines line {
+  stroke: var(--text-secondary-on-instrument);
+  stroke-width: 1;
+  transition: opacity 240ms ease-out;
+}
+.assembly-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 3px 8px;
+  border: 1px solid var(--border-on-instrument);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--surface-instrument) 86%, transparent);
+  color: var(--text-on-instrument);
+  font-size: var(--font-caption);
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 240ms ease-out;
+}
+.assembly-label[data-shown="true"] {
+  opacity: 1;
+}
+.assembly-label.is-hypothetical {
+  border-style: dashed;
+  border-color: var(--amber-300);
+  color: var(--amber-300);
+}
+.guided-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-secondary-on-instrument);
+  font-size: var(--font-caption);
+}
+.guided-legend li {
+  margin: 0;
+}
+.guided-legend li::before {
+  display: inline-block;
+  width: 18px;
+  height: 4px;
+  margin-right: var(--space-2);
+  vertical-align: middle;
+  border-radius: 2px;
+  content: "";
+  background: var(--teal-400);
+}
+.guided-legend [data-kind="reservoir"]::before {
+  background: var(--violet-600);
+}
+.guided-legend [data-kind="valve"]::before {
+  background: var(--amber-300);
+}
+.guided-legend [data-kind="atomizing"]::before {
+  background: color-mix(in srgb, var(--blue-600) 40%, var(--white));
+}
+/* On a phone the badge keeps its first word and the shot name gives way. */
+@media (max-width: 520px) {
+  .guided-badge span,
+  .guided-shot {
+    display: none;
+  }
+}
+.guided-step-text {
+  display: grid;
+  gap: 2px;
+}
+.guided-step-text small {
+  color: var(--text-muted);
+  font-size: var(--font-caption);
+}
+@media (prefers-reduced-motion: reduce) {
+  .assembly-label,
+  .assembly-label-lines line {
+    transition: none;
+  }
+}
+.guided-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.guided-controls button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-height);
+}
+.guided-counter {
+  margin-left: auto;
+  color: var(--text-secondary);
+  font-size: var(--font-compact);
+  font-variant-numeric: tabular-nums;
+}
+.guided-narration {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--selection-active);
+  border-radius: var(--radius-control);
+  background: var(--surface-measurement);
+}
+.guided-narration h4,
+.guided-narration p {
+  margin: 0;
+}
+.guided-steps {
+  display: grid;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.guided-steps button {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-control);
+  background: var(--surface-document);
+  color: var(--text-primary);
+  text-align: left;
+}
+.guided-steps button[aria-current="step"] {
+  border-color: var(--selection-active);
+  color: var(--text-selection);
+  box-shadow: inset 3px 0 var(--selection-active);
+}
+.guided-step-number {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--surface-muted);
+  font-size: var(--font-caption);
+  font-variant-numeric: tabular-nums;
+}

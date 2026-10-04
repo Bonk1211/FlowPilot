@@ -1,37 +1,24 @@
 import { useEffect, useState } from "react";
 import type {
-  ExperimentFactor,
   ExperimentProposal,
   IncidentExperiment,
 } from "@flowpilot/contracts";
 import { incidentJson, type Incident } from "./api";
+import { settledPlan } from "./experimentRuns";
 import { useIncidentAccess } from "./AccessPanel";
 import "./experiments.css";
 import { StatusChip } from "./StatusChip";
+import {
+  defaultControls,
+  defaultExpectation,
+  defaultLevels,
+  factorSpecs,
+  mechanismTitles,
+  type FactorName,
+} from "./experimentDefaults";
 
-const mechanisms = {
-  restriction: "Fluid-path restriction",
-  unstable_delivery: "Unstable fluid delivery",
-  material_condition: "Material-condition change",
-} as const;
-const factors = {
-  severity: {
-    label: "Fault severity",
-    min: 0,
-    max: 1,
-  },
-  delivery_ratio: {
-    label: "Delivery ratio",
-    min: 0.8,
-    max: 1.2,
-  },
-  material_ratio: {
-    label: "Material ratio",
-    min: 0.8,
-    max: 1.2,
-  },
-} as const;
-type FactorName = ExperimentFactor["name"];
+const mechanisms = mechanismTitles;
+const factors = factorSpecs;
 const factorNames = Object.keys(factors) as FactorName[];
 type PlanAction = "approve" | "run" | "withdraw";
 
@@ -268,19 +255,10 @@ export function ExperimentsPanel({
     useState<ExperimentProposal["response"]>("relative_mass");
   const [repetitions, setRepetitions] = useState(1);
   const [enabled, setEnabled] = useState<FactorName[]>(["severity"]);
-  const [levels, setLevels] = useState<Record<FactorName, number[]>>({
-    severity: [0.2, 0.8],
-    delivery_ratio: [0.8, 1.2],
-    material_ratio: [0.8, 1.2],
-  });
-  const [controls, setControls] = useState({
-    severity: 0.7,
-    delivery_ratio: 1,
-    material_ratio: 1,
-  });
-  const [expectation, setExpectation] = useState(
-    "Compare hypothetical response changes across all three candidate mechanisms.",
-  );
+  const [levels, setLevels] =
+    useState<Record<FactorName, number[]>>(defaultLevels);
+  const [controls, setControls] = useState(defaultControls);
+  const [expectation, setExpectation] = useState(defaultExpectation);
   const [withdrawal, setWithdrawal] = useState("");
   const path = `/api/incidents/${encodeURIComponent(incident.id)}/experiments`;
   const plan = plans?.find((item) => item.id === selectedId) ?? plans?.at(-1);
@@ -353,7 +331,7 @@ export function ExperimentsPanel({
       expected_discrimination: expectation.trim(),
     };
     try {
-      const result = await incidentJson<IncidentExperiment>(
+      let result = await incidentJson<IncidentExperiment>(
         action === "propose"
           ? path
           : `${path}/${encodeURIComponent(plan!.id)}/${action}`,
@@ -380,9 +358,21 @@ export function ExperimentsPanel({
           ),
         },
       );
+      if (result.status === "running") {
+        setNotice(
+          "Running the stored matrix. Each condition is saved as it finishes.",
+        );
+        result = await settledPlan(path, result, {
+          onProgress: (progress) =>
+            setNotice(
+              `Running the stored matrix: ${progress.results?.length ?? 0} of ${progress.matrix.length} conditions saved.`,
+            ),
+        });
+      }
+      const saved = result;
       setPlans((current) => [
-        ...(current ?? []).filter((item) => item.id !== result.id),
-        result,
+        ...(current ?? []).filter((item) => item.id !== saved.id),
+        saved,
       ]);
       setSelectedId(result.id);
       setWithdrawal("");

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type MouseEvent } from "react";
+import { mechanismIds, type MechanismId } from "./experimentDefaults";
 
 export const incidentPages = {
   investigation: {
@@ -38,16 +39,47 @@ export type IncidentRoute = {
   page: IncidentPage | null;
   invalid: boolean;
   visited: IncidentPage[];
+  /** `?check=`: an older link to one experiment; it now opens the lab running it. */
   experimentCheckId: string | null;
-  experimentAnswerId: string | null;
+  /** `?run=all` or `?run=restriction,…`: run these experiments on arrival. */
+  experimentRuns: MechanismId[];
+  /** `?plan=a,b`: show experiment plans that were already started. */
+  experimentPlanIds: string[];
+  /** `?finding=restriction`: a simulated finding just handed back to the investigation. */
+  experimentFinding: string | null;
 };
+
+function readRuns(value: string | null): MechanismId[] {
+  if (!value) return [];
+  if (value === "all") return [...mechanismIds];
+  const asked = new Set(value.split(","));
+  return mechanismIds.filter((id) => asked.has(id));
+}
+
+/** The query that runs the given experiments, or shows the given plans. */
+export function experimentQuery({
+  runs,
+  plans,
+}: {
+  runs?: readonly MechanismId[];
+  plans?: readonly string[];
+}) {
+  if (runs?.length)
+    return `run=${runs.length === mechanismIds.length ? "all" : runs.join(",")}`;
+  return plans?.length ? `plan=${plans.map(encodeURIComponent).join(",")}` : "";
+}
 
 function readRoute(): Omit<IncidentRoute, "visited"> {
   const path = window.location.pathname.replace(/\/$/, "");
   const query = new URLSearchParams(window.location.search);
   const experiment = {
     experimentCheckId: query.get("check"),
-    experimentAnswerId: query.get("from"),
+    experimentRuns: readRuns(query.get("run")),
+    experimentPlanIds: (query.get("plan") ?? "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean),
+    experimentFinding: query.get("finding"),
   };
   if (!path || path === "/incidents")
     return { incidentId: null, page: null, invalid: false, ...experiment };
@@ -109,6 +141,14 @@ export function useIncidentRoute() {
     },
     [readLocation],
   );
+  /** Change the address without adding a history entry, e.g. once a run has a plan id. */
+  const replace = useCallback(
+    (path: string) => {
+      window.history.replaceState(null, "", path);
+      readLocation();
+    },
+    [readLocation],
+  );
   function followLink(event: MouseEvent<HTMLAnchorElement>) {
     if (
       event.defaultPrevented ||
@@ -123,5 +163,5 @@ export function useIncidentRoute() {
     event.preventDefault();
     navigate(`${event.currentTarget.pathname}${event.currentTarget.search}`);
   }
-  return { route, navigate, followLink };
+  return { route, navigate, replace, followLink };
 }

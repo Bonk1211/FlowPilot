@@ -82,6 +82,9 @@ export type ExperimentCommand = components["schemas"]["ExperimentCommand"];
 export type ExperimentWithdrawal =
   components["schemas"]["ExperimentWithdrawal"];
 export type ExperimentFactor = components["schemas"]["ExperimentFactor"];
+export type ExperimentBrief = components["schemas"]["ExperimentBrief"];
+export type ExperimentPrediction =
+  components["schemas"]["ExperimentPrediction"];
 export type IncidentCommunication =
   components["schemas"]["IncidentCommunication"];
 export type CommunicationApprovalRequest =

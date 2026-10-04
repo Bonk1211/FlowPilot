@@ -53,10 +53,7 @@ import {
 } from "./InvestigationProgress";
 import { HandoffPage } from "./HandoffPage";
 import { SimulationPanel } from "./SimulationPanel";
-import {
-  resolveInvestigationExperiment,
-  type InvestigationExperiment,
-} from "./investigationExperiment";
+import { ExperimentLab } from "./ExperimentLab";
 import { ExperimentsPanel } from "./ExperimentsPanel";
 import {
   incidentPages,
@@ -64,7 +61,13 @@ import {
   pageNames,
   useIncidentRoute,
   type IncidentRoute,
+  experimentQuery,
 } from "./navigation";
+import {
+  mechanismChecks,
+  mechanismIds,
+  type MechanismId,
+} from "./experimentDefaults";
 import "./incidents.css";
 
 const IncidentLearningDatabase = lazy(() =>
@@ -223,10 +226,12 @@ function AddEvidence({
 function IncidentWorkspaceContent({
   route,
   navigate,
+  replace,
   followLink,
 }: {
   route: IncidentRoute;
   navigate: (path: string) => void;
+  replace: (path: string) => void;
   followLink: (event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const access = useIncidentAccess();
@@ -251,6 +256,24 @@ function IncidentWorkspaceContent({
   const [historicalRevision, setHistoricalRevision] = useState<number | null>(
     null,
   );
+  const labKey = `flowpilot.lab-plans.${route.incidentId}`;
+  // The experiment plans started in this tab, so Simulation still shows them after a reload.
+  const [labPlanIds, setLabPlanState] = useState<string[]>(() => {
+    try {
+      return (sessionStorage.getItem(labKey) ?? "").split(",").filter(Boolean);
+    } catch {
+      return [];
+    }
+  });
+  const setLabPlanIds = (ids: string[]) => {
+    setLabPlanState(ids);
+    try {
+      if (ids.length) sessionStorage.setItem(labKey, ids.join(","));
+      else sessionStorage.removeItem(labKey);
+    } catch {
+      // Storage can be blocked; the plans are then remembered for this page only.
+    }
+  };
   const featureHeading = useRef<HTMLHeadingElement>(null);
   const [navigationExpanded, setNavigationExpanded] = useState(false);
   const [overviewOpen, setOverviewOpen] = useState(false);
@@ -405,28 +428,42 @@ function IncidentWorkspaceContent({
   const assessment = snapshot?.assessment ?? incident?.assessment ?? null;
   const monitoringPage =
     route.page === "investigation" && !assessment && !progressMode;
-  const simulationExperiment = incident
-    ? resolveInvestigationExperiment(
-        incident,
-        route.experimentCheckId,
-        route.experimentAnswerId,
-      )
-    : null;
   const hypothesisId = assessment
     ? assessment.hypotheses.some((item) => item.id === selectedHypothesis)
       ? selectedHypothesis
-      : (simulationExperiment?.check.hypothesis_id ??
-        assessment.hypotheses[0]?.id ??
-        null)
+      : (assessment.hypotheses[0]?.id ?? null)
     : selectedHypothesis;
-  function openExperiment(experiment: InvestigationExperiment) {
+  // Older single-experiment links open the lab running that one experiment.
+  const legacyCheck =
+    route.page === "simulation" && route.experimentCheckId
+      ? route.experimentCheckId
+      : null;
+  useEffect(() => {
+    if (!legacyCheck || !route.incidentId) return;
+    const mechanism = mechanismIds.find(
+      (id) => mechanismChecks[id] === legacyCheck,
+    );
+    const page = incidentPageUrl(route.incidentId, "simulation");
+    replace(
+      mechanism ? `${page}?${experimentQuery({ runs: [mechanism] })}` : page,
+    );
+  }, [legacyCheck, route.incidentId, replace]);
+  function runExperiments(ids: readonly MechanismId[] = mechanismIds) {
     if (!incident) return;
-    setSelectedHypothesis(experiment.check.hypothesis_id);
+    setLabPlanIds([]);
     setHistoricalRevision(null);
     navigate(
-      `${incidentPageUrl(incident.id, "simulation")}?${new URLSearchParams({ check: experiment.check.id, from: experiment.answer.id })}`,
+      `${incidentPageUrl(incident.id, "simulation")}?${experimentQuery({ runs: ids })}`,
     );
   }
+  // A plan id in the address wins; otherwise the lab keeps showing the plan it just ran.
+  const labPlans = route.experimentPlanIds.length
+    ? route.experimentPlanIds
+    : route.experimentRuns.length
+      ? []
+      : labPlanIds;
+  const showLab =
+    !!incident && (route.experimentRuns.length > 0 || labPlans.length > 0);
   const closed = incident?.status === "closed";
   const incidentId = incident?.id;
   const refreshSaved = useCallback(async () => {
@@ -449,15 +486,8 @@ function IncidentWorkspaceContent({
   );
   const simulationPanel = incident && (
     <SimulationPanel
-      key={`${incident.id}:${route.experimentCheckId ?? ""}:${route.experimentAnswerId ?? ""}`}
+      key={incident.id}
       incident={incident}
-      experiment={simulationExperiment}
-      experimentRequested={
-        !!(route.experimentCheckId || route.experimentAnswerId)
-      }
-      onReturnToInvestigation={() =>
-        navigate(incidentPageUrl(incident.id, "investigation"))
-      }
       selectedHypothesis={hypothesisId}
       onSelectHypothesis={setSelectedHypothesis}
       selectedEvidenceId={eventId}
@@ -1029,7 +1059,9 @@ function IncidentWorkspaceContent({
                           onOpenTimeline={() =>
                             navigate(incidentPageUrl(incident.id, "evidence"))
                           }
-                          onOpenExperiment={openExperiment}
+                          onRunExperiments={runExperiments}
+                          focusFinding={route.experimentFinding}
+                          onOpenLink={followLink}
                         />
                       )}
                       <div hidden={investigationCanvas}>
@@ -1162,7 +1194,37 @@ function IncidentWorkspaceContent({
                     mode={route.page === "simulation" ? "visible" : "hidden"}
                   >
                     <section aria-label="Simulation workspace">
-                      {simulationExperiment && simulationPanel}
+                      {showLab && (
+                        <ExperimentLab
+                          incident={incident}
+                          planIds={labPlans}
+                          requested={route.experimentRuns}
+                          onPlans={(ids) => {
+                            setLabPlanIds(ids);
+                            // Record the plans in the address so a reload follows them
+                            // instead of running again; never while another page is shown.
+                            const page = incidentPageUrl(
+                              incident.id,
+                              "simulation",
+                            );
+                            if (window.location.pathname === page)
+                              replace(
+                                `${page}?${experimentQuery({ plans: ids })}`,
+                              );
+                          }}
+                          onRefresh={refreshSaved}
+                          experimentsHref={incidentPageUrl(
+                            incident.id,
+                            "experiments",
+                          )}
+                          onReturn={(hypothesisId) =>
+                            navigate(
+                              `${incidentPageUrl(incident.id, "investigation")}?finding=${encodeURIComponent(hypothesisId)}`,
+                            )
+                          }
+                          onOpenLink={followLink}
+                        />
+                      )}
                       <MechanismView
                         hypotheses={assessment?.hypotheses}
                         hypothesisId={hypothesisId}
@@ -1179,7 +1241,7 @@ function IncidentWorkspaceContent({
                             ?.label ?? selectedObservation?.check_id
                         }
                       />
-                      {!simulationExperiment && simulationPanel}
+                      {simulationPanel}
                     </section>
                   </Activity>
                 )}

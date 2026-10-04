@@ -4,6 +4,7 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type MouseEvent,
 } from "react";
 import {
   ArrowsIn,
@@ -47,13 +48,18 @@ import { CausalReasoning } from "./CausalReasoning";
 import { InvestigationConversation } from "./InvestigationConversation";
 import { LiveTimeline } from "./LiveTimeline";
 import { TroubleshootingMap } from "./TroubleshootingMap";
-import { ExperimentPreview } from "./ExperimentPreview";
+import { mechanismTitles, type MechanismId } from "./experimentDefaults";
+import { returnedFindings } from "./experimentFindings";
+import { useIncidentPlans } from "./experimentRuns";
+import { FindingPanel } from "./FindingPanel";
+import { experimentQuery, incidentPageUrl } from "./navigation";
+import { ExperimentCandidatesCard } from "./ExperimentCandidatesCard";
 import type { InvestigationProgressMode } from "./InvestigationProgress";
 import { investigationLayout } from "./investigationLayout";
 import { responseNodeId, responseStatement } from "./investigationResponses";
 import {
   suggestInvestigationExperiment,
-  type InvestigationExperiment,
+  suggestInvestigationExperiments,
 } from "./investigationExperiment";
 import "@xyflow/react/dist/style.css";
 import "./InvestigationGraph.css";
@@ -66,6 +72,7 @@ const stages = {
   decision: { label: "Decision", height: 200 },
   check: { label: "Check", height: 116 },
   experiment: { label: "Mini experiment", height: 184 },
+  finding: { label: "Simulated finding", height: 150 },
   statement: { label: "Response", height: 124 },
   clarify: { label: "Clarify", height: 132 },
   review: { label: "Review", height: 108 },
@@ -180,7 +187,7 @@ function StageShape({ stage }: { stage: Stage }) {
           width="276"
           height={height - 4}
           rx={
-            ["check", "statement", "experiment"].includes(stage)
+            ["check", "statement", "experiment", "finding"].includes(stage)
               ? 5
               : height / 2
           }
@@ -245,10 +252,11 @@ function StageNode({ data }: NodeProps<ChartNode>) {
             </span>
           )}
           <strong>{data.title}</strong>
-          {data.stage === "experiment" && <small>Preview experiment →</small>}
+          {data.stage === "experiment" && <small>Open experiment →</small>}
+          {data.stage === "finding" && <small>Not evidence · open →</small>}
         </span>
       </button>
-      {data.stage !== "review" && data.stage !== "experiment" && (
+      {data.stage !== "review" && data.stage !== "finding" && (
         <Handle
           type="source"
           position={Position.Bottom}
@@ -491,10 +499,12 @@ export function InvestigationGraph({
   onSelectHypothesis,
   onSelectEvidence,
   onOpenTimeline,
-  onOpenExperiment,
+  onRunExperiments,
   onUpdated,
   progressMode,
   progressError,
+  focusFinding = null,
+  onOpenLink,
 }: {
   incident: Incident;
   expanded: boolean;
@@ -506,10 +516,14 @@ export function InvestigationGraph({
   onSelectHypothesis: (id: string) => void;
   onSelectEvidence: (id: string) => void;
   onOpenTimeline: () => void;
-  onOpenExperiment: (experiment: InvestigationExperiment) => void;
+  /** Run the given suggested experiments, or all of them. */
+  onRunExperiments: (ids?: MechanismId[]) => void;
   onUpdated: (incident: Incident) => void;
   progressMode: InvestigationProgressMode | null;
   progressError: string;
+  /** A mechanism whose simulated finding was just handed back: open it once. */
+  focusFinding?: string | null;
+  onOpenLink: (event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const graph = {
     ...incident.investigation,
@@ -526,8 +540,11 @@ export function InvestigationGraph({
     }
   });
   const [textView, setTextView] = useState(false);
-  const [previewExperiment, setPreviewExperiment] =
-    useState<InvestigationExperiment | null>(null);
+  // Asking the rail to show one experiment's explanation; `n` repeats a request.
+  const [briefRequest, setBriefRequest] = useState<{
+    id: string;
+    n: number;
+  } | null>(null);
   const [whyHowOpen, setWhyHowOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelWidth, setPanelWidth] = useState(368);
@@ -603,9 +620,36 @@ export function InvestigationGraph({
     visibleNodes[visibleNodes.length - 1];
   const hypotheses = incident.assessment?.hypotheses ?? [];
   const experiment = suggestInvestigationExperiment(incident);
+  const experimentOffer = suggestInvestigationExperiments(incident);
   const experimentId = experiment
     ? `experiment-${experiment.answer.id}-${experiment.check.id}`
     : null;
+  // Simulated findings the engineer brought back; shown, never used as evidence.
+  const { plans, reload: reloadPlans } = useIncidentPlans(
+    incident.id,
+    incident.revision,
+  );
+  const findings = returnedFindings(plans);
+  const [openFinding, setOpenFinding] = useState<string | null>(null);
+  const [focused, setFocused] = useState<string | null>(null);
+  if (
+    focusFinding &&
+    focused !== focusFinding &&
+    findings.some((item) => item.finding.hypothesis_id === focusFinding)
+  ) {
+    setFocused(focusFinding);
+    setOpenFinding(focusFinding);
+  }
+  const findingOpen = findings.find(
+    (item) => item.finding.hypothesis_id === openFinding,
+  );
+  const lastResponse = graph.answers.at(-1);
+  /** Show an experiment's explanation in the rail, or run it if none is offered. */
+  function openBrief(id: string) {
+    if (experimentOffer?.items.some((item) => item.hypothesis.id === id))
+      setBriefRequest((current) => ({ id, n: (current?.n ?? 0) + 1 }));
+    else onRunExperiments([id as MechanismId]);
+  }
   const hypothesis =
     hypotheses.find((item) => item.id === selectedHypothesisId) ??
     hypotheses[0];
@@ -876,10 +920,10 @@ export function InvestigationGraph({
             type="button"
             className="investigation-experiment-link"
             disabled={!!activity}
-            onClick={() => setPreviewExperiment(experiment)}
+            onClick={() => openBrief(experiment.check.hypothesis_id)}
           >
             <Flask aria-hidden="true" />
-            Preview mini experiment
+            Open the experiment
           </button>
         )}
       </div>
@@ -1032,6 +1076,14 @@ export function InvestigationGraph({
       ? responseNodeId(node.parent_answer_id)
       : (node.parent_id ?? `branch-${node.branch ?? "hardware"}`);
   const branches = ["hardware", "software"] as const;
+  // Findings hang under the mini experiment, or the latest response without one.
+  // Every simulated mechanism is a hardware/material one, so the last resort is that branch.
+  const findingParent =
+    experiment && experimentId
+      ? experimentId
+      : lastResponse && responseIds.has(responseNodeId(lastResponse.id))
+        ? responseNodeId(lastResponse.id)
+        : "branch-hardware";
   const positions = investigationLayout(
     [
       {
@@ -1068,6 +1120,13 @@ export function InvestigationGraph({
         parent_id: response.node.id,
         status: response.status,
         height: (stages.statement.height * 240) / 280 + 56,
+        gapAfter: 72,
+      })),
+      ...findings.map((item) => ({
+        id: `finding-${item.finding.hypothesis_id}`,
+        parent_id: findingParent,
+        status: "simulated",
+        height: (stages.finding.height * 240) / 280 + 56,
         gapAfter: 72,
       })),
     ],
@@ -1180,14 +1239,35 @@ export function InvestigationGraph({
       data: {
         stage: "experiment",
         title: `Explore ${hypotheses.find((item) => item.id === experiment.check.hypothesis_id)?.title.toLowerCase() ?? "possible causes"}`,
-        prompt: `Preview mini experiment: ${experiment.check.title}`,
+        prompt: `Open mini experiment: ${experiment.check.title}`,
         status: "suggested",
-        onInspect: () => setPreviewExperiment(experiment),
+        onInspect: () => openBrief(experiment.check.hypothesis_id),
       },
       draggable: false,
       selectable: true,
       focusable: false,
     });
+  for (const item of findings) {
+    const id = `finding-${item.finding.hypothesis_id}`;
+    nodes.push({
+      id,
+      type: "stage",
+      position: positions.get(id)!,
+      width: 240,
+      height: (stages.finding.height * 240) / 280 + 56,
+      measured: dimensions[id],
+      data: {
+        stage: "finding",
+        title: `${mechanismTitles[item.finding.hypothesis_id as MechanismId]}: ${item.outdated ? "outdated" : "consistent with the records"}`,
+        prompt: `Simulated finding, not evidence: ${item.finding.summary}`,
+        status: item.outdated ? "outdated" : "simulated",
+        onInspect: () => setOpenFinding(item.finding.hypothesis_id),
+      },
+      draggable: false,
+      selectable: true,
+      focusable: false,
+    });
+  }
   nodes.unshift({
     id: "flow-start",
     type: "stage",
@@ -1305,6 +1385,15 @@ export function InvestigationGraph({
             : "Saved",
       ),
     ),
+    ...findings.map((item) => ({
+      ...connect(
+        `finding-${item.finding.hypothesis_id}`,
+        findingParent,
+        false,
+        false,
+      ),
+      label: "Simulated finding",
+    })),
   ];
   // Alternative connectors share the trunk; draw the followed path over them.
   edges.sort(
@@ -1653,16 +1742,14 @@ export function InvestigationGraph({
         }
       }}
     >
-      {previewExperiment && (
-        <ExperimentPreview
+      {findingOpen && (
+        <FindingPanel
           incident={incident}
-          experiment={previewExperiment}
-          onCancel={() => setPreviewExperiment(null)}
-          onReady={(updated, prepared) => {
-            setPreviewExperiment(null);
-            onUpdated(updated);
-            onOpenExperiment(prepared);
-          }}
+          item={findingOpen}
+          simulationHref={`${incidentPageUrl(incident.id, "simulation")}?${experimentQuery({ plans: [findingOpen.plan.id] })}`}
+          onOpenLink={onOpenLink}
+          onClose={() => setOpenFinding(null)}
+          onChanged={reloadPlans}
         />
       )}
       <div className="investigation-graph-heading">
@@ -1776,6 +1863,7 @@ export function InvestigationGraph({
             "check",
             "experiment",
             "clarify",
+            ...(findings.length ? (["finding"] as const) : []),
           ] as const
         ).map((stage) => (
           <span key={stage} className={`stage-${stage}`}>
@@ -1885,7 +1973,8 @@ export function InvestigationGraph({
         <ReactFlowProvider>
           <GraphControls
             current={currentId}
-            selected={detailId}
+            // A finding just handed back is framed until another node is chosen.
+            selected={detailId ?? (focused ? `finding-${focused}` : null)}
             panelOpen={panelOpen}
             panelWidth={panelWidth}
             expanded={expanded}
@@ -1953,6 +2042,16 @@ export function InvestigationGraph({
               </ReactFlow>
             </div>
             <LiveTimeline
+              banner={
+                experimentOffer && (
+                  <ExperimentCandidatesCard
+                    offer={experimentOffer}
+                    disabled={!!activity || readOnly}
+                    onRun={onRunExperiments}
+                    focus={briefRequest}
+                  />
+                )
+              }
               incident={incident}
               syncing={!!activity}
               onOpen={(id) => (id ? onSelectEvidence(id) : onOpenTimeline())}

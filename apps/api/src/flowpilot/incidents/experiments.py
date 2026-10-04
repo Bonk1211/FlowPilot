@@ -9,7 +9,7 @@ from statistics import mean
 from typing import Annotated, Literal
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Response
 from pydantic import Field, model_validator
 from sqlalchemy import JSON, Integer, String, select, update
 from sqlalchemy.exc import IntegrityError
@@ -17,7 +17,15 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from flowpilot.incidents import simulation
 from flowpilot.incidents.access import Actor, require_permission
-from flowpilot.incidents.diagnostic import SourcePassage, is_s932, search_sources
+from flowpilot.incidents.diagnostic import (
+    SIGNATURE_WORDS,
+    ShapeFact,
+    SourcePassage,
+    is_s932,
+    search_sources,
+    shape_facts,
+    sign_changes,
+)
 from flowpilot.incidents.models import Incident, IncidentEvidence, IncidentObservation
 from flowpilot.incidents.service import (
     IncidentRecord,
@@ -65,7 +73,7 @@ class ExperimentFactor(Contract):
 class ExperimentProposal(Contract):
     incident_revision: int = Field(ge=0)
     check_id: Literal["delivery_review", "restriction_review", "material_review"]
-    hypothesis_ids: list[Scenario] = Field(min_length=2, max_length=3)
+    hypothesis_ids: list[Scenario] = Field(min_length=1, max_length=3)
     factors: list[ExperimentFactor] = Field(min_length=1, max_length=3)
     controls: SimulationParameters = Field(default_factory=SimulationParameters)
     repetitions: int = Field(default=1, ge=1, le=3)
@@ -125,6 +133,39 @@ class ExperimentEffect(Contract):
     main_effect: float
 
 
+FindingOutcome = Literal["consistent", "conflicts", "not_distinguishable"]
+FINDING_LABELS = {
+    "consistent": "Simulated · consistent with the records",
+    "conflicts": "Simulated · conflicts with the records",
+    "not_distinguishable": "Simulated · not distinguishable",
+}
+
+
+class FindingCriterion(Contract):
+    id: Literal["completed", "responds", "shape_matches", "no_conflict"]
+    label: str
+    met: bool
+    detail: str
+
+
+class ExperimentFinding(Contract):
+    """How one simulated response compares with the records, under stated criteria.
+
+    It is never evidence: a consistent finding only suggests a manual check.
+    """
+
+    hypothesis_id: Scenario
+    outcome: FindingOutcome
+    label: str
+    summary: str
+    simulated_shape: Literal["monotonic", "oscillating"]
+    criteria: list[FindingCriterion]
+    shape_facts: list[ShapeFact]
+    conflicting_evidence_ids: list[str]
+    suggested_check_id: Literal["delivery_review", "restriction_review", "material_review"]
+    diagnostic_confirmation: Literal[False] = False
+
+
 class ExperimentAnalysis(Contract):
     outcome: Literal["simulated_difference", "inconclusive"]
     summary: str
@@ -136,13 +177,30 @@ class ExperimentAnalysis(Contract):
     threshold_validated_for_machine: Literal[False] = False
     diagnostic_confirmation: Literal[False] = False
     limitations: list[str]
+    findings: list[ExperimentFinding] = Field(default_factory=list)
 
 
 class ExperimentEvent(Contract):
-    action: Literal["propose", "approve", "complete", "withdraw"]
+    action: Literal["propose", "approve", "start", "complete", "withdraw", "return", "set_aside"]
     actor: str
     timestamp: str
     detail: str
+
+
+class ExperimentHandback(Contract):
+    """A simulated finding the engineer took back to the investigation, or set aside."""
+
+    hypothesis_id: Scenario
+    decision: Literal["return", "set_aside"]
+    outcome: FindingOutcome
+    suggested_check_id: Literal["delivery_review", "restriction_review", "material_review"]
+    actor: str
+    timestamp: str
+
+
+class HandbackCommand(ExperimentCommand):
+    hypothesis_id: Scenario
+    decision: Literal["return", "set_aside"]
 
 
 class IncidentExperiment(Contract):
@@ -171,11 +229,15 @@ class IncidentExperiment(Contract):
     ] = "factorial main effects and contrasts against a per-hypothesis baseline"
     stopping_conditions: list[str]
     matrix: list[ExperimentCondition]
-    status: Literal["proposed", "approved", "completed", "withdrawn"] = "proposed"
+    status: Literal["proposed", "approved", "running", "completed", "withdrawn"] = "proposed"
     approved_by: str | None = None
     approved_at: str | None = None
+    run_started_at: str | None = None
+    # Updated as each condition is saved; a run that stops updating can be resumed.
+    run_heartbeat_at: str | None = None
     results: list[ExperimentResult] = Field(default_factory=list)
     analysis: ExperimentAnalysis | None = None
+    handbacks: list[ExperimentHandback] = Field(default_factory=list)
     history: list[ExperimentEvent]
 
 
@@ -368,7 +430,154 @@ def propose(incident_id: str, request: ExperimentProposal, actor: str):
         return database_operation(create)
 
 
-def analyze_results(plan: IncidentExperiment, incomplete: bool = False):
+SHAPE_PHRASES = {
+    "monotonic": "a steady decline",
+    "oscillating": "a decline that comes and goes",
+}
+
+
+def judge_finding(
+    plan: IncidentExperiment, hypothesis: str, incident: Incident | None, incomplete: bool
+) -> ExperimentFinding:
+    """Compare one simulated response with the records under the stated criteria."""
+    rows = [row for row in plan.results if row.condition.hypothesis_id == hypothesis]
+    tested = [row for row in rows if not row.condition.baseline]
+    strongest = max(tested, key=lambda row: row.condition.parameters.severity, default=None)
+    masses = [point.relative_mass for point in strongest.run.points] if strongest else []
+    shape = "oscillating" if sign_changes(masses) >= 4 else "monotonic"
+    signature = simulation.SIGNATURES[hypothesis]
+    contrast = max((abs(row.contrast_from_baseline) for row in tested), default=0.0)
+    assessment = incident.assessment if incident else None
+    focused = next(
+        (item for item in (assessment.hypotheses if assessment else []) if item.id == hypothesis),
+        None,
+    )
+    conflicts = [item.evidence_id for item in focused.conflicting_evidence] if focused else []
+    facts = (
+        shape_facts(
+            [
+                item.model_dump(mode="json")
+                for item in active_evidence(incident)
+                if item.status == "collected"
+            ],
+            [item.model_dump(mode="json") for item in active_observations(incident)],
+        )
+        if incident
+        else []
+    )
+    matching = [fact for fact in facts if fact.shape == shape]
+    opposite = [
+        fact for fact in facts if fact.shape in {"monotonic", "oscillating"} and fact.shape != shape
+    ]
+    finished = not incomplete and len(rows) > 1 and strongest is not None
+    responds = contrast >= 0.02
+    criteria = [
+        FindingCriterion(
+            id="completed",
+            label="The run finished on current evidence",
+            met=finished,
+            detail="Every planned condition was simulated."
+            if finished
+            else "The run stopped before every condition was simulated.",
+        ),
+        FindingCriterion(
+            id="responds",
+            label="The tested conditions differ from the control by at least 0.02",
+            met=responds,
+            detail=f"Largest difference from the control condition: {contrast:.3f}.",
+        ),
+        FindingCriterion(
+            id="shape_matches",
+            label="The simulated shape matches a recorded or confirmed fact",
+            met=bool(matching) and not opposite,
+            detail=(
+                f"Simulated: {SHAPE_PHRASES[shape]}. "
+                + (
+                    " ".join(fact.description for fact in facts)
+                    if facts
+                    else "No record or confirmed answer describes the shape."
+                )
+            ),
+        ),
+        FindingCriterion(
+            id="no_conflict",
+            label="The assessment lists no conflicting record for this explanation",
+            met=not conflicts,
+            detail="None listed."
+            if not conflicts
+            else f"Conflicting records: {', '.join(conflicts)}.",
+        ),
+    ]
+    if not finished or not responds:
+        outcome = "not_distinguishable"
+    elif conflicts or opposite:
+        outcome = "conflicts"
+    elif matching:
+        outcome = "consistent"
+    else:
+        outcome = "not_distinguishable"
+    title = simulation_titles[hypothesis]
+    if strongest and masses:
+        values = (
+            f"mass between {max(masses):.2f} and {min(masses):.2f}"
+            if shape == "oscillating"
+            else f"{masses[0]:.2f} → {masses[-1]:.2f}"
+        )
+        simulated = (
+            f"In the illustrative model, {title.lower()} gives "
+            f"{SIGNATURE_WORDS[signature]} ({values} at severity "
+            f"{strongest.condition.parameters.severity:.2f})."
+        )
+    else:
+        simulated = f"The simulation of {title.lower()} did not finish."
+    if outcome == "consistent":
+        summary = (
+            f"{simulated} {matching[0].description} No record conflicts with this explanation, "
+            f"so it is consistent with the records. This does not confirm "
+            f"{title.lower()}, and other explanations may be consistent too."
+        )
+    elif outcome == "conflicts":
+        reason = (
+            f"{opposite[0].description} That describes {SHAPE_PHRASES[opposite[0].shape]}."
+            if opposite
+            else f"The assessment lists {len(conflicts)} conflicting record(s)."
+        )
+        summary = (
+            f"{simulated} {reason} The simulation conflicts with the records. It does not "
+            "rule the explanation out: records and answers can be incomplete."
+        )
+    else:
+        summary = f"{simulated} " + (
+            "No record or confirmed answer describes the shape of the decline in a way "
+            "the model represents, so the two cannot be compared."
+            if finished and responds
+            else "The run gives nothing to compare with the records."
+        )
+    return ExperimentFinding(
+        hypothesis_id=hypothesis,
+        outcome=outcome,
+        label=FINDING_LABELS[outcome],
+        summary=summary,
+        simulated_shape=shape,
+        criteria=criteria,
+        shape_facts=facts,
+        conflicting_evidence_ids=conflicts,
+        suggested_check_id=next(
+            key for key, value in CHECK_HYPOTHESIS.items() if value == hypothesis
+        ),
+    )
+
+
+simulation_titles = {
+    "restriction": "Fluid-path restriction",
+    "unstable_delivery": "Unstable fluid delivery",
+    "material_condition": "Material-condition change",
+}
+
+
+def analyze_results(
+    plan: IncidentExperiment, incomplete: bool = False, incident: Incident | None = None
+):
     effects = []
     for hypothesis in plan.proposal.hypothesis_ids:
         rows = [
@@ -400,22 +609,38 @@ def analyze_results(plan: IncidentExperiment, incomplete: bool = False):
                         main_effect=mean(high_values) - mean(low_values),
                     )
                 )
+    single = len(plan.proposal.hypothesis_ids) == 1
     spreads = []
     for factor in plan.proposal.factors:
         values = [effect.main_effect for effect in effects if effect.factor == factor.name]
         if len(values) == len(plan.proposal.hypothesis_ids):
-            spreads.append(max(values) - min(values))
+            # One mechanism is compared with its own baseline; several with each other.
+            spreads.append(abs(values[0]) if single else max(values) - min(values))
     different = not incomplete and any(value > 0.02 for value in spreads)
-    return ExperimentAnalysis(
-        outcome="simulated_difference" if different else "inconclusive",
-        effects=effects,
-        summary=(
+    if single:
+        summary = (
+            "The toy mechanism responds to the tested factor in this fixed matrix. "
+            "This does not identify the incident's cause."
+            if different
+            else "This matrix does not establish a distinguishable simulated response. "
+            "No cause is confirmed."
+        )
+    else:
+        summary = (
             "The toy mechanisms produce different main effects in this fixed matrix. "
             "This does not identify the incident's cause."
             if different
             else "This matrix does not establish a complete distinguishable simulated response. "
             "No cause is confirmed."
-        ),
+        )
+    return ExperimentAnalysis(
+        outcome="simulated_difference" if different else "inconclusive",
+        effects=effects,
+        summary=summary,
+        findings=[
+            judge_finding(plan, hypothesis, incident, incomplete)
+            for hypothesis in plan.proposal.hypothesis_ids
+        ],
         limitations=[
             "All factors, controls, coefficients and responses are dimensionless mock values.",
             "The 0.02 contrast threshold is a demonstration choice, not a machine tolerance.",
@@ -458,18 +683,33 @@ def approve_plan(incident_id: str, plan_id: str, request: ExperimentCommand, act
     return plan
 
 
-def execute_plan(incident_id: str, plan_id: str, request: ExperimentCommand, actor: str):
-    def execute(session):
+LEASE_SECONDS = 30
+
+
+def lease_expired(plan: IncidentExperiment):
+    beat = plan.run_heartbeat_at or plan.run_started_at
+    if beat is None:
+        return True
+    return (datetime.now(UTC) - datetime.fromisoformat(beat)).total_seconds() > LEASE_SECONDS
+
+
+def start_run(incident_id: str, plan_id: str, request: ExperimentCommand, actor: str):
+    """Move an approved plan to running. Returns the plan and whether work should start."""
+
+    def start(session):
         incident = load_incident(session, incident_id)
         plan = load_plan(session, incident_id, plan_id)
         if plan.status == "completed":
             ensure_mock(incident)
             plan.source_current = current_source(plan, incident)
-            return plan, False
+            return plan, False, False
+        if plan.status == "running":
+            # Never a second run: an unfinished one resumes only after its worker stopped.
+            return plan, lease_expired(plan), False
         if plan.revision != request.revision or plan.status != "approved":
             raise HTTPException(409, "Approve the current mock plan before execution.")
         if withdraw_stale(session, plan, incident, actor):
-            return plan, True
+            return plan, False, True
         ensure_mock(incident)
         result = session.execute(
             update(IncidentRecord)
@@ -481,60 +721,126 @@ def execute_plan(incident_id: str, plan_id: str, request: ExperimentCommand, act
         )
         if result.rowcount != 1:
             raise HTTPException(409, "Incident changed before execution; reload and review.")
-        # ponytail: <=54 local simulations in one transaction; queue only if measured latency grows.
+        previous = plan.revision
         plan.revision += 1
-        save_plan(session, plan, request.revision)
-        baseline = {}
-        incomplete = False
-        try:
-            for condition in plan.matrix:
-                run = simulation.simulate(
-                    SimulationRequest(
-                        scenario=condition.hypothesis_id,
-                        parameters=condition.parameters,
-                        evidence_ids=[
-                            item.id for item in plan.source_evidence if item.status == "collected"
-                        ],
-                    ),
-                    incident_id,
-                    plan.source_incident_revision,
-                )
-                response = mean(getattr(point, plan.proposal.response) for point in run.points)
-                if not math.isfinite(response):
-                    raise ValueError("Non-finite simulated response")
-                if condition.baseline:
-                    baseline[condition.hypothesis_id] = response
-                plan.results.append(
-                    ExperimentResult(
-                        condition=condition,
-                        response_mean=response,
-                        contrast_from_baseline=response - baseline[condition.hypothesis_id],
-                        run=run,
-                    )
-                )
-        except Exception:
-            incomplete = True  # No automatic retry or new factor choices after a model failure.
-        plan.analysis = analyze_results(plan, incomplete)
-        plan.status = "withdrawn" if incomplete else "completed"
+        plan.status = "running"
+        plan.run_started_at = plan.run_heartbeat_at = timestamp()
         plan.history.append(
             ExperimentEvent(
-                action="withdraw" if incomplete else "complete",
+                action="start",
                 actor=actor,
-                timestamp=timestamp(),
-                detail="Simulator failed; partial responses retained as inconclusive."
-                if incomplete
-                else "Executed the approved mock matrix once; diagnosis remains unchanged.",
+                timestamp=plan.run_started_at,
+                detail="Started the approved mock matrix; each condition is saved as it finishes.",
             )
         )
+        save_plan(session, plan, previous)
+        return plan, True, False
+
+    plan, work, stale = database_operation(start)
+    if stale:
+        raise HTTPException(409, "Source changed; the old plan was withdrawn without executing.")
+    return plan, work
+
+
+def finish_run(
+    session, plan: IncidentExperiment, actor: str, reason: str | None, incident: Incident
+):
+    plan.analysis = analyze_results(plan, incomplete=reason is not None, incident=incident)
+    plan.status = "withdrawn" if reason else "completed"
+    plan.history.append(
+        ExperimentEvent(
+            action="withdraw" if reason else "complete",
+            actor=actor,
+            timestamp=timestamp(),
+            detail=reason or "Executed the approved mock matrix once; diagnosis remains unchanged.",
+        )
+    )
+    previous = plan.revision
+    plan.revision += 1
+    save_plan(session, plan, previous)
+
+
+def run_next_condition(incident_id: str, plan_id: str, actor: str) -> bool:
+    """Simulate and save one condition. Returns True when the run has ended."""
+
+    def step(session):
+        incident = load_incident(session, incident_id)
+        plan = load_plan(session, incident_id, plan_id)
+        if plan.status != "running":
+            return True
+        if not current_source(plan, incident):
+            plan.source_current = False
+            finish_run(
+                session,
+                plan,
+                actor,
+                "Evidence, observations or model changed during the run; "
+                "partial responses retained as inconclusive.",
+                incident,
+            )
+            return True
+        if len(plan.results) >= len(plan.matrix):
+            finish_run(session, plan, actor, None, incident)
+            return True
+        condition = plan.matrix[len(plan.results)]
+        try:
+            run = simulation.simulate(
+                SimulationRequest(
+                    scenario=condition.hypothesis_id,
+                    parameters=condition.parameters,
+                    evidence_ids=[
+                        item.id for item in plan.source_evidence if item.status == "collected"
+                    ],
+                ),
+                incident_id,
+                plan.source_incident_revision,
+            )
+            response = mean(getattr(point, plan.proposal.response) for point in run.points)
+            if not math.isfinite(response):
+                raise ValueError("Non-finite simulated response")
+        except Exception:
+            # No automatic retry or new factor choices after a model failure.
+            finish_run(
+                session,
+                plan,
+                actor,
+                "Simulator failed; partial responses retained as inconclusive.",
+                incident,
+            )
+            return True
+        baseline = next(
+            (
+                row.response_mean
+                for row in plan.results
+                if row.condition.baseline and row.condition.hypothesis_id == condition.hypothesis_id
+            ),
+            response,
+        )
+        plan.results.append(
+            ExperimentResult(
+                condition=condition,
+                response_mean=response,
+                contrast_from_baseline=response - baseline,
+                run=run,
+            )
+        )
+        plan.run_heartbeat_at = timestamp()
         previous = plan.revision
         plan.revision += 1
         save_plan(session, plan, previous)
-        return plan, False
+        return False
 
-    plan, stale = database_operation(execute)
-    if stale:
-        raise HTTPException(409, "Source changed; the old plan was withdrawn without executing.")
-    return plan
+    return database_operation(step)
+
+
+def continue_run(incident_id: str, plan_id: str, actor: str):
+    """Background work: one saved condition per transaction until the run ends."""
+    try:
+        while not run_next_condition(incident_id, plan_id, actor):
+            pass
+    except HTTPException:
+        # Another worker saved first (resumed run); it owns the remaining conditions.
+        return
 
 
 router = APIRouter(prefix="/api/incidents", tags=["mock factorial experiments"])
@@ -570,9 +876,26 @@ def approve(incident_id: str, plan_id: str, request: ExperimentCommand, actor: A
     return approve_plan(incident_id, plan_id, request, actor.subject)
 
 
-@router.post("/{incident_id}/experiments/{plan_id}/run", response_model=IncidentExperiment)
-def execute(incident_id: str, plan_id: str, request: ExperimentCommand, actor: EditActor):
-    return execute_plan(incident_id, plan_id, request, actor.subject)
+@router.post(
+    "/{incident_id}/experiments/{plan_id}/run",
+    response_model=IncidentExperiment,
+    status_code=202,
+)
+def execute(
+    incident_id: str,
+    plan_id: str,
+    request: ExperimentCommand,
+    actor: EditActor,
+    background: BackgroundTasks,
+    response: Response,
+):
+    """Start the approved matrix; conditions are saved one by one in the background."""
+    plan, work = start_run(incident_id, plan_id, request, actor.subject)
+    if work:
+        background.add_task(continue_run, incident_id, plan_id, actor.subject)
+    if plan.status == "completed":
+        response.status_code = 200
+    return plan
 
 
 @router.post("/{incident_id}/experiments/{plan_id}/withdraw", response_model=IncidentExperiment)
@@ -594,3 +917,73 @@ def withdraw(incident_id: str, plan_id: str, request: ExperimentWithdrawal, acto
         return plan
 
     return database_operation(revise)
+
+
+@router.post("/{incident_id}/experiments/{plan_id}/handback", response_model=IncidentExperiment)
+def handback(incident_id: str, plan_id: str, request: HandbackCommand, actor: EditActor):
+    """Record that the engineer took a simulated finding back to the investigation.
+
+    The finding stays on the plan; nothing is written to the incident's evidence,
+    observations or assessment, and the suggested check is still done by hand.
+    """
+
+    def record(session):
+        incident = load_incident(session, incident_id)
+        plan = load_plan(session, incident_id, plan_id)
+        if plan.revision != request.revision:
+            raise HTTPException(409, "Experiment changed; reload before continuing.")
+        finding = next(
+            (
+                item
+                for item in (plan.analysis.findings if plan.analysis else [])
+                if item.hypothesis_id == request.hypothesis_id
+            ),
+            None,
+        )
+        if plan.status != "completed" or finding is None:
+            raise HTTPException(409, "Only a finished simulation's finding can be handed back.")
+        latest = next(
+            (
+                item
+                for item in reversed(plan.handbacks)
+                if item.hypothesis_id == finding.hypothesis_id
+            ),
+            None,
+        )
+        if latest and latest.decision == request.decision:
+            return plan
+        if request.decision == "return":
+            if finding.outcome != "consistent":
+                raise HTTPException(
+                    409, "Only a finding consistent with the records is handed back."
+                )
+            if not current_source(plan, incident):
+                raise HTTPException(
+                    409, "Evidence changed after this simulation; run it again before using it."
+                )
+        plan.handbacks.append(
+            ExperimentHandback(
+                hypothesis_id=finding.hypothesis_id,
+                decision=request.decision,
+                outcome=finding.outcome,
+                suggested_check_id=finding.suggested_check_id,
+                actor=actor.subject,
+                timestamp=timestamp(),
+            )
+        )
+        plan.history.append(
+            ExperimentEvent(
+                action=request.decision,
+                actor=actor.subject,
+                timestamp=timestamp(),
+                detail="Simulated finding returned to the investigation; not evidence."
+                if request.decision == "return"
+                else "Simulated finding set aside by the engineer.",
+            )
+        )
+        previous = plan.revision
+        plan.revision += 1
+        save_plan(session, plan, previous)
+        return plan
+
+    return database_operation(record)

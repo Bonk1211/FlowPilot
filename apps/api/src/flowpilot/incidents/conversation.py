@@ -271,7 +271,7 @@ async def converse(incident_id, request, actor, settings=None, generate=None):
                 turn.model_dump(mode="json", exclude={"sources", "generation"})
                 for turn in incident.conversation[-8:]
             ],
-            "assessment": incident.assessment.model_dump(mode="json")
+            "assessment": diagnostic.model_payload(incident.assessment)
             if incident.assessment
             else None,
         }

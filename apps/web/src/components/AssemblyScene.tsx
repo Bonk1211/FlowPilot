@@ -14,6 +14,8 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import type { ProcedureStep } from "@flowpilot/contracts";
 import { cameraPresets, modelNodes } from "../prototype/model";
+import { sampleCamera, type CameraFrame } from "../scene/shots";
+import { Stage, type SceneDirection } from "../scene/stage";
 
 type Props = {
   step: ProcedureStep;
@@ -23,6 +25,20 @@ type Props = {
   onInteract: () => void;
   /** Extra parts to highlight with the step's part; defaults to that part alone. */
   highlightIds?: readonly string[];
+  /**
+   * Illustrative levels from 0 to 1 for named meshes, such as simulated mass
+   * for the fluid core or simulated coverage for the spray cone. They are
+   * shown as glow or opacity and never describe a measurement.
+   */
+  partStates?: Readonly<Record<string, number>>;
+  /**
+   * Directed mode, fixed when the scene mounts: shots move the camera, parts
+   * separate and the liquid, air, spray and deposit follow `direction`.
+   */
+  directed?: boolean;
+  direction?: SceneDirection | null;
+  /** How far the current shot has played, from 0 to 1, reported a few times a second. */
+  onShotProgress?: (progress: number) => void;
 };
 
 type Material = THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial;
@@ -35,8 +51,20 @@ type Runtime = {
   moving: boolean;
   reduced: boolean;
   highlight: ReadonlySet<string>;
+  targets: Record<string, number>;
+  shown: Record<string, number>;
   kind: string;
   isolated: boolean;
+  stage: Stage | null;
+  director: {
+    direction: SceneDirection;
+    start: number;
+    from: CameraFrame | null;
+    paused: boolean;
+    pausedAt: number;
+    reported: number;
+  } | null;
+  pending: SceneDirection | null;
 };
 
 const detailNames = [
@@ -54,6 +82,9 @@ function isDetailName(name: string) {
     (detailName) => name === detailName || name.startsWith(`${detailName}_`),
   );
 }
+
+const lowLevel = new THREE.Color(0xe0a23c);
+const fullLevel = new THREE.Color(0x35d6c8);
 
 function materials(mesh: THREE.Mesh) {
   return (
@@ -92,6 +123,30 @@ function dispose(root: THREE.Object3D) {
   });
 }
 
+function startShot(state: Runtime, direction: SceneDirection) {
+  state.stage?.direct(direction);
+  state.director = {
+    direction,
+    start: performance.now(),
+    from: {
+      position: state.camera.position.toArray() as [number, number, number],
+      target: state.controls.target.toArray() as [number, number, number],
+      fov: state.camera.fov,
+    },
+    paused: false,
+    pausedAt: 0,
+    reported: 0,
+  };
+}
+
+/** The viewer took the camera: hold the shot where it is. */
+function pauseShot(state: Runtime) {
+  const director = state.director;
+  if (!director || director.paused) return;
+  director.paused = true;
+  director.pausedAt = performance.now() - director.start;
+}
+
 export default function AssemblyScene({
   step,
   reset,
@@ -99,19 +154,24 @@ export default function AssemblyScene({
   onFailure,
   onInteract,
   highlightIds,
+  partStates,
+  directed = false,
+  direction = null,
+  onShotProgress,
 }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const highlightKey = highlightIds?.join(",");
+  const partStatesKey = partStates ? JSON.stringify(partStates) : undefined;
   const runtime = useRef<Runtime | null>(null);
-  const callbacks = useRef({ onFailure, onInteract });
+  const callbacks = useRef({ onFailure, onInteract, onShotProgress });
   const [isolated, setIsolated] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const detail =
     typeof window !== "undefined" && window.innerWidth < 1024 ? "low" : "high";
 
   useEffect(() => {
-    callbacks.current = { onFailure, onInteract };
-  }, [onFailure, onInteract]);
+    callbacks.current = { onFailure, onInteract, onShotProgress };
+  }, [onFailure, onInteract, onShotProgress]);
 
   useEffect(() => {
     const current = runtime.current;
@@ -184,10 +244,18 @@ export default function AssemblyScene({
       moving: false,
       reduced: false,
       highlight: new Set<string>(),
+      targets: {},
+      shown: {},
       kind: "none",
       isolated: false,
+      stage: null,
+      director: null,
+      pending: null,
     };
     runtime.current = state;
+    // Development only: lets the camera work be inspected from the browser console.
+    if (import.meta.env.DEV && directed)
+      Object.assign(window, { __flowpilotScene: { state, renderer, scene } });
 
     new GLTFLoader().load(
       "/models/generic-fluid-dispenser.glb",
@@ -222,6 +290,11 @@ export default function AssemblyScene({
         scene.remove(state.parts);
         state.parts = parts;
         scene.add(parts);
+        if (directed) {
+          state.stage = new Stage(parts, container, detail);
+          if (state.pending) startShot(state, state.pending);
+          state.pending = null;
+        }
         setLoaded(true);
       },
       undefined,
@@ -230,6 +303,7 @@ export default function AssemblyScene({
 
     const interact = () => {
       state.moving = false;
+      pauseShot(state);
       callbacks.current.onInteract();
     };
     controls.addEventListener("start", interact);
@@ -252,8 +326,52 @@ export default function AssemblyScene({
     let lastRender = 0;
     const render = (time: number) => {
       frame = requestAnimationFrame(render);
-      if (time - lastRender < 42) return;
+      // The directed scene animates every frame; otherwise about 24 frames a second is enough.
+      if (!state.stage?.active && time - lastRender < 42) return;
       lastRender = time;
+      const director = state.director;
+      if (state.stage?.active && director) {
+        const elapsed = director.paused
+          ? director.pausedAt
+          : performance.now() - director.start;
+        const shot = sampleCamera(
+          director.direction.shot,
+          elapsed,
+          director.from,
+          state.reduced,
+        );
+        if (!director.paused) {
+          camera.position.set(...shot.position);
+          controls.target.set(...shot.target);
+          if (Math.abs(camera.fov - shot.fov) > 0.01) {
+            camera.fov = shot.fov;
+            camera.updateProjectionMatrix();
+          }
+        } else if (state.moving) {
+          camera.position.lerp(state.goal, state.reduced ? 1 : 0.1);
+          controls.target.lerp(state.target, state.reduced ? 1 : 0.1);
+          if (camera.position.distanceTo(state.goal) < 0.005)
+            state.moving = false;
+        }
+        // Reduced motion holds the flow still so each step is one steady picture.
+        state.stage.update(
+          state.reduced ? 1.3 : time / 1000,
+          shot.progress,
+          camera,
+          container.clientWidth,
+          container.clientHeight,
+        );
+        if (
+          time - director.reported > 120 ||
+          (shot.progress === 1 && director.reported >= 0)
+        ) {
+          director.reported = shot.progress === 1 ? -1 : time;
+          callbacks.current.onShotProgress?.(shot.progress);
+        }
+        controls.update();
+        renderer.render(scene, camera);
+        return;
+      }
       if (state.moving) {
         camera.position.lerp(state.goal, state.reduced ? 1 : 0.1);
         controls.target.lerp(state.target, state.reduced ? 1 : 0.1);
@@ -263,8 +381,20 @@ export default function AssemblyScene({
         )
           state.moving = false;
       }
+      for (const name of Object.keys(state.shown))
+        if (!(name in state.targets)) delete state.shown[name];
+      for (const [name, target] of Object.entries(state.targets)) {
+        const shown = state.shown[name] ?? target;
+        state.shown[name] = state.reduced
+          ? target
+          : shown + (target - shown) * 0.25;
+      }
       state.parts.traverse((object) => {
         if (!(object instanceof THREE.Mesh)) return;
+        if (object.name === "spray-cone") {
+          const width = 0.5 + 0.5 * (state.shown[object.name] ?? 1);
+          object.scale.set(width, 1, width);
+        }
         const owner = semanticOwner(object, state.parts);
         const active =
           !!owner && state.highlight.has(owner) && state.kind !== "none";
@@ -290,9 +420,29 @@ export default function AssemblyScene({
                   : 0;
           }
           const faded = state.isolated && owner && !state.highlight.has(owner);
-          material.transparent = faded || baseOpacity < 1;
+          const transparent = !!faded || baseOpacity < 1;
+          // Opaque materials compile alpha out, so a switch needs a (cached) recompile.
+          if (material.transparent !== transparent) {
+            material.transparent = transparent;
+            material.needsUpdate = true;
+          }
           material.opacity = faded ? Math.min(baseOpacity, 0.16) : baseOpacity;
           material.depthWrite = !faded;
+          const level = state.shown[object.name] ?? state.shown[owner];
+          if (level !== undefined && !faded) {
+            if (object.name === "spray-cone") {
+              material.transparent = true;
+              material.opacity = Math.min(1, 0.05 + 0.75 * level);
+            } else if (material.emissive) {
+              // Full levels glow teal; low levels dim toward amber.
+              material.emissive.copy(lowLevel).lerp(fullLevel, level);
+              // A large surface needs a gentler glow than a thin line.
+              material.emissiveIntensity =
+                owner === "substrate_tray"
+                  ? 0.05 + 0.55 * level
+                  : 0.2 + 1.4 * level;
+            }
+          }
         }
       });
       controls.update();
@@ -307,6 +457,7 @@ export default function AssemblyScene({
       controls.removeEventListener("start", interact);
       controls.dispose();
       renderer.domElement.removeEventListener("webglcontextlost", contextLost);
+      state.stage?.dispose();
       dispose(state.parts);
       ground.geometry.dispose();
       groundMaterial.dispose();
@@ -315,6 +466,8 @@ export default function AssemblyScene({
       renderer.domElement.remove();
       runtime.current = null;
     };
+    // `directed` is fixed for the scene's lifetime.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detail]);
 
   useEffect(() => {
@@ -325,21 +478,42 @@ export default function AssemblyScene({
       callbacks.current.onFailure();
       return;
     }
-    current.goal.fromArray(preset.position);
-    current.target.fromArray(preset.target);
+    if (!current.stage) {
+      current.goal.fromArray(preset.position);
+      current.target.fromArray(preset.target);
+    }
     current.highlight = new Set(
       highlightKey ? highlightKey.split(",") : [step.model_node_id],
     );
     current.kind = step.highlight;
     current.reduced = reduced;
-    current.moving = true;
+    current.moving = !directed;
     setIsolated(false);
-  }, [step, reset, reduced, highlightKey]);
+  }, [step, reset, reduced, highlightKey, directed]);
+
+  // A new step starts its shot; Reset view (reset) replays it from the current framing.
+  const directionKey = direction?.key;
+  useEffect(() => {
+    const current = runtime.current;
+    if (!current || !direction) return;
+    if (current.stage) startShot(current, direction);
+    else current.pending = direction;
+    // The key stands in for the direction, which is recreated on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [directionKey, reset]);
+
+  useEffect(() => {
+    const current = runtime.current;
+    if (current) current.targets = partStates ? { ...partStates } : {};
+    // The key stands in for the object, which is recreated on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [partStatesKey]);
 
   function adjust(kind: "left" | "right" | "up" | "down" | "in" | "out") {
     const current = runtime.current;
     if (!current) return;
     current.moving = false;
+    pauseShot(current);
     callbacks.current.onInteract();
     const offset = current.camera.position.clone().sub(current.controls.target);
     if (kind === "in" || kind === "out") {
@@ -362,6 +536,10 @@ export default function AssemblyScene({
     current.goal.set(7.5, 4.8, 9.5);
     current.target.set(0, -0.15, 0);
     current.moving = true;
+    if (current.director) {
+      pauseShot(current);
+      callbacks.current.onInteract();
+    }
     setIsolated(false);
   }
 
@@ -376,14 +554,17 @@ export default function AssemblyScene({
             .map((id) => modelNodes[id as keyof typeof modelNodes]?.label)
             .filter(Boolean)
             .join(", ") || "unknown"
-        }`}
+        }.${partStatesKey ? " Glow and spray levels are simulated and illustrative, not measured." : ""}`}
         data-node-id={step.model_node_id}
         data-highlight-ids={highlightKey}
+        data-part-states={partStatesKey}
         data-camera-preset={step.camera_preset}
         data-highlighted={step.highlight !== "none"}
         data-reduced-motion={reduced}
         data-model-detail={detail}
         data-model-loaded={loaded}
+        data-shot={direction?.shot.id}
+        data-condition={direction?.condition}
       />
       {!loaded && <p role="status">Loading detailed assembly…</p>}
       <div

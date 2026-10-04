@@ -2602,6 +2602,16 @@
             "title": "Blocked Reason",
             "type": "string"
           },
+          "brief": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExperimentBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "distinguishes": {
             "items": {
               "type": "string"
@@ -3496,6 +3506,13 @@
             "title": "Effects",
             "type": "array"
           },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/ExperimentFinding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
           "limitations": {
             "items": {
               "type": "string"
@@ -3535,6 +3552,57 @@
           "limitations"
         ],
         "title": "ExperimentAnalysis",
+        "type": "object"
+      },
+      "ExperimentBrief": {
+        "additionalProperties": false,
+        "description": "Why a simulated experiment is worth running and how its result may be read.",
+        "properties": {
+          "limits": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limits",
+            "type": "array"
+          },
+          "prediction": {
+            "$ref": "#/components/schemas/ExperimentPrediction"
+          },
+          "reading": {
+            "items": {
+              "$ref": "#/components/schemas/ReadingRule"
+            },
+            "title": "Reading",
+            "type": "array"
+          },
+          "shape_facts": {
+            "items": {
+              "$ref": "#/components/schemas/ShapeFact"
+            },
+            "title": "Shape Facts",
+            "type": "array"
+          },
+          "verifies": {
+            "title": "Verifies",
+            "type": "string"
+          },
+          "why": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Why",
+            "type": "array"
+          }
+        },
+        "required": [
+          "why",
+          "verifies",
+          "prediction",
+          "reading",
+          "limits",
+          "shape_facts"
+        ],
+        "title": "ExperimentBrief",
         "type": "object"
       },
       "ExperimentCommand": {
@@ -3651,8 +3719,11 @@
             "enum": [
               "propose",
               "approve",
+              "start",
               "complete",
-              "withdraw"
+              "withdraw",
+              "return",
+              "set_aside"
             ],
             "title": "Action",
             "type": "string"
@@ -3708,6 +3779,245 @@
         "title": "ExperimentFactor",
         "type": "object"
       },
+      "ExperimentFinding": {
+        "additionalProperties": false,
+        "description": "How one simulated response compares with the records, under stated criteria.\n\nIt is never evidence: a consistent finding only suggests a manual check.",
+        "properties": {
+          "conflicting_evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Conflicting Evidence Ids",
+            "type": "array"
+          },
+          "criteria": {
+            "items": {
+              "$ref": "#/components/schemas/FindingCriterion"
+            },
+            "title": "Criteria",
+            "type": "array"
+          },
+          "diagnostic_confirmation": {
+            "const": false,
+            "default": false,
+            "title": "Diagnostic Confirmation",
+            "type": "boolean"
+          },
+          "hypothesis_id": {
+            "enum": [
+              "restriction",
+              "unstable_delivery",
+              "material_condition"
+            ],
+            "title": "Hypothesis Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "consistent",
+              "conflicts",
+              "not_distinguishable"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "shape_facts": {
+            "items": {
+              "$ref": "#/components/schemas/ShapeFact"
+            },
+            "title": "Shape Facts",
+            "type": "array"
+          },
+          "simulated_shape": {
+            "enum": [
+              "monotonic",
+              "oscillating"
+            ],
+            "title": "Simulated Shape",
+            "type": "string"
+          },
+          "suggested_check_id": {
+            "enum": [
+              "delivery_review",
+              "restriction_review",
+              "material_review"
+            ],
+            "title": "Suggested Check Id",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hypothesis_id",
+          "outcome",
+          "label",
+          "summary",
+          "simulated_shape",
+          "criteria",
+          "shape_facts",
+          "conflicting_evidence_ids",
+          "suggested_check_id"
+        ],
+        "title": "ExperimentFinding",
+        "type": "object"
+      },
+      "ExperimentHandback": {
+        "additionalProperties": false,
+        "description": "A simulated finding the engineer took back to the investigation, or set aside.",
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "return",
+              "set_aside"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "hypothesis_id": {
+            "enum": [
+              "restriction",
+              "unstable_delivery",
+              "material_condition"
+            ],
+            "title": "Hypothesis Id",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "consistent",
+              "conflicts",
+              "not_distinguishable"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "suggested_check_id": {
+            "enum": [
+              "delivery_review",
+              "restriction_review",
+              "material_review"
+            ],
+            "title": "Suggested Check Id",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hypothesis_id",
+          "decision",
+          "outcome",
+          "suggested_check_id",
+          "actor",
+          "timestamp"
+        ],
+        "title": "ExperimentHandback",
+        "type": "object"
+      },
+      "ExperimentPrediction": {
+        "additionalProperties": false,
+        "description": "What the illustrative equations give if the explanation holds; never a measurement.",
+        "properties": {
+          "basis": {
+            "title": "Basis",
+            "type": "string"
+          },
+          "control_relative_mass": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Control Relative Mass",
+            "type": "array"
+          },
+          "control_severity": {
+            "title": "Control Severity",
+            "type": "number"
+          },
+          "coverage_fraction": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Coverage Fraction",
+            "type": "array"
+          },
+          "if_holds": {
+            "title": "If Holds",
+            "type": "string"
+          },
+          "if_not": {
+            "title": "If Not",
+            "type": "string"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "positions": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Positions",
+            "type": "array"
+          },
+          "relative_mass": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Relative Mass",
+            "type": "array"
+          },
+          "shape": {
+            "enum": [
+              "monotonic",
+              "oscillating"
+            ],
+            "title": "Shape",
+            "type": "string"
+          },
+          "signature": {
+            "enum": [
+              "steady_fall",
+              "oscillation",
+              "decelerating_fall"
+            ],
+            "title": "Signature",
+            "type": "string"
+          },
+          "tested_severity": {
+            "title": "Tested Severity",
+            "type": "number"
+          }
+        },
+        "required": [
+          "signature",
+          "shape",
+          "model_version",
+          "control_severity",
+          "tested_severity",
+          "positions",
+          "relative_mass",
+          "coverage_fraction",
+          "control_relative_mass",
+          "if_holds",
+          "if_not",
+          "basis"
+        ],
+        "title": "ExperimentPrediction",
+        "type": "object"
+      },
       "ExperimentProposal": {
         "additionalProperties": false,
         "properties": {
@@ -3750,7 +4060,7 @@
               "type": "string"
             },
             "maxItems": 3,
-            "minItems": 2,
+            "minItems": 1,
             "title": "Hypothesis Ids",
             "type": "array"
           },
@@ -3887,6 +4197,41 @@
           }
         },
         "title": "ExplanationRun",
+        "type": "object"
+      },
+      "FindingCriterion": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "id": {
+            "enum": [
+              "completed",
+              "responds",
+              "shape_matches",
+              "no_conflict"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "met": {
+            "title": "Met",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "met",
+          "detail"
+        ],
+        "title": "FindingCriterion",
         "type": "object"
       },
       "GoldenScenario": {
@@ -4117,6 +4462,40 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HandbackCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "decision": {
+            "enum": [
+              "return",
+              "set_aside"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "hypothesis_id": {
+            "enum": [
+              "restriction",
+              "unstable_delivery",
+              "material_condition"
+            ],
+            "title": "Hypothesis Id",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision",
+          "hypothesis_id",
+          "decision"
+        ],
+        "title": "HandbackCommand",
         "type": "object"
       },
       "HandoffDraft": {
@@ -5128,6 +5507,13 @@
             "title": "Fixture Version",
             "type": "string"
           },
+          "handbacks": {
+            "items": {
+              "$ref": "#/components/schemas/ExperimentHandback"
+            },
+            "title": "Handbacks",
+            "type": "array"
+          },
           "history": {
             "items": {
               "$ref": "#/components/schemas/ExperimentEvent"
@@ -5194,6 +5580,28 @@
             "title": "Revision",
             "type": "integer"
           },
+          "run_heartbeat_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Heartbeat At"
+          },
+          "run_started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Started At"
+          },
           "source_current": {
             "default": true,
             "title": "Source Current",
@@ -5229,6 +5637,7 @@
             "enum": [
               "proposed",
               "approved",
+              "running",
               "completed",
               "withdrawn"
             ],
@@ -8836,6 +9245,35 @@
         "title": "RankedCause",
         "type": "object"
       },
+      "ReadingRule": {
+        "additionalProperties": false,
+        "properties": {
+          "criterion": {
+            "title": "Criterion",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "consistent",
+              "conflicts",
+              "not_distinguishable"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outcome",
+          "label",
+          "criterion"
+        ],
+        "title": "ReadingRule",
+        "type": "object"
+      },
       "ReasoningRun": {
         "additionalProperties": false,
         "properties": {
@@ -9407,6 +9845,45 @@
         "title": "SelectInvestigationAction",
         "type": "object"
       },
+      "ShapeFact": {
+        "additionalProperties": false,
+        "description": "A recorded or confirmed description of how the defect changed over the sequence.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "evidence_id": {
+            "title": "Evidence Id",
+            "type": "string"
+          },
+          "shape": {
+            "enum": [
+              "monotonic",
+              "oscillating",
+              "not_modelled"
+            ],
+            "title": "Shape",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "confirmed_answer",
+              "record"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "evidence_id",
+          "source",
+          "description",
+          "shape"
+        ],
+        "title": "ShapeFact",
+        "type": "object"
+      },
       "SimpleAction": {
         "additionalProperties": false,
         "properties": {
@@ -9484,7 +9961,7 @@
             "type": "string"
           },
           "model_version": {
-            "default": "s932-illustrative-surrogate-1",
+            "default": "s932-illustrative-surrogate-2",
             "title": "Model Version",
             "type": "string"
           },
@@ -9556,6 +10033,28 @@
             "title": "Coverage Fraction",
             "type": "number"
           },
+          "feed_flow": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feed Flow"
+          },
+          "flow_resistance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flow Resistance"
+          },
           "learned_coverage_fraction": {
             "title": "Learned Coverage Fraction",
             "type": "number"
@@ -9563,6 +10062,17 @@
           "learned_relative_mass": {
             "title": "Learned Relative Mass",
             "type": "number"
+          },
+          "path_open": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path Open"
           },
           "position": {
             "title": "Position",
@@ -9572,9 +10082,42 @@
             "title": "Relative Mass",
             "type": "number"
           },
+          "spray_width": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spray Width"
+          },
           "step": {
             "title": "Step",
             "type": "integer"
+          },
+          "supply_pressure": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supply Pressure"
+          },
+          "valve_duty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valve Duty"
           }
         },
         "required": [
@@ -9684,7 +10227,7 @@
             "type": "string"
           },
           "model_version": {
-            "default": "s932-illustrative-surrogate-1",
+            "default": "s932-illustrative-surrogate-2",
             "title": "Model Version",
             "type": "string"
           },
@@ -12462,8 +13005,71 @@
         ]
       }
     },
+    "/api/incidents/{incident_id}/experiments/{plan_id}/handback": {
+      "post": {
+        "description": "Record that the engineer took a simulated finding back to the investigation.\n\nThe finding stays on the plan; nothing is written to the incident's evidence,\nobservations or assessment, and the suggested check is still done by hand.",
+        "operationId": "handback_api_incidents__incident_id__experiments__plan_id__handback_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "title": "Incident Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "title": "Plan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandbackCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentExperiment"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Handback",
+        "tags": [
+          "mock factorial experiments"
+        ]
+      }
+    },
     "/api/incidents/{incident_id}/experiments/{plan_id}/run": {
       "post": {
+        "description": "Start the approved matrix; conditions are saved one by one in the background.",
         "operationId": "execute_api_incidents__incident_id__experiments__plan_id__run_post",
         "parameters": [
           {
@@ -12496,7 +13102,7 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {

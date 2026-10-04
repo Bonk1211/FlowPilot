@@ -69,6 +69,20 @@ const glass = new THREE.MeshPhysicalMaterial({
   opacity: 0.58,
   transmission: 0.22,
 });
+// Atomizing (coaxial) air is drawn apart from the liquid path it surrounds.
+const atomizingAir = new THREE.MeshStandardMaterial({
+  name: "atomizing-air",
+  color: 0x7fa6c4,
+  metalness: 0.1,
+  roughness: 0.5,
+});
+// Flow cores are restyled by the viewer; this material is only their fallback.
+const flowCore = new THREE.MeshStandardMaterial({
+  name: "flow-core",
+  color: 0x35d6c8,
+  metalness: 0,
+  roughness: 0.3,
+});
 const lens = new THREE.MeshPhysicalMaterial({
   name: "camera-lens",
   color: 0x0b2636,
@@ -210,6 +224,16 @@ function tube(group, points, radius, material, name) {
   );
 }
 
+/**
+ * A thin core along a real flow path. Its UV runs along the path's length, and
+ * the path points travel with the model so the viewer can follow them.
+ */
+function flowCore_(group, points, radius, name, kind) {
+  const value = tube(group, points, radius, flowCore, name);
+  value.userData = { flowPath: points, flowKind: kind };
+  return value;
+}
+
 function fastener(group, position, rotation = [Math.PI / 2, 0, 0]) {
   const screw = cylinder(
     group,
@@ -348,7 +372,7 @@ cylinder(
   [0.055, 0.055],
   1.52,
   [-2.25, 0.68, 0.15],
-  teal,
+  glass,
   undefined,
   "internal-pickup",
   32,
@@ -364,6 +388,29 @@ cylinder(
   32,
 );
 
+flowCore_(
+  pickup,
+  [
+    [-2.25, -0.12, 0.15],
+    [-2.25, 0.6, 0.15],
+    [-2.25, 1.44, 0.15],
+    [-2.25, 1.75, 0.15],
+  ],
+  0.03,
+  "fluid-core-pickup",
+  "liquid",
+);
+// The liquid held in the bottle, seen when the vessel is drawn transparent.
+cylinder(
+  reservoir,
+  [0.62, 0.62],
+  1.2,
+  [-2.25, 0.32, 0.15],
+  flowCore,
+  undefined,
+  "fluid-volume",
+);
+
 const bfsAir = part("bfs_air");
 tube(
   bfsAir,
@@ -375,6 +422,17 @@ tube(
   0.055,
   purple,
   "reservoir-pressure-line",
+);
+flowCore_(
+  bfsAir,
+  [
+    [-3.7, 1.65, 0.4],
+    [-3.2, 1.65, 0.4],
+    [-2.75, 1.73, 0.28],
+  ],
+  0.022,
+  "air-core-reservoir",
+  "reservoir_air",
 );
 cylinder(
   bfsAir,
@@ -420,7 +478,7 @@ tube(
   glass,
   "clear-feed-hose",
 );
-tube(
+flowCore_(
   feed,
   [
     [-2.25, 1.75, 0.15],
@@ -429,8 +487,8 @@ tube(
     [-0.45, 1.45, 0],
   ],
   0.026,
-  teal,
   "visible-fluid-core",
+  "liquid",
 );
 for (const x of [-1.65, -1.15, -0.7])
   torus(
@@ -487,7 +545,32 @@ ringStack(
   "collar-grip",
 );
 
+flowCore_(
+  qd,
+  [
+    [-0.45, 1.45, 0],
+    [-0.47, 1.36, 0],
+    [-0.3, 1.31, 0],
+    [0, 1.31, 0],
+  ],
+  0.026,
+  "fluid-core-qd",
+  "liquid",
+);
+
 const valve = part("dj2200_valve");
+flowCore_(
+  valve,
+  [
+    [0, 1.31, 0],
+    [0, 0.4, 0],
+    [0, -0.6, 0],
+    [0, -0.95, 0],
+  ],
+  0.028,
+  "fluid-core-valve",
+  "liquid",
+);
 box(
   valve,
   [1.15, 1.65, 0.9],
@@ -626,6 +709,17 @@ tube(
   amber,
   "actuation-air-line",
 );
+flowCore_(
+  valveAir,
+  [
+    [2.95, 1.62, 0.55],
+    [1.65, 1.62, 0.55],
+    [0.62, 1.5, 0.25],
+  ],
+  0.022,
+  "air-core-valve",
+  "valve_air",
+);
 cylinder(
   valveAir,
   [0.11, 0.11],
@@ -647,8 +741,20 @@ tube(
     [0.35, -0.65, 0.15],
   ],
   0.065,
-  teal,
+  atomizingAir,
   "coaxial-air-line",
+);
+flowCore_(
+  coaxAir,
+  [
+    [2.95, 1.15, 0.7],
+    [2.05, 1.1, 0.7],
+    [0.9, 0.35, 0.52],
+    [0.35, -0.65, 0.15],
+  ],
+  0.026,
+  "air-core-coaxial",
+  "atomizing_air",
 );
 cylinder(
   coaxAir,
@@ -696,6 +802,17 @@ for (let index = 0; index < 8; index += 1) {
 }
 
 const nozzle = part("nozzle");
+flowCore_(
+  nozzle,
+  [
+    [0, -0.95, 0],
+    [0, -1.4, 0],
+    [0, -1.8, 0],
+  ],
+  0.02,
+  "fluid-core-nozzle",
+  "liquid",
+);
 cylinder(
   nozzle,
   [0.2, 0.1],

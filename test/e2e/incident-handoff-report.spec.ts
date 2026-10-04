@@ -32,12 +32,19 @@ test("handoff exports a complete report and attached email draft, preserving wor
       headers: { "X-Incident-Role": "engineer" },
     })
   ).json();
-  const completed = await (
-    await request.post(`${base}/${plan.id}/run`, {
-      data: { revision: approved.revision },
+  const started = await request.post(`${base}/${plan.id}/run`, {
+    data: { revision: approved.revision },
+  });
+  // A run starts in the background (202) and saves each condition as it finishes.
+  expect(started.status()).toBe(202);
+  let completed = await started.json();
+  await expect
+    .poll(async () => {
+      const plans = await (await request.get(base)).json();
+      completed = plans.find((item: { id: string }) => item.id === plan.id);
+      return completed.status;
     })
-  ).json();
-  expect(completed.status).toBe("completed");
+    .toBe("completed");
   const pending = await (
     await request.post(base, {
       data: { ...proposal, response: "coverage_fraction" },

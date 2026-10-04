@@ -13,24 +13,10 @@ function currentResponses(incident: Incident) {
   });
 }
 
-export function resolveInvestigationExperiment(
-  incident: Incident,
-  checkId: string | null,
-  answerId: string | null,
-) {
-  const source = currentResponses(incident).find(
-    ({ answer }) => answer.id === answerId && answer.status === "confirmed",
-  );
-  const check = incident.assessment?.checks.find(
-    (check) => check.id === checkId && check.eligible,
-  );
-  if (!source || !check) return null;
-  return { ...source, check };
-}
-
-export type InvestigationExperiment = NonNullable<
-  ReturnType<typeof resolveInvestigationExperiment>
->;
+type Response = ReturnType<typeof currentResponses>[number];
+type Check = NonNullable<Incident["assessment"]>["checks"][number];
+/** The check the investigation would run next, with the response it follows. */
+export type InvestigationExperiment = Response & { check: Check };
 
 export function suggestInvestigationExperiment(
   incident: Incident,
@@ -73,3 +59,34 @@ export function suggestInvestigationExperiment(
     })[0];
   return check ? { ...latest, check } : null;
 }
+
+type Assessment = NonNullable<Incident["assessment"]>;
+export type ExperimentCandidate = {
+  hypothesis: Assessment["hypotheses"][number];
+  check: Assessment["checks"][number];
+};
+
+/**
+ * One experiment per competing explanation, offered together once the single
+ * suggestion's conditions hold. `lead` is the check the investigation would
+ * run first; `items` follow the assessment's ranking.
+ */
+export function suggestInvestigationExperiments(incident: Incident) {
+  const lead = suggestInvestigationExperiment(incident);
+  const assessment = incident.assessment;
+  if (!lead || !assessment) return null;
+  const items = [...assessment.hypotheses]
+    .sort((a, b) => a.rank - b.rank)
+    .flatMap((hypothesis) => {
+      const check = assessment.checks.find(
+        (item) => item.hypothesis_id === hypothesis.id && item.eligible,
+      );
+      return check ? [{ hypothesis, check }] : [];
+    });
+  if (items.length < 2) return null;
+  return { answer: lead.answer, node: lead.node, lead: lead.check, items };
+}
+
+export type InvestigationExperiments = NonNullable<
+  ReturnType<typeof suggestInvestigationExperiments>
+>;

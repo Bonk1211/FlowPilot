@@ -136,3 +136,37 @@ def test_simulation_api_preserves_diagnosis_and_rejects_missing_or_stale_context
             ).status_code
             == 422
         )
+
+
+def test_illustrative_channels_follow_each_mechanism_and_are_labelled():
+    from flowpilot.incidents.simulation import (
+        ASSUMPTIONS,
+        UNITS,
+        SimulationParameters,
+        SimulationRequest,
+        simulate,
+    )
+
+    def run(scenario):
+        return simulate(
+            SimulationRequest(scenario=scenario, parameters=SimulationParameters(severity=0.8))
+        ).points
+
+    restriction, unstable, material = (
+        run("restriction"),
+        run("unstable_delivery"),
+        run("material_condition"),
+    )
+    for points in (restriction, unstable, material):
+        assert all(point.feed_flow == point.relative_mass for point in points)
+        assert all(point.spray_width == point.coverage_fraction for point in points)
+        assert {point.valve_duty for point in points} == {1.0}
+    assert restriction[-1].path_open < restriction[0].path_open == 1
+    assert {point.supply_pressure for point in restriction} == {1.0}
+    pressures = [point.supply_pressure for point in unstable]
+    assert min(pressures) < 0.7 and max(pressures) == 1
+    assert {point.path_open for point in unstable} == {1.0}
+    assert material[-1].flow_resistance > material[0].flow_resistance == 1
+    for name in ("supply_pressure", "feed_flow", "path_open", "flow_resistance", "valve_duty"):
+        assert "illustrative" in UNITS[name]
+    assert any("none is a sensor reading" in line for line in ASSUMPTIONS)

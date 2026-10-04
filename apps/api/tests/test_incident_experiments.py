@@ -78,14 +78,26 @@ def propose(client, current, **changes):
     return response.json()
 
 
+def saved_plan(client, current, plan_id):
+    plans = client.get(f"/api/incidents/{current.id}/experiments", headers=HEADERS).json()
+    return next(item for item in plans if item["id"] == plan_id)
+
+
 def command_plan(client, current, plan, command, **fields):
     response = client.post(
         f"/api/incidents/{current.id}/experiments/{plan['id']}/{command}",
         json={"revision": plan["revision"], **fields},
         headers=HEADERS,
     )
-    assert response.status_code == 200, response.text
-    return response.json()
+    if command != "run":
+        assert response.status_code == 200, response.text
+        return response.json()
+    # A run starts (202) and its conditions are saved by a background task, which the
+    # test client completes before returning; a finished plan answers 200 unchanged.
+    assert response.status_code in {200, 202}, response.text
+    if response.status_code == 202:
+        assert response.json()["status"] == "running"
+    return saved_plan(client, current, plan["id"])
 
 
 def add_context(current, synthetic=True):
@@ -295,3 +307,174 @@ def test_completed_plan_keeps_historical_results_after_later_evidence_change(cli
     assert saved["status"] == "completed" and saved["source_current"] is False
     assert saved["results"] == completed["results"]
     assert command_plan(client, current, completed, "run")["results"] == completed["results"]
+
+
+def single(current, hypothesis="restriction", check="restriction_review"):
+    return {
+        "hypothesis_ids": [hypothesis],
+        "check_id": check,
+        "repetitions": 1,
+    }
+
+
+def test_one_mechanism_plan_compares_with_its_own_baseline(client):
+    current = incident()
+    plan = propose(client, current, **single(current))
+    assert propose(client, current, **single(current))["id"] == plan["id"]
+    assert [row["baseline"] for row in plan["matrix"]] == [True, False, False]
+    other = propose(client, current, **single(current, "unstable_delivery", "delivery_review"))
+    assert other["id"] != plan["id"]
+    mismatched = payload(current, **single(current, "unstable_delivery"))
+    response = client.post(
+        f"/api/incidents/{current.id}/experiments", json=mismatched, headers=EDITOR_HEADERS
+    )
+    assert response.status_code == 422
+    done = command_plan(client, current, command_plan(client, current, plan, "approve"), "run")
+    assert done["status"] == "completed"
+    assert done["analysis"]["outcome"] == "simulated_difference"
+    assert done["analysis"]["summary"].startswith("The toy mechanism responds")
+    assert done["analysis"]["diagnostic_confirmation"] is False
+    assert [event["action"] for event in done["history"]] == [
+        "propose",
+        "approve",
+        "start",
+        "complete",
+    ]
+    assert get_incident(current.id).observations == []
+
+
+def test_conditions_are_saved_one_at_a_time_and_a_source_change_stops_the_run(client):
+    from flowpilot.incidents import experiments
+
+    current = incident()
+    plan = command_plan(client, current, propose(client, current, **single(current)), "approve")
+    started, work = experiments.start_run(
+        current.id, plan["id"], experiments.ExperimentCommand(revision=plan["revision"]), "t"
+    )
+    assert work and started.status == "running" and started.results == []
+    assert experiments.run_next_condition(current.id, plan["id"], "t") is False
+    partway = saved_plan(client, current, plan["id"])
+    assert partway["status"] == "running" and len(partway["results"]) == 1
+    assert partway["run_heartbeat_at"] >= partway["run_started_at"]
+    add_context(current)
+    assert experiments.run_next_condition(current.id, plan["id"], "t") is True
+    stopped = saved_plan(client, current, plan["id"])
+    assert stopped["status"] == "withdrawn" and stopped["source_current"] is False
+    assert len(stopped["results"]) == 1
+    assert stopped["analysis"]["outcome"] == "inconclusive"
+    assert "changed during the run" in stopped["history"][-1]["detail"]
+
+
+def test_a_running_plan_is_never_run_twice_and_resumes_only_after_its_worker_stops(
+    client, monkeypatch
+):
+    from flowpilot.incidents import experiments
+
+    current = incident()
+    plan = command_plan(client, current, propose(client, current, **single(current)), "approve")
+    experiments.start_run(
+        current.id, plan["id"], experiments.ExperimentCommand(revision=plan["revision"]), "t"
+    )
+    experiments.run_next_condition(current.id, plan["id"], "t")
+    calls = []
+    original = simulation.simulate
+    monkeypatch.setattr(simulation, "simulate", lambda *a: calls.append(1) or original(*a))
+    again = client.post(
+        f"/api/incidents/{current.id}/experiments/{plan['id']}/run",
+        json={"revision": plan["revision"]},
+        headers=HEADERS,
+    )
+    assert again.status_code == 202 and again.json()["status"] == "running"
+    assert calls == []  # The first worker still holds the run.
+    monkeypatch.setattr(experiments, "LEASE_SECONDS", -1)
+    resumed = command_plan(client, current, plan, "run")
+    assert resumed["status"] == "completed" and len(calls) == 2
+    assert [row["condition"] for row in resumed["results"]] == resumed["matrix"]
+
+
+def with_mass_record(current):
+    return act(
+        current.id,
+        AddEvidenceAction(
+            action="add_evidence",
+            revision=current.revision,
+            evidence=EvidenceInput(
+                id="mass-log",
+                kind="log",
+                role="machine_log",
+                label="Falling mass",
+                source_ref="test:mass",
+                synthetic=True,
+                values={
+                    "mass_trend": "falling",
+                    "samples": [{"mass_mg": value} for value in (12.0, 11.1, 10.3, 9.2)],
+                    "units": {"mass": "mg"},
+                },
+            ),
+        ),
+    )
+
+
+def run_single(client, current, hypothesis, check):
+    plan = propose(client, current, **single(current, hypothesis, check))
+    return command_plan(client, current, command_plan(client, current, plan, "approve"), "run")
+
+
+def test_findings_compare_the_simulated_shape_with_the_records(client):
+    current = with_mass_record(incident())
+    restriction = run_single(client, current, "restriction", "restriction_review")
+    unstable = run_single(client, current, "unstable_delivery", "delivery_review")
+    (consistent,) = restriction["analysis"]["findings"]
+    assert consistent["outcome"] == "consistent"
+    assert consistent["label"] == "Simulated · consistent with the records"
+    assert consistent["simulated_shape"] == "monotonic"
+    assert consistent["suggested_check_id"] == "restriction_review"
+    assert consistent["diagnostic_confirmation"] is False
+    assert all(item["met"] for item in consistent["criteria"])
+    assert "does not confirm fluid-path restriction" in consistent["summary"]
+    assert "12.0 → 11.1 → 10.3 → 9.2 mg" in consistent["summary"]
+    (opposite,) = unstable["analysis"]["findings"]
+    assert opposite["outcome"] == "conflicts"
+    assert opposite["simulated_shape"] == "oscillating"
+    assert "does not rule the explanation out" in opposite["summary"]
+    for finding in (consistent, opposite):
+        assert "most likely" not in finding["summary"]
+    # Without any shape record the simulation cannot be compared.
+    other = create_incident(replay_request("doe-test-no-shape"))
+    bare = run_single(client, other, "material_condition", "material_review")
+    assert bare["analysis"]["findings"][0]["outcome"] == "not_distinguishable"
+
+
+def test_only_a_current_consistent_finding_returns_and_nothing_becomes_evidence(client):
+    current = with_mass_record(incident())
+    before = get_incident(current.id)
+    plan = run_single(client, current, "restriction", "restriction_review")
+    other = run_single(client, current, "unstable_delivery", "delivery_review")
+    path = f"/api/incidents/{current.id}/experiments"
+
+    def send(item, decision, hypothesis):
+        return client.post(
+            f"{path}/{item['id']}/handback",
+            json={"revision": item["revision"], "decision": decision, "hypothesis_id": hypothesis},
+            headers=EDITOR_HEADERS,
+        )
+
+    returned = send(plan, "return", "restriction")
+    assert returned.status_code == 200, returned.text
+    body = returned.json()
+    assert [item["decision"] for item in body["handbacks"]] == ["return"]
+    assert body["handbacks"][0]["suggested_check_id"] == "restriction_review"
+    assert body["history"][-1]["action"] == "return"
+    # Asking again changes nothing.
+    assert send(body, "return", "restriction").json()["revision"] == body["revision"]
+    assert send(other, "return", "unstable_delivery").status_code == 409
+    set_aside = send(other, "set_aside", "unstable_delivery")
+    assert set_aside.status_code == 200
+    assert set_aside.json()["handbacks"][0]["decision"] == "set_aside"
+    after = get_incident(current.id)
+    assert after.evidence == before.evidence and after.observations == before.observations
+    assert after.assessment == before.assessment and after.revision == before.revision
+    # Once the evidence changes, a finding can no longer be returned.
+    fresh = run_single(client, current, "material_condition", "material_review")
+    add_context(after)
+    assert send(fresh, "return", "material_condition").status_code == 409
