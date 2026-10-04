@@ -40,6 +40,19 @@ Open `http://127.0.0.1:5173/` at 1440×900. `dev:mock` runs background analysis 
 
 If the 3D view cannot start, the 2D schematic carries the same highlights; use **2D schematic** and carry on.
 
+### Optional: the experiment loop (about 25 s, replaces the last row of Segment 3)
+
+Use an incident whose investigation has two confirmed answers (for example frequency **intermittent**, pressure **unstable**).
+
+| Click | Say |
+|---|---|
+| Live rail → **Unstable fluid delivery** | "Each experiment says why it is worth running, what it tests and what the illustrative model predicts: here, a decline that comes and goes." |
+| **Run all three experiments** | "Three plans, each approved as the demo engineer and run in the background. Nothing here touches a machine." |
+| Playback steps 3, 4 and 7 | "The parts this explanation involves come apart; the liquid arrives in surges with gaps; the deposit builds stripe by stripe. Every frame says Simulated." |
+| Unstable track → **Return to investigation with this finding** | "Only this one is consistent with the records under the stated criteria. It comes back as a dashed simulated finding with a suggested manual check. It is not evidence, and it does not confirm the cause." |
+
+Do not say the simulation found, confirmed or ranked the cause.
+
 ## Segment 4 — 1:10–1:40 · Question and labelled result (Person 2)
 
 To be written by Person 2: answer a question and load a labelled check result. Person 1's segment 5 assumes this segment records a **contradicted** delivery result, which moves the next step to "Review the recorded fluid-path finding".
