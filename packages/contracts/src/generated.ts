@@ -601,7 +601,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Execute */
+        /**
+         * Execute
+         * @description Start the approved matrix; conditions are saved one by one in the background.
+         */
         post: operations["execute_api_incidents__incident_id__experiments__plan_id__run_post"];
         delete?: never;
         options?: never;
@@ -2390,7 +2393,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "propose" | "approve" | "complete" | "withdraw";
+            action: "propose" | "approve" | "start" | "complete" | "withdraw";
             /** Actor */
             actor: string;
             /** Detail */
@@ -3012,6 +3015,10 @@ export interface components {
              * @default 1
              */
             revision: number;
+            /** Run Heartbeat At */
+            run_heartbeat_at?: string | null;
+            /** Run Started At */
+            run_started_at?: string | null;
             /**
              * Source Current
              * @default true
@@ -3031,7 +3038,7 @@ export interface components {
              * @default proposed
              * @enum {string}
              */
-            status: "proposed" | "approved" | "completed" | "withdrawn";
+            status: "proposed" | "approved" | "running" | "completed" | "withdrawn";
             /** Stopping Conditions */
             stopping_conditions: string[];
             /**
@@ -6299,7 +6306,7 @@ export interface operations {
         };
         responses: {
             /** @description Successful Response */
-            200: {
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };

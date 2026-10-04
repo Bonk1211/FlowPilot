@@ -210,6 +210,7 @@ test("one press runs a saved plan through real stages, shows three tracks and ch
   expect(saved[0].history.map((event) => event.action)).toEqual([
     "propose",
     "approve",
+    "start",
     "complete",
   ]);
   const after: Incident = await (

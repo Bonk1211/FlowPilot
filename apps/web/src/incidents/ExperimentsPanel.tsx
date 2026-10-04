@@ -4,6 +4,7 @@ import type {
   IncidentExperiment,
 } from "@flowpilot/contracts";
 import { incidentJson, type Incident } from "./api";
+import { settledPlan } from "./experimentRuns";
 import { useIncidentAccess } from "./AccessPanel";
 import "./experiments.css";
 import { StatusChip } from "./StatusChip";
@@ -330,7 +331,7 @@ export function ExperimentsPanel({
       expected_discrimination: expectation.trim(),
     };
     try {
-      const result = await incidentJson<IncidentExperiment>(
+      let result = await incidentJson<IncidentExperiment>(
         action === "propose"
           ? path
           : `${path}/${encodeURIComponent(plan!.id)}/${action}`,
@@ -357,9 +358,21 @@ export function ExperimentsPanel({
           ),
         },
       );
+      if (result.status === "running") {
+        setNotice(
+          "Running the stored matrix. Each condition is saved as it finishes.",
+        );
+        result = await settledPlan(path, result, {
+          onProgress: (progress) =>
+            setNotice(
+              `Running the stored matrix: ${progress.results?.length ?? 0} of ${progress.matrix.length} conditions saved.`,
+            ),
+        });
+      }
+      const saved = result;
       setPlans((current) => [
-        ...(current ?? []).filter((item) => item.id !== result.id),
-        result,
+        ...(current ?? []).filter((item) => item.id !== saved.id),
+        saved,
       ]);
       setSelectedId(result.id);
       setWithdrawal("");

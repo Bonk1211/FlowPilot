@@ -3,6 +3,7 @@ import type { IncidentExperiment } from "@flowpilot/contracts";
 import { incidentJson, loadIncident } from "./api";
 import { useIncidentAccess } from "./AccessPanel";
 import { defaultProposal } from "./experimentDefaults";
+import { settledPlan } from "./experimentRuns";
 
 export type RunStage =
   "idle" | "proposing" | "approving" | "running" | "done" | "failed";
@@ -135,9 +136,11 @@ export function useExperimentRun({
         if (current.status === "approved") {
           setStage("running");
           began = Date.now();
-          current = await post(
-            `${path}/${encodeURIComponent(current.id)}/run`,
-            { revision: current.revision },
+          current = await settledPlan(
+            path,
+            await post(`${path}/${encodeURIComponent(current.id)}/run`, {
+              revision: current.revision,
+            }),
           );
           await pause(began);
           setPlan(current);

@@ -3580,6 +3580,7 @@
             "enum": [
               "propose",
               "approve",
+              "start",
               "complete",
               "withdraw"
             ],
@@ -3770,7 +3771,7 @@
               "type": "string"
             },
             "maxItems": 3,
-            "minItems": 2,
+            "minItems": 1,
             "title": "Hypothesis Ids",
             "type": "array"
           },
@@ -5207,6 +5208,28 @@
             "title": "Revision",
             "type": "integer"
           },
+          "run_heartbeat_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Heartbeat At"
+          },
+          "run_started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Started At"
+          },
           "source_current": {
             "default": true,
             "title": "Source Current",
@@ -5242,6 +5265,7 @@
             "enum": [
               "proposed",
               "approved",
+              "running",
               "completed",
               "withdrawn"
             ],
@@ -12527,6 +12551,7 @@
     },
     "/api/incidents/{incident_id}/experiments/{plan_id}/run": {
       "post": {
+        "description": "Start the approved matrix; conditions are saved one by one in the background.",
         "operationId": "execute_api_incidents__incident_id__experiments__plan_id__run_post",
         "parameters": [
           {
@@ -12559,7 +12584,7 @@
           "required": true
         },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
