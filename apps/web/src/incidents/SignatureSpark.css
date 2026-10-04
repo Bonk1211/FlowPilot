@@ -1,0 +1,25 @@
+.signature-spark {
+  flex-shrink: 0;
+  overflow: visible;
+}
+.signature-spark path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.signature-spark-line {
+  stroke: var(--teal-600);
+  stroke-width: 2;
+}
+.signature-spark[data-size="large"] .signature-spark-line {
+  stroke-width: 2.5;
+}
+.signature-spark-control {
+  stroke: var(--slate-400);
+  stroke-width: 1.25;
+  stroke-dasharray: 3 3;
+}
+.signature-spark-axis {
+  stroke: var(--slate-200);
+  stroke-width: 1;
+}

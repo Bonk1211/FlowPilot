@@ -32,3 +32,10 @@ export const mechanismCopy: Record<string, MechanismCopy> = {
     path: "Material in bottle → delivery path → deposited coverage",
   },
 };
+
+/** Plain words for the response shape each mechanism's model produces. */
+export const signatureWords = {
+  steady_fall: "a steady, straight decline",
+  oscillation: "a decline that comes and goes",
+  decelerating_fall: "a decline that slows down",
+} as const;

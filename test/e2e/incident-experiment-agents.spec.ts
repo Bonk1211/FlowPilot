@@ -98,6 +98,60 @@ test("the three experiments are offered only when the answers leave explanations
   await expect(offer(page)).toHaveCount(0);
 });
 
+test("each suggested experiment explains why it runs, what it tests, what the model predicts and how to read it", async ({
+  page,
+  request,
+}) => {
+  const ready = await incidentWith(request, ["intermittent", "unstable"]);
+  await page.goto(`/incidents/${ready.incident().id}/investigation`);
+  const row = offer(page).getByRole("button", {
+    name: /Fluid-path restriction.*steady, straight decline/,
+  });
+  await expect(row).toHaveAttribute("aria-expanded", "false");
+  await row.focus();
+  await page.keyboard.press("Enter");
+  await expect(row).toHaveAttribute("aria-expanded", "true");
+  const body = offer(page).locator(
+    `#${await row.getAttribute("aria-controls")}`,
+  );
+  for (const heading of [
+    "Why run it",
+    "What it tests",
+    "What we predict",
+    "How to read the result",
+  ])
+    await expect(body.getByRole("term")).toContainText([heading]);
+  await expect(body).toContainText(
+    "Falling coverage fits all 3 open explanations",
+  );
+  await expect(body).toContainText(
+    "Your confirmed answer says the defect is intermittent.",
+  );
+  await expect(body).toContainText(
+    "Mass falls in a straight line along the sequence, from 1.00 to 0.48 at severity 0.80",
+  );
+  await expect(body).toContainText("Dimensionless; not a measurement.");
+  await expect(
+    body.getByRole("img", {
+      name: /Predicted shape: a steady, straight decline/,
+    }),
+  ).toBeVisible();
+  await expect(body).toContainText("Consistent with the records:");
+  await expect(body).toContainText("Not distinguishable:");
+  await expect(body).toContainText(
+    "A simulation cannot confirm a cause or say which explanation is most likely.",
+  );
+  await expect(body).not.toContainText(/root cause is|confirmed cause/i);
+
+  const material = offer(page).getByRole("button", {
+    name: /Material-condition change/,
+  });
+  await material.click();
+  await expect(
+    offer(page).getByText(/Mass falls quickly at first and then more slowly/),
+  ).toBeVisible();
+});
+
 test("one press runs a saved plan through real stages, shows three tracks and changes nothing recorded", async ({
   page,
   request,
