@@ -324,7 +324,10 @@ function IncidentWorkspaceContent({
   const canvasPage = timelinePage || investigationCanvas;
   const handoffPage = route.page === "handoff";
   const compactOverview =
-    canvasPage || handoffPage || route.page === "knowledge";
+    canvasPage ||
+    handoffPage ||
+    route.page === "knowledge" ||
+    route.page === "simulation";
 
   const [manualTool, setManualTool] = useState("S932-DEMO-01");
   const [manualSymptom, setManualSymptom] = useState(
@@ -511,7 +514,7 @@ function IncidentWorkspaceContent({
 
   return (
     <div
-      className={`incident-app${incident ? " incident-workspace" : ""}${canvasPage ? " incident-timeline-page" : ""}${investigationCanvas ? " incident-investigation-page" : ""}${monitoringPage ? " incident-monitoring-page" : ""}${handoffPage ? " incident-handoff-focus" : ""}${route.page === "knowledge" ? " incident-knowledge-focus" : ""}`}
+      className={`incident-app${incident ? " incident-workspace" : ""}${canvasPage ? " incident-timeline-page" : ""}${investigationCanvas ? " incident-investigation-page" : ""}${monitoringPage ? " incident-monitoring-page" : ""}${handoffPage ? " incident-handoff-focus" : ""}${route.page === "knowledge" ? " incident-knowledge-focus" : ""}${route.page === "simulation" ? " incident-simulation-page" : ""}`}
     >
       <a className="skip-link" href="#main">
         Skip to main content
@@ -527,7 +530,7 @@ function IncidentWorkspaceContent({
         </a>
         <span className="incident-nav-context">
           {compactOverview && incident
-            ? `${incident.tool_id} · ${handoffPage ? "Handoff" : route.page === "knowledge" ? "Knowledge" : timelinePage ? "Evidence timeline" : "Investigation"}`
+            ? `${incident.tool_id} · ${handoffPage ? "Handoff" : route.page === "knowledge" ? "Knowledge" : route.page === "simulation" ? "Simulation" : timelinePage ? "Evidence timeline" : "Investigation"}`
             : "S932 · Incident workspace"}
         </span>
         {compactOverview && (
@@ -908,7 +911,7 @@ function IncidentWorkspaceContent({
               </aside>
               <div className="incident-feature-content">
                 <header
-                  className={`incident-feature-heading${investigationCanvas || monitoringPage || handoffPage || route.page === "knowledge" ? " sr-only" : ""}`}
+                  className={`incident-feature-heading${investigationCanvas || monitoringPage || handoffPage || route.page === "knowledge" || route.page === "simulation" ? " sr-only" : ""}`}
                 >
                   <h2 ref={featureHeading} tabIndex={-1}>
                     {route.page
@@ -1225,22 +1228,26 @@ function IncidentWorkspaceContent({
                           onOpenLink={followLink}
                         />
                       )}
-                      <MechanismView
-                        hypotheses={assessment?.hypotheses}
-                        hypothesisId={hypothesisId}
-                        componentIds={
-                          assessment?.hypotheses.find(
-                            (item) => item.id === hypothesisId,
-                          )?.component_ids ?? []
-                        }
-                        revision={
-                          snapshot?.incident_revision ?? incident.revision
-                        }
-                        eventLabel={
-                          incident.evidence?.find((item) => item.id === eventId)
-                            ?.label ?? selectedObservation?.check_id
-                        }
-                      />
+                      {!showLab && (
+                        <MechanismView
+                          immersive
+                          hypotheses={assessment?.hypotheses}
+                          hypothesisId={hypothesisId}
+                          componentIds={
+                            assessment?.hypotheses.find(
+                              (item) => item.id === hypothesisId,
+                            )?.component_ids ?? []
+                          }
+                          revision={
+                            snapshot?.incident_revision ?? incident.revision
+                          }
+                          eventLabel={
+                            incident.evidence?.find(
+                              (item) => item.id === eventId,
+                            )?.label ?? selectedObservation?.check_id
+                          }
+                        />
+                      )}
                       {simulationPanel}
                     </section>
                   </Activity>

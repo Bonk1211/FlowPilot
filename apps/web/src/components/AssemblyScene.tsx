@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import {
   ArrowDown,
@@ -14,7 +14,13 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import type { ProcedureStep } from "@flowpilot/contracts";
 import { cameraPresets, modelNodes } from "../prototype/model";
-import { sampleCamera, type CameraFrame } from "../scene/shots";
+import {
+  partAnnotations,
+  fitCameraFov,
+  sampleCamera,
+  type CameraFrame,
+  type GroupId,
+} from "../scene/shots";
 import { Stage, type SceneDirection } from "../scene/stage";
 
 type Props = {
@@ -37,6 +43,8 @@ type Props = {
    */
   directed?: boolean;
   direction?: SceneDirection | null;
+  /** Hold the entire step still; a newly selected paused step shows its final view. */
+  paused?: boolean;
   /** How far the current shot has played, from 0 to 1, reported a few times a second. */
   onShotProgress?: (progress: number) => void;
 };
@@ -44,6 +52,7 @@ type Props = {
 type Material = THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial;
 type Runtime = {
   camera: THREE.PerspectiveCamera;
+  framingFov: number;
   controls: OrbitControls;
   parts: THREE.Group;
   goal: THREE.Vector3;
@@ -62,9 +71,12 @@ type Runtime = {
     from: CameraFrame | null;
     paused: boolean;
     pausedAt: number;
+    elapsed: number;
     reported: number;
   } | null;
   pending: SceneDirection | null;
+  playbackPaused: boolean;
+  needsRender: boolean;
 };
 
 const detailNames = [
@@ -125,18 +137,35 @@ function dispose(root: THREE.Object3D) {
 
 function startShot(state: Runtime, direction: SceneDirection) {
   state.stage?.direct(direction);
+  state.needsRender = true;
+  const settled = state.playbackPaused || state.reduced;
   state.director = {
     direction,
     start: performance.now(),
     from: {
       position: state.camera.position.toArray() as [number, number, number],
       target: state.controls.target.toArray() as [number, number, number],
-      fov: state.camera.fov,
+      fov: state.framingFov,
     },
-    paused: false,
-    pausedAt: 0,
+    paused: settled,
+    pausedAt: settled ? direction.shot.durationMs : 0,
+    elapsed: settled ? direction.shot.durationMs : 0,
     reported: 0,
   };
+  if (settled) {
+    const frame = sampleCamera(
+      direction.shot,
+      direction.shot.durationMs,
+      null,
+      true,
+    );
+    state.camera.position.set(...frame.position);
+    state.controls.target.set(...frame.target);
+    state.framingFov = frame.fov;
+    state.camera.fov = fitCameraFov(frame.fov, state.camera.aspect);
+    state.camera.updateProjectionMatrix();
+    state.controls.update();
+  }
 }
 
 /** The viewer took the camera: hold the shot where it is. */
@@ -144,7 +173,9 @@ function pauseShot(state: Runtime) {
   const director = state.director;
   if (!director || director.paused) return;
   director.paused = true;
-  director.pausedAt = performance.now() - director.start;
+  // Hold the frame actually on screen; sampling the clock here would advance
+  // the flow once more after Pause while leaving the camera on the old frame.
+  director.pausedAt = director.elapsed;
 }
 
 export default function AssemblyScene({
@@ -157,6 +188,7 @@ export default function AssemblyScene({
   partStates,
   directed = false,
   direction = null,
+  paused = false,
   onShotProgress,
 }: Props) {
   const host = useRef<HTMLDivElement>(null);
@@ -175,7 +207,10 @@ export default function AssemblyScene({
 
   useEffect(() => {
     const current = runtime.current;
-    if (current) current.isolated = isolated;
+    if (current) {
+      current.isolated = isolated;
+      current.needsRender = true;
+    }
   }, [isolated]);
 
   useEffect(() => {
@@ -237,6 +272,7 @@ export default function AssemblyScene({
     controls.maxPolarAngle = Math.PI * 0.86;
     const state: Runtime = {
       camera,
+      framingFov: camera.fov,
       controls,
       parts: empty,
       goal: camera.position.clone(),
@@ -251,6 +287,8 @@ export default function AssemblyScene({
       stage: null,
       director: null,
       pending: null,
+      playbackPaused: paused,
+      needsRender: true,
     };
     runtime.current = state;
     // Development only: lets the camera work be inspected from the browser console.
@@ -307,6 +345,10 @@ export default function AssemblyScene({
       callbacks.current.onInteract();
     };
     controls.addEventListener("start", interact);
+    const cameraChanged = () => {
+      state.needsRender = true;
+    };
+    controls.addEventListener("change", cameraChanged);
     const contextLost = (event: Event) => {
       event.preventDefault();
       callbacks.current.onFailure();
@@ -317,8 +359,10 @@ export default function AssemblyScene({
       const height = container.clientHeight;
       if (!width || !height) return;
       camera.aspect = width / height;
+      camera.fov = fitCameraFov(state.framingFov, camera.aspect);
       camera.updateProjectionMatrix();
       renderer.setSize(width, height, false);
+      state.needsRender = true;
     });
     resize.observe(container);
 
@@ -333,7 +377,11 @@ export default function AssemblyScene({
       if (state.stage?.active && director) {
         const elapsed = director.paused
           ? director.pausedAt
-          : performance.now() - director.start;
+          : Math.min(
+              performance.now() - director.start,
+              director.direction.shot.durationMs,
+            );
+        director.elapsed = elapsed;
         const shot = sampleCamera(
           director.direction.shot,
           elapsed,
@@ -343,8 +391,10 @@ export default function AssemblyScene({
         if (!director.paused) {
           camera.position.set(...shot.position);
           controls.target.set(...shot.target);
-          if (Math.abs(camera.fov - shot.fov) > 0.01) {
-            camera.fov = shot.fov;
+          state.framingFov = shot.fov;
+          const fov = fitCameraFov(shot.fov, camera.aspect);
+          if (Math.abs(camera.fov - fov) > 0.01) {
+            camera.fov = fov;
             camera.updateProjectionMatrix();
           }
         } else if (state.moving) {
@@ -353,22 +403,33 @@ export default function AssemblyScene({
           if (camera.position.distanceTo(state.goal) < 0.005)
             state.moving = false;
         }
-        // Reduced motion holds the flow still so each step is one steady picture.
+        controls.update();
+        // A held step only redraws for camera interaction or another visible change.
+        if (director.paused && !state.needsRender) return;
+        state.needsRender = false;
+        camera.updateMatrixWorld(true);
+        // Camera, flow, spray and marker share the step clock and freeze together.
         state.stage.update(
-          state.reduced ? 1.3 : time / 1000,
+          state.reduced
+            ? 1.3
+            : Math.min(elapsed, director.direction.shot.durationMs) / 1000,
           shot.progress,
           camera,
           container.clientWidth,
           container.clientHeight,
+          state.isolated ? state.highlight : null,
         );
         if (
-          time - director.reported > 120 ||
-          (shot.progress === 1 && director.reported >= 0)
+          director.reported >= 0 &&
+          (time - director.reported > 120 || shot.progress === 1)
         ) {
           director.reported = shot.progress === 1 ? -1 : time;
           callbacks.current.onShotProgress?.(shot.progress);
         }
-        controls.update();
+        if (shot.progress === 1) {
+          director.paused = true;
+          director.pausedAt = director.direction.shot.durationMs;
+        }
         renderer.render(scene, camera);
         return;
       }
@@ -455,6 +516,7 @@ export default function AssemblyScene({
       cancelAnimationFrame(frame);
       resize.disconnect();
       controls.removeEventListener("start", interact);
+      controls.removeEventListener("change", cameraChanged);
       controls.dispose();
       renderer.domElement.removeEventListener("webglcontextlost", contextLost);
       state.stage?.dispose();
@@ -488,6 +550,8 @@ export default function AssemblyScene({
     current.kind = step.highlight;
     current.reduced = reduced;
     current.moving = !directed;
+    if (reduced && current.director)
+      startShot(current, current.director.direction);
     setIsolated(false);
   }, [step, reset, reduced, highlightKey, directed]);
 
@@ -496,11 +560,25 @@ export default function AssemblyScene({
   useEffect(() => {
     const current = runtime.current;
     if (!current || !direction) return;
+    current.playbackPaused = paused;
     if (current.stage) startShot(current, direction);
     else current.pending = direction;
     // The key stands in for the direction, which is recreated on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [directionKey, reset]);
+
+  useLayoutEffect(() => {
+    const current = runtime.current;
+    if (!current) return;
+    current.playbackPaused = paused;
+    const director = current.director;
+    if (!director) return;
+    if (paused) pauseShot(current);
+    else if (director.paused) {
+      director.start = performance.now() - director.pausedAt;
+      director.paused = false;
+    }
+  }, [paused]);
 
   useEffect(() => {
     const current = runtime.current;
@@ -551,7 +629,11 @@ export default function AssemblyScene({
         role="img"
         aria-label={`Detailed generic fluid-dispenser assembly. Highlighted ${highlightIds && highlightIds.length > 1 ? "parts" : "part"}: ${
           (highlightIds ?? [step.model_node_id])
-            .map((id) => modelNodes[id as keyof typeof modelNodes]?.label)
+            .map(
+              (id) =>
+                partAnnotations[id as GroupId]?.text ??
+                modelNodes[id as keyof typeof modelNodes]?.label,
+            )
             .filter(Boolean)
             .join(", ") || "unknown"
         }.${partStatesKey ? " Glow and spray levels are simulated and illustrative, not measured." : ""}`}
@@ -565,6 +647,7 @@ export default function AssemblyScene({
         data-model-loaded={loaded}
         data-shot={direction?.shot.id}
         data-condition={direction?.condition}
+        data-paused={paused}
       />
       {!loaded && <p role="status">Loading detailed assembly…</p>}
       <div

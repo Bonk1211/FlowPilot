@@ -142,12 +142,12 @@ export function trackSummary(
 }
 
 const partNames: Record<string, string> = {
-  bfs_bottle: "the bottle",
-  bfs_air: "the reservoir air line",
+  bfs_bottle: "the BFS bottle",
+  bfs_air: "the BFS reservoir-pressure air line",
   pickup_tube: "the pickup tube",
-  feed_tube: "the feed tube",
-  fluid_qd: "the quick disconnect",
-  dj2200_valve: "the valve",
+  feed_tube: "the clear feed tube",
+  fluid_qd: "the fluid quick-disconnect (QD)",
+  dj2200_valve: "the DJ-2200 valve",
   air_cap: "the air cap",
   nozzle: "the nozzle",
 };
@@ -186,7 +186,7 @@ function depositShape(mechanism: Mechanism) {
 }
 
 /**
- * Turn one mechanism's saved simulated runs into an eight-shot guided film.
+ * Turn one mechanism's saved simulated runs into eight inspectable guide steps.
  * Every number is read from the runs; nothing here is measured or recorded as
  * evidence, and the narration says only what the frame shows.
  */
@@ -257,7 +257,7 @@ export function experimentPlaybackSteps(
     step(
       "establish",
       "The machine and the question",
-      `${copy.mechanism} This film shows what the illustrative model gives for that explanation. It opens at the start of the sequence, where the simulated mass is ${fixed(tested[0].mass)} of its reference. The tested condition (severity ${fixed(severity)}) is later compared with the plan's control condition (severity ${fixed(controlSeverity)}).`,
+      `${copy.mechanism} Inspect the labeled parts in the exploded view, then choose Next step. Simulated mass starts at ${fixed(tested[0].mass)} of its reference. The tested condition (severity ${fixed(severity)}) is compared with the control condition (severity ${fixed(controlSeverity)}).`,
       [tested[0]],
       "start",
       { highlightIds: [] },
@@ -265,7 +265,7 @@ export function experimentPlaybackSteps(
     step(
       "follow",
       "Following the liquid",
-      "The liquid leaves the pressurized bottle through the pickup tube, crosses the clear feed tube and the quick disconnect, and enters the valve. Teal is the liquid. The reservoir air (purple), valve-actuation air (amber) and atomizing air (blue) are separate lines that carry no liquid. This is the start of the sequence.",
+      "Trace the liquid from the BFS bottle through the pickup tube, clear feed tube and fluid quick-disconnect (QD) into the DJ-2200 valve. Teal is the liquid. BFS reservoir air (purple), valve-actuation air (amber) and coaxial atomizing air (blue) are separate lines that carry no liquid.",
       [tested[0]],
       "start",
       { highlightIds: [] },
@@ -273,7 +273,7 @@ export function experimentPlaybackSteps(
     step(
       "apart",
       "Taking it apart",
-      `The parts this explanation involves separate: ${parts}. The rest of the machine is faded. ${copy.assumption}`,
+      `Inspect the separated parts: ${parts}. Labels stay attached as you rotate the view. Separation illustrates the assembly; it is not a maintenance sequence. ${copy.assumption}`,
       [tested[0]],
       "start",
     ),

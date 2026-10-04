@@ -1,10 +1,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import {
   catmullRom,
   explodeAmounts,
   explodeOffsets,
   groupIds,
+  fitCameraFov,
+  partAnnotations,
   sampleCamera,
   settle,
   smootherstep,
@@ -64,6 +67,24 @@ test("a shot leaves from the current framing and ends on its last keyframe", () 
   assert.deepEqual(cut, { ...end, progress: 1 });
 });
 
+test("interrupting or reversing a camera move starts at the frame currently shown", () => {
+  const shots = experimentShots("restriction", components.restriction);
+  let current = sampleCamera(shots[0], shots[0].durationMs, null, false);
+  for (const shot of [shots[1], shots[4], shots[0]]) {
+    const start = sampleCamera(shot, 0, current, false);
+    assert.ok(close(start.position, current.position));
+    assert.ok(close(start.target, current.target));
+    assert.equal(start.fov, current.fov);
+    const next = sampleCamera(shot, 1, current, false);
+    assert.ok(close(next.position, current.position, 0.000001));
+    assert.ok(close(next.target, current.target, 0.000001));
+    const middle = sampleCamera(shot, shot.durationMs * 0.3, current, false);
+    assert.ok(!close(middle.position, start.position));
+    assert.ok(!close(middle.position, shot.position.at(-1)));
+    current = middle;
+  }
+});
+
 test("parts separate one after another and return when a shot lists none", () => {
   const shots = experimentShots("restriction", components.restriction);
   const apart = shots.find((shot) => shot.id === "apart");
@@ -72,11 +93,40 @@ test("parts separate one after another and return when a shot lists none", () =>
   const order = apart.explode;
   assert.ok(early[order[0]] > early[order.at(-1)]);
   for (const id of order) assert.equal(done[id], 1);
-  assert.deepEqual(explodeAmounts(shots[3], 1), {});
+  assert.deepEqual(explodeAmounts(shots.at(-1), 1), {});
   assert.equal(settle(1, 0, 1), 0);
   assert.equal(settle(0.4, 1, 0), 0.4);
   // The valve is the anchor and never moves.
   assert.deepEqual(explodeOffsets.dj2200_valve, [0, 0, 0]);
+});
+
+test("interrupted exploded views ease from each part's current position in either direction", () => {
+  const shots = experimentShots("restriction", components.restriction);
+  const shot = { ...shots[4], explode: ["fluid_qd", "nozzle"] };
+  const from = { fluid_qd: 0.6, nozzle: 1, feed_tube: 0.8 };
+  assert.deepEqual(explodeAmounts(shot, 0, from), from);
+  const early = explodeAmounts(shot, 0.01, from);
+  assert.ok(early.fluid_qd > from.fluid_qd);
+  assert.ok(early.fluid_qd - from.fluid_qd < 0.001);
+  const middle = explodeAmounts(shot, 0.2, from);
+  assert.ok(middle.fluid_qd > from.fluid_qd && middle.fluid_qd < 1);
+  assert.ok(middle.feed_tube > 0 && middle.feed_tube < from.feed_tube);
+  assert.equal(middle.nozzle, 1);
+  assert.deepEqual(explodeAmounts(shot, 1, from), {
+    fluid_qd: 1,
+    nozzle: 1,
+    feed_tube: 0,
+  });
+  const reassemble = shots.at(-1);
+  assert.deepEqual(explodeAmounts(reassemble, 0, middle), middle);
+  const returning = explodeAmounts(reassemble, 0.2, middle);
+  assert.ok(returning.fluid_qd > 0 && returning.fluid_qd < middle.fluid_qd);
+  assert.deepEqual(explodeAmounts(shot, 0, returning), returning);
+  assert.ok(
+    explodeAmounts(shot, 0.01, returning).fluid_qd > returning.fluid_qd,
+  );
+  for (const amount of Object.values(explodeAmounts(reassemble, 1, middle)))
+    assert.equal(amount, 0);
 });
 
 test("each experiment takes apart only its own parts, in the order the liquid meets them", () => {
@@ -100,10 +150,22 @@ test("each experiment takes apart only its own parts, in the order the liquid me
       assert.ok(ids.includes(id) || id === "air_cap", `${mechanism}: ${id}`);
     assert.ok(!apart.explode.includes("dj2200_valve"));
     for (const id of apart.ghost) assert.ok(!apart.explode.includes(id));
-    assert.deepEqual(apart.labels, apart.explode);
+    assert.deepEqual(apart.labels, [...apart.explode, "dj2200_valve"]);
+    assert.ok(
+      shots[0].explode.length > 0,
+      "guide opens on an exploded assembly",
+    );
+    assert.deepEqual(
+      shots[3].explode,
+      apart.explode,
+      "mechanism keeps relevant parts separated",
+    );
+    assert.ok(shots[4].explode.includes("valve_air"));
+    assert.ok(shots[5].explode.includes("air_cap"));
+    assert.ok(shots[5].explode.includes("nozzle"));
     for (const shot of shots) {
-      assert.ok(shot.durationMs >= 6000);
-      assert.ok(shot.position.length >= 2 && shot.target.length >= 2);
+      assert.ok(shot.durationMs >= 1000 && shot.durationMs <= 3000);
+      assert.ok(shot.position.length >= 1 && shot.target.length >= 1);
       for (const id of [
         ...shot.explode,
         ...shot.ghost,
@@ -132,4 +194,59 @@ test("each experiment takes apart only its own parts, in the order the liquid me
     "pickup_tube",
     "fluid_qd",
   ]);
+});
+
+test("annotations attach to a named mesh in the correct part, at a point on that mesh", () => {
+  const bytes = readFileSync(
+    new URL(
+      "../apps/web/public/models/generic-fluid-dispenser.glb",
+      import.meta.url,
+    ),
+  );
+  const model = JSON.parse(
+    bytes.subarray(20, 20 + bytes.readUInt32LE(12)).toString(),
+  );
+  const descendants = (node) => [
+    node,
+    ...(node.children ?? []).flatMap((id) => descendants(model.nodes[id])),
+  ];
+  for (const id of groupIds) {
+    const annotation = partAnnotations[id];
+    const group = model.nodes.find((node) => node.name === id);
+    const anchor = descendants(group).find(
+      (node) => node.name === annotation.mesh,
+    );
+    assert.ok(
+      anchor?.mesh !== undefined,
+      `${id}: anchor is a mesh within its part`,
+    );
+    const primitive = model.meshes[anchor.mesh].primitives[0];
+    const bounds = model.accessors[primitive.attributes.POSITION];
+    annotation.point.forEach((value, axis) => {
+      assert.ok(
+        value >= bounds.min[axis] - 0.001 && value <= bounds.max[axis] + 0.001,
+        `${id}: anchor lies on the mesh bounds`,
+      );
+    });
+  }
+  assert.equal(partAnnotations.fluid_qd.text, "Valve fluid QD");
+  assert.equal(partAnnotations.coaxial_air.text, "Coaxial atomizing air");
+});
+
+test("completed camera frames remain fixed beyond the step duration", () => {
+  for (const shot of experimentShots("restriction", components.restriction)) {
+    const done = sampleCamera(shot, shot.durationMs, null, false);
+    assert.deepEqual(
+      sampleCamera(shot, shot.durationMs + 12000, null, false),
+      done,
+    );
+  }
+});
+
+test("portrait framing preserves horizontal space for the labeled parts", () => {
+  assert.ok(Math.abs(fitCameraFov(38, 1.7) - 38) < 1e-9);
+  const horizontalSpan = (aspect) =>
+    Math.tan((fitCameraFov(38, aspect) * Math.PI) / 360) * aspect;
+  assert.ok(fitCameraFov(38, 0.6) > 38);
+  assert.ok(Math.abs(horizontalSpan(0.6) - horizontalSpan(0.9)) < 1e-9);
 });

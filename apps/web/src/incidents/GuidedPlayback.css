@@ -3,49 +3,6 @@
   gap: var(--space-3);
   min-width: 0;
 }
-.guided-playback-head {
-  display: flex;
-  align-items: start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.guided-playback-head h3 {
-  margin: var(--space-1) 0 0;
-}
-.guided-playback .assembly-canvas {
-  position: relative;
-  height: auto;
-  aspect-ratio: 16 / 9;
-  min-height: 240px;
-}
-.guided-frame {
-  position: relative;
-}
-/* Every frame stays marked as simulated, whatever the camera shows. */
-.guided-badge,
-.guided-shot {
-  position: absolute;
-  z-index: 2;
-  margin: 0;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: var(--font-caption);
-  pointer-events: none;
-}
-.guided-badge {
-  top: var(--space-3);
-  left: var(--space-3);
-  border: 1px solid var(--amber-300);
-  background: color-mix(in srgb, var(--surface-instrument) 82%, transparent);
-  color: var(--amber-300);
-}
-.guided-shot {
-  top: var(--space-3);
-  right: var(--space-3);
-  background: color-mix(in srgb, var(--surface-instrument) 70%, transparent);
-  color: var(--text-secondary-on-instrument);
-}
 .assembly-labels {
   position: absolute;
   inset: 0;
@@ -61,7 +18,11 @@
 .assembly-label-lines line {
   stroke: var(--text-secondary-on-instrument);
   stroke-width: 1;
-  transition: opacity 240ms ease-out;
+}
+.assembly-label-lines circle {
+  fill: var(--teal-400);
+  stroke: var(--surface-instrument);
+  stroke-width: 1.5;
 }
 .assembly-label {
   position: absolute;
@@ -74,8 +35,8 @@
   color: var(--text-on-instrument);
   font-size: var(--font-caption);
   white-space: nowrap;
+  box-shadow: 0 2px 8px #0004;
   opacity: 0;
-  transition: opacity 240ms ease-out;
 }
 .assembly-label[data-shown="true"] {
   opacity: 1;
@@ -86,10 +47,14 @@
   color: var(--amber-300);
 }
 .guided-legend {
+  position: absolute;
+  left: 20px;
+  right: 12px;
+  bottom: 20px;
   display: flex;
   flex-wrap: wrap;
-  gap: var(--space-1) var(--space-4);
-  margin: var(--space-2) 0 0;
+  gap: 8px 16px;
+  margin: 0;
   padding: 0;
   list-style: none;
   color: var(--text-secondary-on-instrument);
@@ -117,56 +82,9 @@
 .guided-legend [data-kind="atomizing"]::before {
   background: color-mix(in srgb, var(--blue-600) 40%, var(--white));
 }
-/* On a phone the badge keeps its first word and the shot name gives way. */
-@media (max-width: 520px) {
-  .guided-badge span,
-  .guided-shot {
-    display: none;
-  }
-}
 .guided-step-text {
   display: grid;
   gap: 2px;
-}
-.guided-step-text small {
-  color: var(--text-muted);
-  font-size: var(--font-caption);
-}
-@media (prefers-reduced-motion: reduce) {
-  .assembly-label,
-  .assembly-label-lines line {
-    transition: none;
-  }
-}
-.guided-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
-.guided-controls button {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: var(--control-height);
-}
-.guided-counter {
-  margin-left: auto;
-  color: var(--text-secondary);
-  font-size: var(--font-compact);
-  font-variant-numeric: tabular-nums;
-}
-.guided-narration {
-  display: grid;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  border-left: 3px solid var(--selection-active);
-  border-radius: var(--radius-control);
-  background: var(--surface-measurement);
-}
-.guided-narration h4,
-.guided-narration p {
-  margin: 0;
 }
 .guided-steps {
   display: grid;
@@ -188,6 +106,7 @@
   background: var(--surface-document);
   color: var(--text-primary);
   text-align: left;
+  font-size: 13px;
 }
 .guided-steps button[aria-current="step"] {
   border-color: var(--selection-active);
@@ -195,6 +114,7 @@
   box-shadow: inset 3px 0 var(--selection-active);
 }
 .guided-step-number {
+  flex-shrink: 0;
   display: inline-grid;
   place-items: center;
   width: 24px;
@@ -203,4 +123,358 @@
   background: var(--surface-muted);
   font-size: var(--font-caption);
   font-variant-numeric: tabular-nums;
+}
+
+/* The model owns the workspace; the guide floats above its right edge. */
+.guided-viewport {
+  position: relative;
+  height: max(660px, calc(100dvh - 110px));
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  isolation: isolate;
+  background: radial-gradient(ellipse at 38% 42%, #203b43, #0b141a 74%);
+}
+.guided-viewport:fullscreen {
+  width: 100%;
+  height: 100dvh;
+  border: 0;
+  border-radius: 0;
+}
+.guided-topbar {
+  position: absolute;
+  z-index: 3;
+  inset: 20px 20px auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  pointer-events: none;
+}
+.guided-playback-head {
+  display: block;
+}
+.guided-playback-head .eyebrow {
+  color: var(--text-secondary-on-instrument);
+}
+.guided-playback-head h3 {
+  margin: var(--space-1) 0 0;
+  color: var(--text-on-instrument);
+  font-size: 20px;
+}
+.guided-view-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+.guided-view-tools .incident-view-toggle {
+  margin: 0;
+}
+.guided-viewport button {
+  min-height: 44px;
+}
+.guided-view-tools button,
+.guided-model-area .assembly-tools button {
+  background: var(--surface-instrument);
+  border-color: var(--border-on-instrument);
+  color: var(--text-on-instrument);
+}
+.guided-fullscreen {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  padding: 0;
+}
+.guided-fullscreen svg {
+  width: 20px;
+  height: 20px;
+}
+.guided-model-area {
+  position: absolute;
+  inset: 88px 390px 0 0;
+}
+.guided-frame {
+  position: relative;
+  height: 100%;
+}
+.guided-viewport .guided-model-area .assembly-canvas {
+  position: absolute;
+  inset: 0 0 112px;
+  height: calc(100% - 112px);
+  min-height: 0;
+  aspect-ratio: auto;
+  background: transparent;
+  border-radius: 0;
+}
+.guided-model-area .assembly-camera-tools {
+  position: absolute;
+  bottom: 54px;
+  left: 20px;
+  right: 12px;
+  z-index: 2;
+  margin: 0;
+}
+.guided-model-area .guided-shot {
+  position: absolute;
+  z-index: 2;
+  inset: auto auto 108px 20px;
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-instrument);
+  color: var(--text-secondary-on-instrument);
+  font-size: var(--font-caption);
+  display: block;
+  pointer-events: none;
+}
+.guided-console {
+  position: absolute;
+  z-index: 3;
+  top: 96px;
+  right: 20px;
+  bottom: 20px;
+  width: 350px;
+  padding: 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  border: 1px solid var(--border-default);
+  border-radius: 16px;
+  background: var(--surface-document);
+  color: var(--text-primary);
+  box-shadow: 0 18px 50px #0005;
+  --control-focus-ring: var(--focus-ring);
+}
+.guided-console-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+}
+.guided-console-heading p {
+  margin: 0;
+}
+.guided-counter {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.guided-step-progress {
+  display: flex;
+  gap: 5px;
+}
+.guided-step-progress span {
+  flex: 1;
+  height: 3px;
+  border-radius: 4px;
+  background: var(--border-default);
+}
+.guided-step-progress span[data-active="true"] {
+  background: var(--selection-active);
+}
+.guided-console .guided-narration {
+  display: grid;
+  gap: var(--space-2);
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+}
+.guided-narration h4,
+.guided-narration p {
+  margin: 0;
+}
+.guided-narration h4 {
+  font-size: 23px;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+.guided-narration p {
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.65;
+}
+.guided-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.guided-controls button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding-inline: 8px;
+  font-size: 13px;
+}
+.guided-console .guided-controls .secondary,
+.guided-console .guided-play-control .secondary {
+  background: var(--surface-document);
+  color: var(--text-primary);
+  border-color: var(--border-default);
+}
+.guided-play-control {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.guided-play-control button {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px;
+  font-size: 13px;
+}
+.guided-play-control p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.guided-console details {
+  border-top: 1px solid var(--border-default);
+  color: var(--text-primary);
+}
+.guided-console summary {
+  display: list-item;
+  padding-block: 12px;
+  min-height: 44px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+}
+.guided-console details + details {
+  margin-top: -18px;
+}
+.guided-source {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-default);
+}
+.guided-source p {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin: 10px 0 0;
+}
+.guided-response .incident-simulation-legend {
+  font-size: 12px;
+  gap: 8px;
+}
+.guided-fallback {
+  padding: 12px 20px;
+}
+.guided-model-area .prototype-diagram {
+  height: calc(100% - 100px);
+  overflow: auto;
+}
+.guided-model-area .prototype-diagram svg {
+  max-height: 100%;
+}
+@media (max-width: 1000px) {
+  .guided-viewport {
+    height: 960px;
+  }
+  .guided-topbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    inset: 16px 16px auto;
+  }
+  .guided-playback-head h3 {
+    font-size: 18px;
+  }
+  .guided-model-area {
+    inset: 128px 0 390px;
+  }
+  .guided-console {
+    top: auto;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+    width: auto;
+    max-height: 360px;
+    gap: 12px;
+    padding: 16px;
+  }
+  .guided-console details + details {
+    margin-top: -12px;
+  }
+  .guided-console .guided-narration h4 {
+    font-size: 20px;
+  }
+  .guided-console .guided-source {
+    margin-top: 0;
+  }
+  .guided-viewport:fullscreen .guided-model-area {
+    bottom: 40dvh;
+  }
+  .guided-viewport:fullscreen .guided-console {
+    max-height: calc(40dvh - 24px);
+  }
+}
+@media (max-width: 520px) {
+  .guided-viewport {
+    height: 1000px;
+    border-radius: 0;
+  }
+  .guided-topbar {
+    inset: 12px 12px auto;
+    gap: 10px;
+  }
+  .guided-view-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .guided-view-tools .incident-view-toggle {
+    gap: 4px;
+  }
+  .guided-view-tools button {
+    padding-inline: 8px;
+    font-size: 12px;
+  }
+  .guided-model-area {
+    inset: 140px 0 390px;
+  }
+  .guided-model-area .assembly-camera-tools {
+    left: 12px;
+    bottom: 62px;
+    gap: 2px;
+  }
+  .guided-model-area .assembly-camera-tools .assembly-tool-labelled {
+    padding-inline: 8px;
+  }
+  .guided-model-area .assembly-camera-tools .assembly-tool-icon {
+    width: 36px;
+  }
+  .guided-model-area .guided-shot {
+    left: 12px;
+    bottom: 170px;
+    font-size: 11px;
+  }
+  .guided-legend {
+    left: 12px;
+    gap: 6px 12px;
+    font-size: 11px;
+  }
+  .guided-viewport .guided-model-area .assembly-canvas {
+    inset-block-end: 200px;
+    height: calc(100% - 200px);
+  }
+  .assembly-label {
+    font-size: 11px;
+    padding-inline: 5px;
+  }
+  .guided-console {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+  }
 }

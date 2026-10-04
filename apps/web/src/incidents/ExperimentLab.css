@@ -4,7 +4,7 @@
 }
 .lab-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-5);
   align-items: start;
 }
@@ -28,6 +28,7 @@
 }
 .lab-agents {
   display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
   margin: 0;
   padding: 0;
@@ -199,9 +200,8 @@
   .lab-layout {
     grid-template-columns: minmax(0, 1fr);
   }
-  /* Progress and tracks first; the playback follows them. */
   .lab-agents {
-    order: -1;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -260,4 +260,43 @@
   background: transparent;
   color: var(--text-selection);
   text-decoration: underline;
+}
+
+.incident-simulation-page .experiment-lab,
+.incident-simulation-page .incident-mechanism {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.incident-simulation-page .experiment-lab > .incident-section-title {
+  padding: 0;
+  border: 0;
+}
+.incident-simulation-page .experiment-lab > .incident-section-title h2 {
+  font-size: 18px;
+}
+.incident-simulation-page .experiment-lab > .incident-section-title .eyebrow {
+  display: none;
+}
+.incident-simulation-page .experiment-lab > .incident-caption {
+  margin: 0;
+}
+.incident-simulation-page.incident-workspace .incident-main {
+  padding: 16px 20px 40px 84px;
+}
+.incident-simulation-page .incident-overview {
+  position: fixed;
+  z-index: 7;
+  top: 76px;
+  right: 24px;
+  width: min(650px, calc(100vw - 32px));
+  max-height: calc(100dvh - 96px);
+  overflow: auto;
+  background: var(--surface-document);
+  box-shadow: 0 16px 60px #0003;
+}
+@media (max-width: 700px) {
+  .incident-simulation-page.incident-workspace .incident-main {
+    padding: 16px 12px 90px;
+  }
 }

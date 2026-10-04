@@ -13,6 +13,8 @@ import {
 } from "../prototype/model";
 import "../components/viewer.css";
 import { mechanismCopy } from "./mechanismCopy";
+import { GuidedPlayback } from "./GuidedPlayback";
+import { assemblyGuide } from "./assemblyGuide";
 
 const AssemblyScene = lazy(() => import("../components/AssemblyScene"));
 
@@ -22,6 +24,7 @@ export function MechanismView({
   revision,
   eventLabel,
   compact = false,
+  immersive = false,
   hypotheses = [],
 }: {
   hypothesisId: string | null;
@@ -31,6 +34,8 @@ export function MechanismView({
   eventLabel?: string;
   /** Hides the flow sketch so the explorer fits beside a timeline. */
   compact?: boolean;
+  /** Uses the full simulation viewer and a reference-only assembly guide. */
+  immersive?: boolean;
   /** All candidate mechanisms; two or more enable the comparison view. */
   hypotheses?: DiagnosticAssessment["hypotheses"];
 }) {
@@ -47,6 +52,10 @@ export function MechanismView({
       unmapped: ids.filter((id) => !Object.hasOwn(modelNodes, id)),
     };
   }, [componentKey]);
+  const guide = useMemo(
+    () => (immersive ? assemblyGuide(nodes) : null),
+    [immersive, nodes],
+  );
   const [part, setPart] = useState<ModelNodeId | null>(null);
   const [twoD, setTwoD] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -96,7 +105,9 @@ export function MechanismView({
     >
       <div className="incident-section-title">
         <div>
-          <p className="eyebrow">Understand the explanation</p>
+          <p className="eyebrow">
+            {immersive ? "Explore the equipment" : "Understand the explanation"}
+          </p>
           <h2 id={headingId}>Mechanism explorer</h2>
         </div>
         <div className="incident-mechanism-actions">
@@ -114,12 +125,25 @@ export function MechanismView({
         </div>
       </div>
       <p className="incident-caption">
-        Assessment revision {revision}
-        {eventLabel ? ` · Inspecting evidence: ${eventLabel}` : ""}. Component
-        highlights show a possible mechanism, not a sensor reading.
+        {immersive ? (
+          "Reference guide to the S932 fluid path and its separate air supplies. Each step stays in view until you choose Next step."
+        ) : (
+          <>
+            Assessment revision {revision}
+            {eventLabel ? ` · Inspecting evidence: ${eventLabel}` : ""}.
+            Component highlights show a possible mechanism, not a sensor
+            reading.
+          </>
+        )}
       </p>
       {comparing && hypotheses.length > 1 ? (
         <MechanismCompare hypotheses={hypotheses} initialId={hypothesisId} />
+      ) : guide ? (
+        <GuidedPlayback
+          key={componentKey}
+          script={guide}
+          title="S932 assembly guide"
+        />
       ) : (
         <div className="incident-mechanism-layout">
           <div className="incident-scene procedure-viewer">

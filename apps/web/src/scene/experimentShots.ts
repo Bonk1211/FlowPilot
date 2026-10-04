@@ -1,9 +1,9 @@
-import { groupIds, type GroupId, type Shot, type Vec3 } from "./shots.ts";
+import { groupIds, type GroupId, type Shot } from "./shots.ts";
 
 export type Mechanism =
   "restriction" | "unstable_delivery" | "material_condition";
 
-/** The order the liquid meets each part, used to take parts apart in sequence. */
+/** The order the liquid meets each part, used to separate the illustrative model. */
 const flowOrder: GroupId[] = [
   "bfs_air",
   "bfs_bottle",
@@ -17,57 +17,36 @@ const flowOrder: GroupId[] = [
   "nozzle",
 ];
 
-const isGroup = (id: string): id is GroupId =>
-  (groupIds as readonly string[]).includes(id);
-
 type Close = Pick<
   Shot,
   "name" | "position" | "target" | "fov" | "xray" | "labels" | "marker"
 >;
 
-/** Where each mechanism is shown up close, with the tested condition flowing. */
+/** These views look at the separated parts, including their exploded offsets. */
 const closeUps: Record<Mechanism, Close> = {
   restriction: {
-    name: "At an example narrowing",
-    position: [
-      [1.45, 2.35, 3.1],
-      [1.0, 2.05, 2.65],
-    ],
-    target: [
-      [-0.5, 1.55, 0],
-      [-0.45, 1.48, 0],
-    ],
-    fov: [30, 26],
+    name: "Flux tubing and valve fluid QD",
+    position: [[2.6, 3.5, 6.2]],
+    target: [[-1.15, 1.95, 0.6]],
+    fov: [38, 38],
     xray: ["fluid_qd", "dj2200_valve"],
     labels: ["fluid_qd", "feed_tube"],
     marker: "narrowing",
   },
   unstable_delivery: {
-    name: "At the reservoir",
-    position: [
-      [-0.35, 2.55, 3.45],
-      [-0.85, 2.2, 3.0],
-    ],
-    target: [
-      [-2.6, 1.3, 0.2],
-      [-2.55, 1.2, 0.2],
-    ],
-    fov: [29, 25],
+    name: "BFS supply and pickup tube",
+    position: [[-0.6, 4.4, 7.9]],
+    target: [[-3.8, 1.4, 0.4]],
+    fov: [38, 38],
     xray: ["bfs_bottle", "bfs_air"],
     labels: ["bfs_air", "bfs_bottle", "pickup_tube"],
     marker: null,
   },
   material_condition: {
-    name: "At the material",
-    position: [
-      [-0.3, 1.45, 3.85],
-      [-0.8, 1.75, 3.3],
-    ],
-    target: [
-      [-2.0, 1.0, 0.1],
-      [-1.85, 1.25, 0.1],
-    ],
-    fov: [29, 26],
+    name: "Flux bottle and tubing",
+    position: [[1.3, 4.2, 8]],
+    target: [[-2.8, 1.7, 0.3]],
+    fov: [38, 38],
     xray: ["bfs_bottle"],
     labels: ["bfs_bottle", "feed_tube"],
     marker: null,
@@ -75,6 +54,7 @@ const closeUps: Record<Mechanism, Close> = {
 };
 
 const base = {
+  durationMs: 1800,
   explode: [] as GroupId[],
   ghost: [] as GroupId[],
   xray: [] as GroupId[],
@@ -84,17 +64,12 @@ const base = {
 } satisfies Partial<Shot>;
 const quiet: GroupId[] = ["support_frame", "vision_camera"];
 
-/**
- * The eight shots of one experiment: establish, follow the liquid, take apart
- * the parts that matter to this explanation, look where it would act, the
- * valve, the nozzle, the substrate, then reassemble.
- */
+/** Eight inspectable steps. Each brief transition settles and waits for Next. */
 export function experimentShots(
   mechanism: Mechanism,
   componentIds: readonly string[],
 ): Shot[] {
   const focus = flowOrder.filter((id) => componentIds.includes(id));
-  // Take apart the explanation's parts; the air cap moves too so the nozzle shows.
   const apart = [
     ...focus,
     ...(focus.includes("nozzle") && !focus.includes("air_cap")
@@ -103,72 +78,54 @@ export function experimentShots(
   ].filter((id) => id !== "dj2200_valve");
   const keep = new Set<GroupId>([...apart, "dj2200_valve"]);
   const close = closeUps[mechanism];
-  const along = (points: number[][]) => points as unknown as Vec3[];
   return [
     {
       ...base,
       id: "establish",
-      name: "Establishing wide",
-      durationMs: 7000,
-      position: along([
-        [8.8, 3.4, 7.6],
-        [7.6, 3.9, 9.0],
-        [6.0, 4.3, 10.2],
-      ]),
-      target: along([
-        [-0.3, 0, 0],
-        [-0.35, -0.05, 0],
-        [-0.4, -0.1, 0],
-      ]),
-      fov: [38, 32],
+      name: "Exploded assembly",
+      position: [[7.4, 4.8, 12.5]],
+      target: [[-1, 0.55, 0.5]],
+      fov: [40, 40],
+      explode: flowOrder.filter((id) => id !== "dj2200_valve"),
+      ghost: quiet,
+      labels: [
+        "bfs_bottle",
+        "pickup_tube",
+        "fluid_qd",
+        "dj2200_valve",
+        "air_cap",
+        "nozzle",
+      ],
     },
     {
       ...base,
       id: "follow",
-      name: "Following the liquid",
-      durationMs: 9000,
-      position: along([
-        [-0.3, 1.9, 5.4],
-        [-0.2, 3.3, 4.6],
-        [0.9, 2.5, 3.8],
-        [2.3, 1.7, 4.1],
-      ]),
-      target: along([
-        [-2.0, 0.9, 0.1],
-        [-1.5, 1.85, 0.1],
-        [-0.45, 1.3, 0],
-        [0, 0.5, 0],
-      ]),
-      fov: [34, 30],
+      name: "Exploded liquid path",
+      position: [[3.4, 4.3, 11.3]],
+      target: [[-1.9, 1.5, 0.4]],
+      fov: [38, 38],
+      explode: ["bfs_bottle", "pickup_tube", "feed_tube", "fluid_qd"],
       ghost: quiet,
       xray: ["bfs_bottle", "fluid_qd", "dj2200_valve"],
-      labels: ["bfs_bottle", "feed_tube", "fluid_qd", "dj2200_valve"],
+      labels: ["bfs_bottle", "pickup_tube", "feed_tube", "fluid_qd"],
     },
     {
       ...base,
       id: "apart",
-      name: "Taking it apart",
-      durationMs: 8000,
-      position: along([
-        [6.8, 3.8, 10.2],
-        [6.0, 3.5, 10.9],
-      ]),
-      target: along([
-        [-0.7, 0.75, 0.2],
-        [-0.75, 0.6, 0.2],
-      ]),
-      fov: [35, 34],
+      name: "Parts in this explanation",
+      position: [[6.0, 4.4, 12]],
+      target: [[-1.2, 0.8, 0.5]],
+      fov: [38, 38],
       explode: apart,
-      ghost: groupIds.filter((id) => !keep.has(id) && isGroup(id)),
+      ghost: groupIds.filter((id) => !keep.has(id)),
       xray: focus.includes("bfs_bottle") ? ["bfs_bottle"] : [],
-      labels: apart,
+      labels: [...apart, "dj2200_valve"],
     },
     {
       ...base,
       ...close,
       id: "mechanism",
-      durationMs: 7500,
-      // Fade what is not this explanation's, so the close-up reads at once.
+      explode: apart,
       ghost: [
         ...quiet,
         ...(
@@ -179,17 +136,11 @@ export function experimentShots(
     {
       ...base,
       id: "valve",
-      name: "Inside the valve",
-      durationMs: 7000,
-      position: along([
-        [3.55, 1.6, 4.25],
-        [3.2, 1.3, 3.9],
-      ]),
-      target: along([
-        [0.1, 0.55, 0],
-        [0.1, 0.35, 0],
-      ]),
-      fov: [34, 33],
+      name: "Valve and separate air supplies",
+      position: [[5.3, 3.7, 8.4]],
+      target: [[0.6, 0.6, 0.6]],
+      fov: [39, 39],
+      explode: ["fluid_qd", "valve_air", "coaxial_air", "air_cap", "nozzle"],
       ghost: [
         ...quiet,
         "bfs_bottle",
@@ -203,53 +154,34 @@ export function experimentShots(
     {
       ...base,
       id: "nozzle",
-      name: "Nozzle macro",
-      durationMs: 7000,
-      position: along([
-        [1.55, -1.28, 2.35],
-        [1.3, -1.45, 2.05],
-      ]),
-      target: along([
-        [0, -1.72, 0],
-        [0, -1.8, 0],
-      ]),
-      fov: [25, 23],
-      ghost: quiet,
-      xray: ["air_cap"],
+      name: "Separated air cap and nozzle",
+      position: [[2.4, 0.3, 5.6]],
+      target: [[0, -1.55, 1.5]],
+      fov: [32, 32],
+      explode: ["coaxial_air", "air_cap", "nozzle"],
+      ghost: [...quiet, "substrate_tray"],
       labels: ["air_cap", "nozzle"],
     },
     {
       ...base,
       id: "substrate",
-      name: "Over the substrate",
-      durationMs: 9000,
-      position: along([
-        [0.95, 0.25, 3.5],
-        [0.5, 0.55, 3.0],
-      ]),
-      target: along([
-        [0, -1.97, 0.25],
-        [0, -1.98, 0.2],
-      ]),
-      fov: [34, 30],
+      name: "Deposit on the substrate carrier",
+      durationMs: 2400,
+      position: [[2.6, 2.2, 6.5]],
+      target: [[0.4, -1.97, 0.25]],
+      fov: [40, 40],
       ghost: quiet,
-      labels: ["substrate_tray"],
+      labels: ["substrate_tray", "nozzle"],
       deposit: "build",
     },
     {
       ...base,
       id: "readout",
-      name: "Reassembled",
-      durationMs: 7000,
-      position: along([
-        [6.6, 4.0, 9.0],
-        [7.4, 4.6, 9.4],
-      ]),
-      target: along([
-        [0, -0.2, 0],
-        [0, -0.15, 0],
-      ]),
-      fov: [34, 36],
+      name: "Reassembled result",
+      position: [[7.4, 4.6, 9.4]],
+      target: [[0, -0.15, 0]],
+      fov: [36, 36],
+      labels: ["substrate_tray"],
       deposit: "full",
     },
   ];

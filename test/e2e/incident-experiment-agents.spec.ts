@@ -3,6 +3,7 @@ import {
   expect,
   test,
   type APIRequestContext,
+  type Locator,
   type Page,
 } from "@playwright/test";
 import type { Incident, IncidentExperiment } from "@flowpilot/contracts";
@@ -56,6 +57,35 @@ const progress = (page: Page, title: string) =>
 const offer = (page: Page) =>
   page.getByRole("complementary", { name: "Suggested experiments" });
 
+async function frameDifference(page: Page, before: Buffer, after: Buffer) {
+  return page.evaluate(
+    async (images) => {
+      const frames = await Promise.all(
+        images.map(async (source) => {
+          const image = new Image();
+          image.src = source;
+          await image.decode();
+          const canvas = document.createElement("canvas");
+          canvas.width = image.width;
+          canvas.height = image.height;
+          const context = canvas.getContext("2d")!;
+          context.drawImage(image, 0, 0);
+          return context.getImageData(0, 0, canvas.width, canvas.height).data;
+        }),
+      );
+      if (frames[0].length !== frames[1].length) return 255;
+      return frames[0].reduce(
+        (max, value, index) =>
+          Math.max(max, Math.abs(value - frames[1][index])),
+        0,
+      );
+    },
+    [before, after].map(
+      (buffer) => `data:image/png;base64,${buffer.toString("base64")}`,
+    ),
+  );
+}
+
 async function runFromInvestigation(page: Page, id: string) {
   await page.goto(`/incidents/${id}/investigation`);
   await offer(page)
@@ -70,6 +100,16 @@ async function finished(page: Page, which = titles) {
       "Finished: 3 of 3 conditions simulated",
       { timeout: 20000 },
     );
+}
+
+async function chooseStep(playback: Locator, index: number) {
+  const steps = playback.getByRole("list", { name: "Playback steps" });
+  if (!(await steps.isVisible()))
+    await playback
+      .locator("summary")
+      .filter({ hasText: "All 8 steps" })
+      .click();
+  await steps.getByRole("button").nth(index).click();
 }
 
 test("the three experiments are offered only when the answers leave explanations open", async ({
@@ -315,6 +355,80 @@ test("reloading or asking again never runs a second plan", async ({
   expect(await plans(request, id)).toHaveLength(3);
 });
 
+test("the assembly guide opens directly without running an experiment", async ({
+  page,
+  request,
+}, testInfo) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const source = await incidentWith(request, ["intermittent", "unstable"]);
+  const id = source.incident().id;
+  await page.goto(`/incidents/${id}/simulation`);
+  const playback = page.getByRole("region", {
+    name: "Guided simulation playback",
+    exact: true,
+  });
+  const scene = playback.locator(".assembly-canvas");
+  const viewport = playback.locator(".guided-viewport");
+  const counter = playback.locator(".guided-counter");
+  await expect(scene).toHaveAttribute("data-model-loaded", "true");
+  await expect(counter).toHaveText("Step 1 of 5");
+  await expect(playback).toContainText("Explore the S932 assembly");
+  await expect(
+    playback.locator("summary").filter({ hasText: "Simulated response" }),
+  ).toHaveCount(0);
+  const qdLabel = scene.locator('.assembly-label[data-part-id="fluid_qd"]');
+  await expect(qdLabel).toHaveText("Valve fluid QD");
+  await expect(qdLabel).toHaveAttribute("data-shown", "true");
+  await expect(qdLabel).toHaveAttribute(
+    "data-anchor-mesh",
+    /quick-disconnect-(body|collar)/,
+  );
+  const desktopScene = await scene.boundingBox();
+  const desktopArea = await playback
+    .locator(".guided-model-area")
+    .boundingBox();
+  expect(desktopScene!.height).toBeGreaterThan(500);
+  expect(desktopScene!.height / desktopArea!.height).toBeGreaterThan(0.7);
+  await viewport.screenshot({
+    path: testInfo.outputPath("assembly-guide-desktop.png"),
+  });
+
+  await playback.getByRole("button", { name: "Next step" }).click();
+  await expect(counter).toHaveText("Step 2 of 5");
+  await expect(playback).toContainText("Trace the flux path");
+  await playback.getByRole("button", { name: "Previous step" }).click();
+  await expect(counter).toHaveText("Step 1 of 5");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(qdLabel).toHaveAttribute("data-shown", "true");
+  await expect(
+    playback.getByRole("button", { name: "Overview", exact: true }),
+  ).toBeVisible();
+  await expect(
+    playback.getByRole("button", { name: "Isolate", exact: true }),
+  ).toBeVisible();
+  const mobileTools = await playback
+    .locator(".assembly-camera-tools")
+    .boundingBox();
+  const mobileBadge = await playback.locator(".guided-shot").boundingBox();
+  expect(mobileBadge!.y + mobileBadge!.height).toBeLessThanOrEqual(
+    mobileTools!.y,
+  );
+  const mobileScene = await scene.boundingBox();
+  expect(mobileScene!.width).toBeGreaterThan(300);
+  expect(mobileScene!.height).toBeGreaterThan(250);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await viewport.screenshot({
+    path: testInfo.outputPath("assembly-guide-mobile.png"),
+  });
+  expect(await plans(request, id)).toHaveLength(0);
+});
+
 test("the playback follows the simulated values and changes what the model shows", async ({
   page,
   request,
@@ -341,11 +455,7 @@ test("the playback follows the simulated values and changes what the model shows
       (await scene.getAttribute("data-part-states")) ?? "{}",
     ) as Record<string, number>;
   const step = async (index: number) => {
-    await playback
-      .getByRole("list", { name: "Playback steps" })
-      .getByRole("button")
-      .nth(index)
-      .click();
+    await chooseStep(playback, index);
     await expect(counter).toHaveText(`Step ${index + 1} of 8`);
     // Levels ease toward their target; reduced motion applies them at once.
     await page.waitForTimeout(600);
@@ -354,6 +464,22 @@ test("the playback follows the simulated values and changes what the model shows
   await step(2);
   await expect(scene).toHaveAttribute("data-shot", "apart");
   await expect(scene).toHaveAttribute("data-condition", "start");
+  const qdLabel = scene.locator('.assembly-label[data-part-id="fluid_qd"]');
+  await expect(qdLabel).toHaveText("Valve fluid QD");
+  await expect(qdLabel).toHaveAttribute("data-shown", "true");
+  await expect(qdLabel).toHaveAttribute(
+    "data-anchor-mesh",
+    /quick-disconnect-(body|collar)/,
+  );
+  const qdLeader = scene.locator('line[data-part-id="fluid_qd"]');
+  await expect(qdLeader).toHaveCSS("opacity", "1");
+  expect(
+    await qdLeader.evaluate((line) =>
+      ["x1", "y1", "x2", "y2"].every((attribute) =>
+        Number.isFinite(Number(line.getAttribute(attribute))),
+      ),
+    ),
+  ).toBe(true);
   const early = await states();
   const earlyShot = await scene.screenshot({
     path: testInfo.outputPath("playback-early.png"),
@@ -370,9 +496,15 @@ test("the playback follows the simulated values and changes what the model shows
   await scene.screenshot({ path: testInfo.outputPath("playback-late.png") });
   // The same step draws the same picture, so the difference above is the data.
   await step(2);
-  expect(Buffer.compare(earlyShot, await scene.screenshot())).toBe(0);
+  expect(
+    await frameDifference(page, earlyShot, await scene.screenshot()),
+  ).toBeLessThanOrEqual(1);
 
   // The response curves keep the simulation page's styling, not browser defaults.
+  await playback
+    .locator("summary")
+    .filter({ hasText: "Simulated response" })
+    .click();
   await expect(playback.locator("polyline.fixture-mass")).toHaveCSS(
     "fill",
     "none",
@@ -410,32 +542,28 @@ test("the playback follows the simulated values and changes what the model shows
     (item) => item.id === "unstable_delivery",
   )!.component_ids;
   expect(ids).toContain("unstable_delivery");
-  await page
-    .getByRole("list", { name: "Playback steps" })
-    .getByRole("button")
-    .nth(2)
-    .click();
+  await chooseStep(playback, 2);
   await expect(scene).toHaveAttribute(
     "data-highlight-ids",
     components.join(","),
   );
 });
 
-test("playback can be stepped by keyboard and played, and stops on any interaction", async ({
+test("each guide step plays, pauses and holds until the viewer advances", async ({
   page,
   request,
 }) => {
   const source = await incidentWith(request, ["intermittent", "unstable"]);
   await runFromInvestigation(page, source.incident().id);
   await finished(page);
-  // Fake time only after the run, so the stages are not held back. A jump
-  // fires each due timer once and skips the thousands of animation frames
-  // a stepped clock would draw.
-  await page.clock.install();
   const playback = page.getByRole("region", {
     name: "Guided simulation playback",
     exact: true,
   });
+  const scene = playback.locator(".assembly-canvas");
+  await expect(scene).toHaveAttribute("data-model-loaded", "true");
+  // Advance the scene's clock after loading, without delaying the run requests.
+  await page.clock.install();
   const counter = playback.locator(".guided-counter");
   await playback.getByRole("button", { name: "Next step" }).focus();
   await page.keyboard.press("ArrowRight");
@@ -445,36 +573,111 @@ test("playback can be stepped by keyboard and played, and stops on any interacti
   await expect(
     playback.getByRole("button", { name: "Previous step" }),
   ).toBeDisabled();
+  await page.clock.fastForward(3000);
 
-  await playback.getByRole("button", { name: "Play guide" }).click();
+  await playback
+    .getByRole("button", { name: "Replay step", exact: true })
+    .click();
   await expect(
-    playback.getByRole("button", { name: "Pause guide" }),
+    playback.getByRole("button", { name: "Pause step", exact: true }),
   ).toBeVisible();
-  // Each step lasts its shot plus a short hold: 7.0 s + 1.6 s, then 9.0 s + 1.6 s.
-  await page.clock.fastForward(8700);
-  await expect(counter).toHaveText("Step 2 of 8");
-  await page.clock.fastForward(10700);
-  await expect(counter).toHaveText("Step 3 of 8");
-  await playback.getByRole("button", { name: "Pause guide" }).click();
+  await page.clock.fastForward(400);
+  await playback
+    .getByRole("button", { name: "Pause step", exact: true })
+    .click();
+  await expect(
+    playback.getByRole("button", { name: "Resume step", exact: true }),
+  ).toBeVisible();
+  const paused = await scene.screenshot();
   await page.clock.fastForward(12000);
-  await expect(counter).toHaveText("Step 3 of 8");
-  // Choosing a step by hand stops a running guide.
-  await playback.getByRole("button", { name: "Play guide" }).click();
+  await expect(counter).toHaveText("Step 1 of 8");
+  // Native WebGL screenshots can round a handful of channels by 1/255.
+  expect(
+    await frameDifference(page, paused, await scene.screenshot()),
+  ).toBeLessThanOrEqual(1);
+  await playback
+    .getByRole("button", { name: "Resume step", exact: true })
+    .click();
+  await page.clock.fastForward(3000);
+  await expect(
+    playback.getByRole("button", { name: "Replay step", exact: true }),
+  ).toBeVisible();
+  const completed = await scene.screenshot();
+  await page.clock.fastForward(12000);
+  await expect(counter).toHaveText("Step 1 of 8");
+  expect(
+    await frameDifference(page, completed, await scene.screenshot()),
+  ).toBeLessThanOrEqual(1);
+
+  // Next moves smoothly through an intermediate frame, then holds without advancing.
+  const beforeNext = await scene.screenshot();
+  await playback.getByRole("button", { name: "Next step" }).click();
+  await expect(counter).toHaveText("Step 2 of 8");
+  await expect(
+    playback.getByRole("button", { name: "Pause step", exact: true }),
+  ).toBeVisible();
+  await page.clock.fastForward(600);
+  const duringNext = await scene.screenshot();
+  expect(await frameDifference(page, beforeNext, duringNext)).toBeGreaterThan(
+    1,
+  );
+  await page.clock.fastForward(3000);
+  const afterNext = await scene.screenshot();
+  expect(await frameDifference(page, duringNext, afterNext)).toBeGreaterThan(1);
+  await page.clock.fastForward(12000);
+  await expect(counter).toHaveText("Step 2 of 8");
+  expect(
+    await frameDifference(page, afterNext, await scene.screenshot()),
+  ).toBeLessThanOrEqual(1);
+  // Moving the camera still stops playback.
+  await playback
+    .getByRole("button", { name: "Replay step", exact: true })
+    .click();
+  await playback.getByRole("button", { name: "Orbit left" }).click();
+  await expect(
+    playback.getByRole("button", { name: "Replay step", exact: true }),
+  ).toBeVisible();
+  await page.clock.fastForward(12000);
+  await expect(counter).toHaveText("Step 2 of 8");
+  await playback
+    .getByRole("button", { name: "Replay step", exact: true })
+    .click();
   await playback.getByRole("button", { name: "Next step" }).click();
   await page.clock.fastForward(12000);
-  await expect(counter).toHaveText("Step 4 of 8");
-  // Reaching the end stops the guide; Play then starts again from the first step.
-  await playback
-    .getByRole("list", { name: "Playback steps" })
-    .getByRole("button")
-    .last()
-    .click();
+  await expect(counter).toHaveText("Step 3 of 8");
+
+  // The last step can replay without returning to the beginning.
+  await chooseStep(playback, 7);
   await expect(counter).toHaveText("Step 8 of 8");
-  await playback.getByRole("button", { name: "Play guide" }).click();
-  await expect(counter).toHaveText("Step 1 of 8");
+  await expect(
+    playback.getByRole("button", { name: "Next step" }),
+  ).toBeDisabled();
+  await page.clock.fastForward(3000);
+  await playback
+    .getByRole("button", { name: "Replay step", exact: true })
+    .click();
+  await page.clock.fastForward(3000);
+  await playback
+    .getByRole("button", { name: "Replay step", exact: true })
+    .click();
+  await page.clock.fastForward(3000);
+  await expect(counter).toHaveText("Step 8 of 8");
+
+  await playback.getByRole("button", { name: "Enter full screen" }).click();
+  await expect
+    .poll(() =>
+      scene.evaluate(
+        (element) => document.fullscreenElement?.contains(element) ?? false,
+      ),
+    )
+    .toBe(true);
+  await playback.getByRole("button", { name: "Exit full screen" }).click();
+  await expect
+    .poll(() => page.evaluate(() => document.fullscreenElement === null))
+    .toBe(true);
 });
 
-test("reduced motion disables auto-play and the progress shimmer", async ({
+test("reduced motion disables step animation and the progress shimmer", async ({
   page,
   request,
 }) => {
@@ -495,7 +698,7 @@ test("reduced motion disables auto-play and the progress shimmer", async ({
   await expect(
     page
       .getByRole("region", { name: "Guided simulation playback", exact: true })
-      .getByRole("button", { name: "Play guide" }),
+      .getByRole("button", { name: "Play step", exact: true }),
   ).toBeDisabled();
 });
 
@@ -527,15 +730,15 @@ test("without WebGL the schematic, steps and numbers still work", async ({
   await expect(
     playback.getByRole("status").filter({ hasText: "3D unavailable" }),
   ).toBeVisible();
-  await playback
-    .getByRole("list", { name: "Playback steps" })
-    .getByRole("button")
-    .nth(3)
-    .click();
+  await chooseStep(playback, 3);
   await expect(
     playback.locator('.prototype-diagram [data-highlighted="true"]'),
   ).toHaveCount(components.length);
   await expect(playback).toContainText("Where fluid-path restriction acts");
+  await playback
+    .locator("summary")
+    .filter({ hasText: "Simulated response" })
+    .click();
   await expect(playback.locator("svg.incident-simulation-chart")).toBeVisible();
 });
 
@@ -583,7 +786,7 @@ test("failures are explained and can be retried, and an unknown plan is reported
   );
 });
 
-test("the lab is usable at phone width with the tracks before the playback", async ({
+test("the lab is usable at phone width with the model before experiment tracks", async ({
   page,
   request,
 }, testInfo) => {
@@ -600,7 +803,7 @@ test("the lab is usable at phone width with the tracks before the playback", asy
   const playback = await page
     .getByRole("region", { name: "Guided simulation playback", exact: true })
     .boundingBox();
-  expect(track!.y).toBeLessThan(playback!.y);
+  expect(playback!.y).toBeLessThan(track!.y);
   await lab(page).screenshot({ path: testInfo.outputPath("lab-mobile.png") });
 });
 

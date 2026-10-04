@@ -23,6 +23,75 @@ export const groupIds = [
 ] as const;
 export type GroupId = (typeof groupIds)[number];
 
+/** Names from the S932 reference §2.2–2.3; anchors are local to specific meshes. */
+export const partAnnotations: Record<
+  GroupId,
+  { text: string; mesh: string; point: Vec3 }
+> = {
+  bfs_bottle: {
+    text: "BFS flux bottle",
+    mesh: "pressure-vessel",
+    point: [0, 0, 0.68],
+  },
+  pickup_tube: {
+    text: "BFS pickup tube",
+    mesh: "internal-pickup",
+    point: [0, 0, 0],
+  },
+  bfs_air: {
+    text: "BFS fluid-pressure supply",
+    mesh: "pressure-regulator",
+    point: [0, 0, 0.14],
+  },
+  feed_tube: {
+    text: "Flux tubing",
+    mesh: "clear-feed-hose",
+    point: [-1.8, 2.18, 0.1],
+  },
+  fluid_qd: {
+    text: "Valve fluid QD",
+    mesh: "quick-disconnect-collar",
+    point: [0, 0, 0.21],
+  },
+  dj2200_valve: {
+    text: "DJ2200 valve",
+    mesh: "valve-housing",
+    point: [0, 0, 0.45],
+  },
+  valve_air: {
+    text: "Valve-actuation air",
+    mesh: "actuation-air-line",
+    point: [1.65, 1.62, 0.55],
+  },
+  coaxial_air: {
+    text: "Coaxial atomizing air",
+    mesh: "coaxial-air-line",
+    point: [0.9, 0.35, 0.52],
+  },
+  air_cap: { text: "Air cap", mesh: "air-cap-body", point: [0, 0, 0.36] },
+  nozzle: { text: "Nozzle", mesh: "nozzle-tip", point: [0, 0, 0.08] },
+  vision_camera: {
+    text: "Vision camera",
+    mesh: "camera-body",
+    point: [0, 0, 0.59],
+  },
+  substrate_tray: {
+    text: "Substrate carrier",
+    mesh: "carrier-deck",
+    point: [1.9, 0.04, 0.85],
+  },
+  support_frame: {
+    text: "Support frame",
+    mesh: "base-plate",
+    point: [2.9, 0.08, 1.5],
+  },
+  spray_visualization: {
+    text: "Illustrative spray",
+    mesh: "spray-cone",
+    point: [0, 0, 0],
+  },
+};
+
 /**
  * Where each part moves when the machine is taken apart, at full separation.
  * The valve is the anchor; the liquid path parts move up and out along the
@@ -74,6 +143,12 @@ export type CameraFrame = {
   target: Vec3;
   fov: number;
 };
+
+/** Keep the same horizontal subject space when the viewer becomes portrait. */
+export function fitCameraFov(fov: number, aspect: number) {
+  const scale = Math.max(1, 0.9 / Math.max(0.1, aspect));
+  return (Math.atan(Math.tan((fov * Math.PI) / 360) * scale) * 360) / Math.PI;
+}
 
 const clamp = (value: number, low = 0, high = 1) =>
   Math.min(high, Math.max(low, value));
@@ -140,20 +215,28 @@ export function sampleCamera(
 }
 
 /**
- * How far each part has separated: parts leave one after another over the
- * first part of the shot and all return together in a shot that lists none.
+ * Move from each part's current separation: newly selected parts leave in
+ * order, while parts no longer selected return together.
  */
 export function explodeAmounts(
   shot: Shot,
   progress: number,
+  from: Partial<Record<GroupId, number>> = {},
 ): Partial<Record<GroupId, number>> {
   const count = shot.explode.length;
-  return Object.fromEntries(
-    shot.explode.map((id, order) => {
+  return Object.fromEntries([
+    ...Object.entries(from).map(([id, amount]) => [
+      id,
+      settle(amount, 0, progress),
+    ]),
+    ...shot.explode.map((id, order) => {
       const start = count > 1 ? (order / count) * 0.45 : 0;
-      return [id, smootherstep((progress - start) / 0.4)];
+      return [
+        id,
+        lerp(from[id] ?? 0, 1, smootherstep((progress - start) / 0.4)),
+      ];
     }),
-  );
+  ]);
 }
 
 /** Ease a value from where it was toward where the shot wants it. */

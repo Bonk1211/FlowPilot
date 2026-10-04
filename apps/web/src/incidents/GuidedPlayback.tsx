@@ -1,9 +1,11 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import type { ProcedureStep } from "@flowpilot/contracts";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import type { ProcedureStep, SimulationRun } from "@flowpilot/contracts";
 import {
   ArrowClockwise,
   ArrowLeft,
   ArrowRight,
+  ArrowsIn,
+  ArrowsOut,
   Cube,
   Pause,
   Path,
@@ -15,14 +17,11 @@ import type { SceneDirection } from "../scene/stage";
 import { SceneBoundary } from "./SceneBoundary";
 import { StatusChip } from "./StatusChip";
 import { ResponsePlot } from "./SimulationPanel";
-import type { PlaybackScript } from "./experimentPlayback";
+import type { PlaybackStep } from "./experimentPlayback";
 import "../components/viewer.css";
 import "./GuidedPlayback.css";
 
 const AssemblyScene = lazy(() => import("../components/AssemblyScene"));
-// After a shot settles, hold its last frame briefly before the next one.
-const HOLD_MS = 1600;
-
 const legend = [
   ["liquid", "Liquid"],
   ["reservoir", "Reservoir air"],
@@ -30,33 +29,31 @@ const legend = [
   ["atomizing", "Atomizing air"],
 ] as const;
 
-/**
- * Plays one mechanism's simulated experiment as a short directed film: each
- * step is a camera shot, parts come apart and go back, and the liquid, air,
- * spray and deposit follow the saved simulated values. The viewer can take
- * the camera at any time. Nothing here is a measurement.
- */
+/** Each step is an inspectable view. Playing demonstrates only that step. */
 export function GuidedPlayback({
   script,
   title,
 }: {
-  script: Extract<PlaybackScript, { ok: true }>;
+  script: { steps: PlaybackStep[]; run?: SimulationRun };
   title: string;
 }) {
   const { steps } = script;
   const last = steps.length - 1;
+  const viewport = useRef<HTMLDivElement>(null);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [started, setStarted] = useState(false);
   const [held, setHeld] = useState(false);
   const [twoD, setTwoD] = useState(false);
   const [failed, setFailed] = useState(false);
   const [replay, setReplay] = useState(0);
-  const [progress, setProgress] = useState(0);
+  const [progress, setProgress] = useState(1);
+  const [fullScreen, setFullScreen] = useState(false);
+  const [fullScreenError, setFullScreenError] = useState("");
   const [reduced, setReduced] = useState(
     () => matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const step = steps[index];
-  const autoplaying = playing && !reduced && index < last;
 
   useEffect(() => {
     const query = matchMedia("(prefers-reduced-motion: reduce)");
@@ -65,19 +62,24 @@ export function GuidedPlayback({
       if (query.matches) setPlaying(false);
     };
     query.addEventListener("change", update);
-    update();
     return () => query.removeEventListener("change", update);
   }, []);
-  // A hidden page tears its scene down, so playback must not carry on unseen.
-  useEffect(() => () => setPlaying(false), []);
   useEffect(() => {
-    if (!autoplaying) return;
-    const timer = window.setTimeout(
-      () => setIndex((value) => value + 1),
-      step.shot.durationMs + HOLD_MS,
-    );
-    return () => window.clearTimeout(timer);
-  }, [autoplaying, index, step.shot.durationMs]);
+    const update = () =>
+      setFullScreen(document.fullscreenElement === viewport.current);
+    document.addEventListener("fullscreenchange", update);
+    return () => document.removeEventListener("fullscreenchange", update);
+  }, []);
+  useEffect(() => {
+    const stop = () => {
+      if (document.hidden) setPlaying(false);
+    };
+    document.addEventListener("visibilitychange", stop);
+    return () => {
+      document.removeEventListener("visibilitychange", stop);
+      setPlaying(false);
+    };
+  }, []);
 
   const sceneStep = useMemo<ProcedureStep>(
     () => ({
@@ -106,12 +108,16 @@ export function GuidedPlayback({
   );
   const highlightIds = step.highlightIds.length ? step.highlightIds : undefined;
   const go = (next: number) => {
-    setPlaying(false);
+    const target = Math.min(last, Math.max(0, next));
+    if (target === index) return;
+    const animate = !reduced && !twoD && !failed;
+    // Move from the current view into this step, then hold until another choice.
+    setPlaying(animate);
+    setStarted(animate);
     setHeld(false);
-    setProgress(0);
-    setIndex(Math.min(last, Math.max(0, next)));
+    setProgress(animate ? 0 : 1);
+    setIndex(target);
   };
-  // The curve marker follows the substrate time-lapse as it sweeps the sequence.
   const sweep = step.fluid.length > 1 && step.shot.deposit === "build";
   const marker =
     step.position === null
@@ -119,187 +125,259 @@ export function GuidedPlayback({
       : sweep && !reduced
         ? step.position * progress
         : step.position;
+  const playbackLabel = playing
+    ? "Pause step"
+    : !started
+      ? "Play step"
+      : progress >= 1 || held
+        ? "Replay step"
+        : "Resume step";
 
   return (
     <section
       className="guided-playback"
       aria-label="Guided simulation playback"
-      onKeyDown={(event) => {
-        if (
-          event.target instanceof HTMLElement &&
-          ["INPUT", "SELECT", "TEXTAREA"].includes(event.target.tagName)
-        )
-          return;
-        if (event.key === "ArrowRight") go(index + 1);
-        else if (event.key === "ArrowLeft") go(index - 1);
-        else return;
-        event.preventDefault();
-      }}
     >
-      <div className="guided-playback-head">
-        <div>
-          <p className="eyebrow">Guided playback</p>
-          <h3>{title}</h3>
-        </div>
-        <StatusChip kind="simulated" detail="not measured" />
-      </div>
-      <div className="incident-scene procedure-viewer guided-stage">
-        <div className="incident-view-toggle">
-          <button
-            className="secondary"
-            aria-pressed={!twoD && !failed}
-            disabled={failed}
-            onClick={() => setTwoD(false)}
-          >
-            <Cube aria-hidden="true" />
-            3D assembly
-          </button>
-          <button
-            className="secondary"
-            aria-pressed={twoD || failed}
-            onClick={() => setTwoD(true)}
-          >
-            <Path aria-hidden="true" />
-            2D schematic
-          </button>
-        </div>
-        {failed && (
-          <p role="status">
-            3D unavailable. The schematic and the steps below remain usable.
-          </p>
-        )}
-        {twoD || failed ? (
-          <ProcedureDiagram step={sceneStep} highlightIds={highlightIds} />
-        ) : (
-          <div className="guided-frame">
-            <SceneBoundary
-              fallback={
-                <ProcedureDiagram
-                  step={sceneStep}
-                  highlightIds={highlightIds}
-                />
-              }
-            >
-              <Suspense
-                fallback={<p role="status">Loading illustrative assembly…</p>}
+      <div
+        ref={viewport}
+        className="guided-viewport procedure-viewer"
+        onKeyDown={(event) => {
+          if (
+            event.target instanceof HTMLElement &&
+            (event.target.closest(".assembly-camera-tools") ||
+              ["INPUT", "SELECT", "TEXTAREA", "SUMMARY"].includes(
+                event.target.tagName,
+              ))
+          )
+            return;
+          if (event.key === "ArrowRight") go(index + 1);
+          else if (event.key === "ArrowLeft") go(index - 1);
+          else return;
+          event.preventDefault();
+        }}
+      >
+        <div className="guided-topbar">
+          <div className="guided-playback-head">
+            <p className="eyebrow">ASYMTEK S932 · 3D simulation</p>
+            <h3>{title}</h3>
+          </div>
+          <div className="guided-view-tools">
+            <div className="incident-view-toggle">
+              <button
+                className="secondary"
+                aria-pressed={!twoD && !failed}
+                disabled={failed}
+                onClick={() => {
+                  setTwoD(false);
+                  setPlaying(false);
+                }}
               >
-                <AssemblyScene
-                  step={sceneStep}
-                  reset={replay}
-                  reduced={reduced}
-                  highlightIds={highlightIds}
-                  partStates={step.partStates}
-                  directed
-                  direction={direction}
-                  onShotProgress={sweep ? setProgress : undefined}
-                  onFailure={() => setFailed(true)}
-                  onInteract={() => {
-                    setPlaying(false);
-                    setHeld(true);
-                  }}
-                />
-              </Suspense>
-            </SceneBoundary>
-            <p className="guided-badge" aria-hidden="true">
-              Simulated<span> · illustrative model · not a measurement</span>
+                <Cube aria-hidden="true" /> 3D assembly
+              </button>
+              <button
+                className="secondary"
+                aria-pressed={twoD || failed}
+                onClick={() => {
+                  setTwoD(true);
+                  setPlaying(false);
+                }}
+              >
+                <Path aria-hidden="true" /> 2D schematic
+              </button>
+            </div>
+            <button
+              className="secondary guided-fullscreen"
+              aria-label={fullScreen ? "Exit full screen" : "Enter full screen"}
+              title={fullScreen ? "Exit full screen" : "Enter full screen"}
+              onClick={async () => {
+                setFullScreenError("");
+                try {
+                  if (document.fullscreenElement === viewport.current)
+                    await document.exitFullscreen();
+                  else await viewport.current?.requestFullscreen();
+                } catch {
+                  setFullScreenError(
+                    "Full screen is unavailable in this browser. The expanded viewer remains usable.",
+                  );
+                }
+              }}
+            >
+              {fullScreen ? (
+                <ArrowsIn aria-hidden="true" />
+              ) : (
+                <ArrowsOut aria-hidden="true" />
+              )}
+            </button>
+          </div>
+        </div>
+        <div className="guided-model-area incident-scene">
+          {failed && (
+            <p className="guided-fallback" role="status">
+              3D unavailable. The schematic and the steps remain usable.
             </p>
-            <p className="guided-shot" aria-hidden="true">
-              {step.shot.name}
+          )}
+          {twoD || failed ? (
+            <ProcedureDiagram step={sceneStep} highlightIds={highlightIds} />
+          ) : (
+            <div className="guided-frame">
+              <SceneBoundary
+                fallback={
+                  <ProcedureDiagram
+                    step={sceneStep}
+                    highlightIds={highlightIds}
+                  />
+                }
+              >
+                <Suspense
+                  fallback={<p role="status">Loading illustrative assembly…</p>}
+                >
+                  <AssemblyScene
+                    step={sceneStep}
+                    reset={replay}
+                    reduced={reduced}
+                    paused={!playing}
+                    highlightIds={highlightIds}
+                    partStates={step.partStates}
+                    directed
+                    direction={direction}
+                    onShotProgress={(value) => {
+                      setProgress(value);
+                      if (value >= 1) setPlaying(false);
+                    }}
+                    onFailure={() => {
+                      setFailed(true);
+                      setPlaying(false);
+                    }}
+                    onInteract={() => {
+                      setPlaying(false);
+                      setHeld(true);
+                    }}
+                  />
+                </Suspense>
+              </SceneBoundary>
+            </div>
+          )}
+          <p className="guided-shot">
+            {step.shot.explode.length ? "Exploded view" : "Assembly view"} ·{" "}
+            {step.shot.name}
+          </p>
+          <ul className="guided-legend" aria-label="Colours in the 3D view">
+            {legend.map(([kind, label]) => (
+              <li key={kind} data-kind={kind}>
+                {label}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <aside className="guided-console" aria-label="Step-by-step guide">
+          <div className="guided-console-heading">
+            <p className="eyebrow">Step-by-step guide</p>
+            <span className="guided-counter" role="status">
+              Step {index + 1} of {steps.length}
+            </span>
+          </div>
+          <div className="guided-step-progress" aria-hidden="true">
+            {steps.map((item, position) => (
+              <span key={item.id} data-active={position <= index} />
+            ))}
+          </div>
+          <div
+            className="guided-narration"
+            aria-live="polite"
+            aria-atomic="true"
+          >
+            <h4>{step.title}</h4>
+            <p>{step.narration}</p>
+          </div>
+          <div className="guided-controls">
+            <button
+              className="secondary"
+              aria-label="Previous step"
+              disabled={index === 0}
+              onClick={() => go(index - 1)}
+            >
+              <ArrowLeft aria-hidden="true" /> Previous
+            </button>
+            <button
+              className="primary"
+              aria-label="Next step"
+              disabled={index === last}
+              onClick={() => go(index + 1)}
+            >
+              Next step <ArrowRight aria-hidden="true" />
+            </button>
+          </div>
+          <div className="guided-play-control">
+            <button
+              className="secondary"
+              disabled={reduced || twoD || failed}
+              aria-pressed={playing}
+              onClick={() => {
+                if (playing) setPlaying(false);
+                else {
+                  if (!started || progress >= 1 || held) {
+                    setProgress(0);
+                    setReplay((value) => value + 1);
+                  }
+                  setStarted(true);
+                  setHeld(false);
+                  setPlaying(true);
+                }
+              }}
+            >
+              {playing ? (
+                <Pause aria-hidden="true" />
+              ) : started && (progress >= 1 || held) ? (
+                <ArrowClockwise aria-hidden="true" />
+              ) : (
+                <Play aria-hidden="true" />
+              )}
+              {playbackLabel}
+            </button>
+            <p>
+              {reduced
+                ? "Reduced motion · inspect each step."
+                : "Plays once. Choose Next step to continue."}
             </p>
           </div>
-        )}
-        <ul className="guided-legend" aria-label="Colours in the 3D view">
-          {legend.map(([kind, label]) => (
-            <li key={kind} data-kind={kind}>
-              {label}
-            </li>
-          ))}
-        </ul>
-        <div className="assembly-tools">
-          <button
-            className="secondary"
-            onClick={() => {
-              setHeld(false);
-              setProgress(0);
-              setReplay((n) => n + 1);
-            }}
-          >
-            <ArrowClockwise aria-hidden="true" />
-            {held ? "Resume shot" : "Replay shot"}
-          </button>
-          <span className="incident-caption">
-            Flow speed, gaps, spray width and deposit follow the simulated
-            values. Positions and parts are illustrative, not measured.
-          </span>
-        </div>
-      </div>
-      <div className="guided-controls">
-        <button
-          aria-label="Previous step"
-          disabled={index === 0}
-          onClick={() => go(index - 1)}
-        >
-          <ArrowLeft aria-hidden="true" /> Previous
-        </button>
-        <button
-          aria-pressed={autoplaying}
-          disabled={reduced}
-          title={
-            reduced
-              ? "Reduced motion: use the step buttons to advance."
-              : undefined
-          }
-          onClick={() => {
-            if (autoplaying) setPlaying(false);
-            else {
-              if (index === last) setIndex(0);
-              setHeld(false);
-              setPlaying(true);
-            }
-          }}
-        >
-          {autoplaying ? (
-            <Pause aria-hidden="true" />
-          ) : (
-            <Play aria-hidden="true" />
+          <details className="guided-step-list">
+            <summary>All {steps.length} steps</summary>
+            <ol className="guided-steps" aria-label="Playback steps">
+              {steps.map((item, position) => (
+                <li key={item.id}>
+                  <button
+                    aria-current={position === index ? "step" : undefined}
+                    onClick={() => go(position)}
+                  >
+                    <span className="guided-step-number" aria-hidden="true">
+                      {position + 1}
+                    </span>
+                    <span className="guided-step-text">{item.title}</span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </details>
+          {script.run && (
+            <details className="guided-response">
+              <summary>Simulated response</summary>
+              <ResponsePlot
+                run={script.run}
+                marker={marker}
+                showTable={false}
+              />
+            </details>
           )}
-          {autoplaying ? "Pause guide" : "Play guide"}
-        </button>
-        <button
-          aria-label="Next step"
-          disabled={index === last}
-          onClick={() => go(index + 1)}
-        >
-          Next <ArrowRight aria-hidden="true" />
-        </button>
-        <span className="guided-counter" role="status">
-          Step {index + 1} of {steps.length}
-        </span>
+          <div className="guided-source">
+            <StatusChip kind="simulated" detail="not measured" />
+            <p>
+              Part names: S932 consolidated reference, §2.2–2.3. Geometry and
+              separation are illustrative.
+            </p>
+          </div>
+          {fullScreenError && <p role="status">{fullScreenError}</p>}
+        </aside>
       </div>
-      <div className="guided-narration" aria-live="polite" aria-atomic="true">
-        <h4>{step.title}</h4>
-        <p>{step.narration}</p>
-        <p className="incident-caption">{step.caution}</p>
-      </div>
-      <ol className="guided-steps" aria-label="Playback steps">
-        {steps.map((item, position) => (
-          <li key={item.id}>
-            <button
-              aria-current={position === index ? "step" : undefined}
-              onClick={() => go(position)}
-            >
-              <span className="guided-step-number" aria-hidden="true">
-                {position + 1}
-              </span>
-              <span className="guided-step-text">
-                {item.title}
-                <small>{item.shot.name}</small>
-              </span>
-            </button>
-          </li>
-        ))}
-      </ol>
-      <ResponsePlot run={script.run} marker={marker} showTable={false} />
     </section>
   );
 }

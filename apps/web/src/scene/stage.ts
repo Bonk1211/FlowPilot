@@ -5,6 +5,7 @@ import {
   explodeAmounts,
   explodeOffsets,
   groupIds,
+  partAnnotations,
   settle,
   type GroupId,
   type Shot,
@@ -18,23 +19,6 @@ export type SceneDirection = {
   control: FluidPoint;
   condition: "start" | "tested";
   mechanism: Mechanism;
-};
-
-const labelText: Record<GroupId, string> = {
-  bfs_bottle: "BFS bottle",
-  pickup_tube: "Pickup tube",
-  bfs_air: "Reservoir air",
-  feed_tube: "Feed tube",
-  fluid_qd: "Quick disconnect",
-  dj2200_valve: "DJ-2200 valve",
-  valve_air: "Valve-actuation air",
-  coaxial_air: "Atomizing air",
-  air_cap: "Air cap",
-  nozzle: "Nozzle",
-  vision_camera: "Vision camera",
-  substrate_tray: "Substrate",
-  support_frame: "Frame",
-  spray_visualization: "Spray",
 };
 
 // Liquid, reservoir air, valve-actuation air and atomizing air keep their own colours.
@@ -116,7 +100,7 @@ function hash(index: number) {
 export class Stage {
   private groups = new Map<GroupId, THREE.Object3D>();
   private home = new Map<GroupId, THREE.Vector3>();
-  private anchors = new Map<GroupId, THREE.Vector3>();
+  private anchors = new Map<GroupId, THREE.Object3D>();
   private shells = new Map<GroupId, Shell[]>();
   private cores: Core[] = [];
   private exploded: Partial<Record<GroupId, number>> = {};
@@ -140,7 +124,7 @@ export class Stage {
   private lines: SVGSVGElement;
   private labels = new Map<
     GroupId,
-    { box: HTMLDivElement; line: SVGLineElement }
+    { box: HTMLDivElement; line: SVGLineElement; dot: SVGCircleElement }
   >();
   private markerLabel: HTMLDivElement;
   private matrix = new THREE.Matrix4();
@@ -157,8 +141,8 @@ export class Stage {
       if (!group) continue;
       this.groups.set(id, group);
       this.home.set(id, group.position.clone());
-      const box = new THREE.Box3().setFromObject(group);
-      this.anchors.set(id, box.getCenter(new THREE.Vector3()));
+      const anchor = group.getObjectByName(partAnnotations[id].mesh);
+      if (anchor) this.anchors.set(id, anchor);
     }
     const liquidOrder = [
       "fluid-core-pickup",
@@ -374,6 +358,7 @@ export class Stage {
     camera: THREE.PerspectiveCamera,
     width: number,
     height: number,
+    isolated: ReadonlySet<string> | null = null,
   ) {
     const direction = this.direction;
     if (!direction) return;
@@ -383,19 +368,15 @@ export class Stage {
     const end = direction.fluid[direction.fluid.length - 1];
 
     // Parts apart, faded or see-through, eased from where they were.
-    const apart = explodeAmounts(shot, progress);
+    this.exploded = explodeAmounts(shot, progress, this.from.exploded);
     for (const id of groupIds) {
       const group = this.groups.get(id);
       if (!group) continue;
-      const exploding = shot.explode.includes(id);
-      this.exploded[id] = exploding
-        ? Math.max(apart[id] ?? 0, 0)
-        : settle(this.from.exploded[id] ?? 0, 0, progress);
-      if (exploding && (this.from.exploded[id] ?? 0) > (apart[id] ?? 0))
-        this.exploded[id] = this.from.exploded[id];
       this.faded[id] = settle(
         this.from.faded[id] ?? 0,
-        shot.ghost.includes(id) ? 1 : 0,
+        shot.ghost.includes(id) || (isolated !== null && !isolated.has(id))
+          ? 1
+          : 0,
         progress,
       );
       this.seeThrough[id] = settle(
@@ -483,9 +464,7 @@ export class Stage {
     }
 
     // Spray: width follows simulated coverage, density follows feed flow.
-    const showSpray = ["nozzle", "substrate", "readout", "establish"].includes(
-      shot.id,
-    );
+    const showSpray = ["nozzle", "substrate", "readout"].includes(shot.id);
     this.droplets.visible = showSpray;
     if (showSpray) {
       const width = 0.06 + 0.2 * Math.min(1, point.sprayWidth);
@@ -537,6 +516,7 @@ export class Stage {
       const material = this.marker.material as THREE.MeshBasicMaterial;
       material.opacity = 0.65 + 0.35 * Math.sin(time * 3) ** 2;
     }
+    this.root.updateMatrixWorld(true);
     this.place(camera, width, height, progress);
   }
 
@@ -589,36 +569,24 @@ export class Stage {
       labelY: number;
     }[] = [];
     for (const id of groupIds) {
-      if (!wanted.has(id) || !settled) continue;
-      const anchor = this.scratch
-        .copy(this.anchors.get(id)!)
-        .add(
-          new THREE.Vector3(...explodeOffsets[id]).multiplyScalar(
-            this.exploded[id] ?? 0,
-          ),
-        );
-      if (id === "substrate_tray") anchor.set(0.9, -1.95, 0.35);
-      const screen = anchor.project(camera);
+      const anchor = this.anchors.get(id);
+      if (!wanted.has(id) || !settled || !anchor) continue;
+      // Follow the actual mesh, including explosion and any parent transforms.
+      // A hose's bounding-box centre can be empty space, so use a point on it.
+      const screen = anchor
+        .localToWorld(this.scratch.set(...partAnnotations[id].point))
+        .project(camera);
       const x = (screen.x * 0.5 + 0.5) * width;
       const y = (-screen.y * 0.5 + 0.5) * height;
       const central =
+        screen.z > -1 &&
         screen.z < 1 &&
-        x > width * 0.12 &&
-        x < width * 0.88 &&
-        y > height * 0.1 &&
-        y < height * 0.92;
+        x > 12 &&
+        x < width - 12 &&
+        y > top &&
+        y < height - 20;
       if (!central) continue;
-      placed.push({ id, x, y, left: x < width / 2, labelY: y - 40 });
-    }
-    // Stack labels on each side so they never overlap or cover the badge.
-    for (const left of [true, false]) {
-      let floor = top;
-      for (const item of placed
-        .filter((entry) => entry.left === left)
-        .sort((a, b) => a.labelY - b.labelY)) {
-        item.labelY = Math.min(height - 16, Math.max(floor, item.labelY));
-        floor = item.labelY + 30;
-      }
+      placed.push({ id, x, y, left: x < width / 2, labelY: y - 24 });
     }
     const shown = new Set(placed.map((item) => item.id));
     for (const id of groupIds) {
@@ -626,38 +594,96 @@ export class Stage {
       if (label && !shown.has(id)) {
         label.box.dataset.shown = "false";
         label.line.style.opacity = "0";
+        label.dot.style.opacity = "0";
       }
     }
-    for (const item of placed) {
+    const occupied: {
+      left: number;
+      right: number;
+      top: number;
+      bottom: number;
+    }[] = [];
+    for (const item of placed.sort((a, b) => a.y - b.y)) {
       let label = this.labels.get(item.id);
       if (!label) {
         const box = document.createElement("div");
         box.className = "assembly-label";
-        box.textContent = labelText[item.id];
+        box.textContent = partAnnotations[item.id].text;
+        box.dataset.partId = item.id;
+        box.dataset.anchorMesh = partAnnotations[item.id].mesh;
         const line = document.createElementNS(
           "http://www.w3.org/2000/svg",
           "line",
         );
-        this.lines.append(line);
+        line.dataset.partId = item.id;
+        const dot = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "circle",
+        );
+        dot.dataset.partId = item.id;
+        dot.setAttribute("r", "3");
+        this.lines.append(line, dot);
         this.labelLayer.append(box);
-        label = { box, line };
+        label = { box, line, dot };
         this.labels.set(item.id, label);
       }
       // A label that would leave the frame on its side flips to the other side.
       const size = label.box.offsetWidth;
       const left = item.left
-        ? item.x - 64 - size >= 8
-        : item.x + 64 + size > width - 8;
+        ? item.x - 32 - size >= 8
+        : item.x + 32 + size > width - 8;
       const labelX = left
-        ? Math.max(size + 8, item.x - 64)
-        : Math.min(width - size - 8, item.x + 64);
+        ? Math.max(size + 8, item.x - 32)
+        : Math.min(width - size - 8, item.x + 32);
+      // Resolve collisions after flipping/clamping, across both sides of the model.
+      const halfHeight = label.box.offsetHeight / 2;
+      const minimum = top + halfHeight;
+      const maximum = height - 12 - halfHeight;
+      const labelLeft = left ? labelX - size : labelX;
+      const labelRight = labelLeft + size;
+      const candidates = [
+        Math.max(minimum, Math.min(maximum, item.labelY)),
+        minimum,
+        maximum,
+        ...occupied.flatMap((rect) => [
+          rect.top - 4 - halfHeight,
+          rect.bottom + 4 + halfHeight,
+        ]),
+      ];
+      const labelY = candidates
+        .filter((y) => y >= minimum && y <= maximum)
+        .sort((a, b) => Math.abs(a - item.labelY) - Math.abs(b - item.labelY))
+        .find((y) =>
+          occupied.every(
+            (rect) =>
+              labelRight + 4 <= rect.left ||
+              labelLeft >= rect.right + 4 ||
+              y + halfHeight + 4 <= rect.top ||
+              y - halfHeight >= rect.bottom + 4,
+          ),
+        );
+      if (labelY === undefined) {
+        label.box.dataset.shown = "false";
+        label.line.style.opacity = "0";
+        label.dot.style.opacity = "0";
+        continue;
+      }
+      occupied.push({
+        left: labelLeft,
+        right: labelRight,
+        top: labelY - halfHeight,
+        bottom: labelY + halfHeight,
+      });
       label.box.dataset.shown = "true";
-      label.box.style.transform = `translate(${labelX}px, ${item.labelY}px) translate(${left ? "-100%" : "0"}, -50%)`;
+      label.box.style.transform = `translate(${labelX}px, ${labelY}px) translate(${left ? "-100%" : "0"}, -50%)`;
       label.line.setAttribute("x1", String(item.x));
       label.line.setAttribute("y1", String(item.y));
       label.line.setAttribute("x2", String(labelX));
-      label.line.setAttribute("y2", String(item.labelY));
+      label.line.setAttribute("y2", String(labelY));
       label.line.style.opacity = "1";
+      label.dot.setAttribute("cx", String(item.x));
+      label.dot.setAttribute("cy", String(item.y));
+      label.dot.style.opacity = "1";
     }
     const markerShown = shot.marker === "narrowing" && settled;
     if (markerShown) {
