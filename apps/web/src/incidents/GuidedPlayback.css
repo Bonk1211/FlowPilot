@@ -95,6 +95,9 @@
   color: var(--text-secondary-on-instrument);
   font-size: var(--font-caption);
 }
+.guided-legend li {
+  margin: 0;
+}
 .guided-legend li::before {
   display: inline-block;
   width: 18px;
@@ -113,6 +116,13 @@
 }
 .guided-legend [data-kind="atomizing"]::before {
   background: color-mix(in srgb, var(--blue-600) 40%, var(--white));
+}
+/* On a phone the badge keeps its first word and the shot name gives way. */
+@media (max-width: 520px) {
+  .guided-badge span,
+  .guided-shot {
+    display: none;
+  }
 }
 .guided-step-text {
   display: grid;

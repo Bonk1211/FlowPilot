@@ -643,12 +643,16 @@ export class Stage {
         label = { box, line };
         this.labels.set(item.id, label);
       }
-      const labelX = Math.min(
-        width - 12,
-        Math.max(12, item.x + (item.left ? -64 : 64)),
-      );
+      // A label that would leave the frame on its side flips to the other side.
+      const size = label.box.offsetWidth;
+      const left = item.left
+        ? item.x - 64 - size >= 8
+        : item.x + 64 + size > width - 8;
+      const labelX = left
+        ? Math.max(size + 8, item.x - 64)
+        : Math.min(width - size - 8, item.x + 64);
       label.box.dataset.shown = "true";
-      label.box.style.transform = `translate(${labelX}px, ${item.labelY}px) translate(${item.left ? "-100%" : "0"}, -50%)`;
+      label.box.style.transform = `translate(${labelX}px, ${item.labelY}px) translate(${left ? "-100%" : "0"}, -50%)`;
       label.line.setAttribute("x1", String(item.x));
       label.line.setAttribute("y1", String(item.y));
       label.line.setAttribute("x2", String(labelX));

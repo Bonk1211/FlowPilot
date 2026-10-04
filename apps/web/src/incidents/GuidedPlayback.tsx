@@ -201,7 +201,7 @@ export function GuidedPlayback({
               </Suspense>
             </SceneBoundary>
             <p className="guided-badge" aria-hidden="true">
-              Simulated · illustrative model · not a measurement
+              Simulated<span> · illustrative model · not a measurement</span>
             </p>
             <p className="guided-shot" aria-hidden="true">
               {step.shot.name}
