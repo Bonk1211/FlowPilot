@@ -3,29 +3,49 @@ import { DownloadSimple, Flask, Minus, Plus, X } from "@phosphor-icons/react";
 import type { Incident } from "@flowpilot/contracts";
 import {
   buildTroubleshootingMap,
-  troubleshootingHandoff,
   troubleshootingSvg,
 } from "./troubleshootingPlan";
+import {
+  downloadReportContent as download,
+  loadHandoffReport,
+  saveHandoffReport,
+} from "./reportExports";
 import "./TroubleshootingMap.css";
-
-function download(content: string, type: string, filename: string) {
-  const url = URL.createObjectURL(new Blob([content], { type }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-}
 
 export function TroubleshootingMap({ incident }: { incident: Incident }) {
   const [open, setOpen] = useState(false);
   const [zoom, setZoom] = useState(0.85);
   const [notice, setNotice] = useState("");
+  const [report, setReport] = useState<Awaited<
+    ReturnType<typeof loadHandoffReport>
+  > | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   const dialog = useRef<HTMLDialogElement>(null);
   const viewport = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
-  const map = useMemo(() => buildTroubleshootingMap(incident), [incident]);
+  const map = useMemo(
+    () => report?.map ?? buildTroubleshootingMap(incident),
+    [incident, report],
+  );
   const svg = useMemo(() => troubleshootingSvg(map), [map]);
+  async function refreshReport() {
+    setLoading(true);
+    setError("");
+    setNotice("");
+    setReport(null);
+    try {
+      setReport(await loadHandoffReport(incident.id));
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Experiment history could not be loaded.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
   useEffect(() => {
     if (open) dialog.current?.showModal();
     else dialog.current?.close();
@@ -38,7 +58,10 @@ export function TroubleshootingMap({ incident }: { incident: Incident }) {
         type="button"
         title="Response flow & mini DOE"
         aria-label="Response flow & mini DOE"
-        onClick={() => setOpen(true)}
+        onClick={() => {
+          setOpen(true);
+          void refreshReport();
+        }}
       >
         <Flask aria-hidden="true" />
         <span>Flow & mini DOE</span>
@@ -118,6 +141,14 @@ export function TroubleshootingMap({ incident }: { incident: Incident }) {
               <div className="troubleshooting-downloads">
                 <button
                   type="button"
+                  disabled={loading}
+                  onClick={() => void refreshReport()}
+                >
+                  Refresh saved flow
+                </button>
+                <button
+                  type="button"
+                  disabled={loading || !report}
                   onClick={() => {
                     download(
                       svg,
@@ -133,12 +164,10 @@ export function TroubleshootingMap({ incident }: { incident: Incident }) {
                 <button
                   type="button"
                   className="primary"
+                  disabled={loading || !report}
                   onClick={() => {
-                    download(
-                      troubleshootingHandoff(incident, map),
-                      "text/html;charset=utf-8",
-                      `${incident.id}-r${incident.revision}-handoff.html`,
-                    );
+                    if (!report) return;
+                    saveHandoffReport(report, "html");
                     setNotice(
                       "Handoff downloaded. Open the HTML file to print or save as PDF.",
                     );
@@ -150,7 +179,23 @@ export function TroubleshootingMap({ incident }: { incident: Incident }) {
               </div>
             </div>
             <div className="troubleshooting-caption">
+              {loading && (
+                <p role="status">
+                  Loading saved responses and experiment results…
+                </p>
+              )}
+              {error && (
+                <p role="alert">{error} Retry with Refresh saved flow.</p>
+              )}
+              {report && (
+                <p>
+                  Saved report revision {report.incident.revision}. Includes{" "}
+                  {report.experiments.length} mock experiment plans and their
+                  recorded results.
+                </p>
+              )}
               <p>
+                Start with Hardware and Software, then narrow with evidence.
                 Follow the arrows. Possible faults converge on a shared area;
                 each comparison branches left or right by outcome. H1 collects
                 the handoff.

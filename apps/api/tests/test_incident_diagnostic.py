@@ -270,3 +270,22 @@ def test_confirmed_answers_describe_shape_and_unmodelled_changes_are_marked():
     )
     assert [fact.shape for fact in sudden.shape_facts] == ["not_modelled"]
     assert sudden.why[1] == "1 record supports it and none conflict with it."
+
+
+def test_model_payloads_leave_out_the_display_only_experiment_briefs():
+    import json
+
+    from flowpilot.incidents.diagnostic import model_payload
+
+    assessment = analyze(
+        evidence(samples=[{"mass_mg": value} for value in (12.0, 11.1, 10.3, 9.2)]),
+        [],
+        "S932 / DJ-2200 / BFS",
+    )
+    assert all(check.brief for check in assessment.checks)
+    payload = model_payload(assessment)
+    assert all("brief" not in check for check in payload["checks"])
+    assert [check["id"] for check in payload["checks"]] == [check.id for check in assessment.checks]
+    # The briefs alone would take a large share of the 50 KB adaptive input limit.
+    full = len(json.dumps(assessment.model_dump(mode="json")))
+    assert len(json.dumps(payload)) < full - 10_000

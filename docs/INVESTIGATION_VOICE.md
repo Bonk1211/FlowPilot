@@ -56,30 +56,32 @@ visible if speech synthesis is unavailable or playback fails.
   voice recording, the recording card replaces the typed composer and choices.
 - **Voice** opens the recording card for dictation. Send directly, or stop to
   review the text in the editable chat field.
-- While voice is active, a recording card shows the live transcript,
-  elapsed listening time, a speech animation, links to existing incident evidence,
-  and a **Tap to stop** control. Its send arrow submits the current dictated text.
+- While voice is active, a compact card shows the live transcript, a small
+  microphone waveform, elapsed time, and a **Stop** control. Its send arrow submits
+  the current dictated text. Conversation history also reveals evidence links.
 - **Hands-free** starts continuous listening. A speech pause sends a committed
   transcript automatically; partial transcripts are displayed without being saved.
-- The Hands-free session panel shows Listen, Think, and Reply stages with an
-  audio-reactive microphone indicator and separate You / FlowPilot turns. A pending
-  answer gets a clear confirmation prompt and buttons. Motion is reduced when the
-  device requests it.
+  Clear answers are recorded immediately and advance to the next node, without a
+  second confirmation. Unclear answers still get a clarification question.
+- Hands-free keeps a single Listening / Thinking / Speaking status above the
+  transcript and reply. History and evidence stay tucked away until requested.
 - New agent replies play aloud only while Hands-free is active. The card shows
   **Speaking** and pauses microphone capture during playback to prevent feedback,
   then resumes **Listening** automatically. Wait for Listening before responding;
   **Talk now** interrupts the reply and immediately returns the microphone to you.
   **Replay** reads the last reply again without sending another message. Spoken
   words are highlighted when the browser provides speech boundary events; other
-  browsers keep the complete reply visible. **End session** remains available
+  browsers keep the complete reply visible. **Stop** remains available
   during speech. Switching Hands-free off cancels playback and returns to manual
   dictation. Previous replies are only replayed when requested.
 - Describe an observation, ask why a question matters, or discuss another
   possibility. Gemini sees the spotlight, eligible questions, recent conversation,
   and current assessment, then identifies the question(s) being answered.
-- The agent repeats interpreted answers with their question. Say **confirm** or
+- For typed input and manual dictation, the agent repeats interpreted answers
+  with their question. Say **confirm** or
   press Confirm answer to record them; say **cancel** to discard the proposal.
-  Multiple clearly answered questions can be confirmed together.
+  Multiple clearly answered questions can be confirmed together; Hands-free
+  records them together automatically.
 - A confirmed answer to another eligible branch selects that branch and uses the
   existing graph validation and assessment flow. Unclear, conflicting, unsupported,
   or stale mappings ask for clarification and do not establish facts.
@@ -94,19 +96,21 @@ Natural conversation and discussion require Gemini. Corrections to already
 answered nodes use the existing Correct this answer control and retained history.
 
 Conversation turns are persisted in the incident with the original transcript,
-input mode, author, routing, provider metadata, and confirmation outcome. Revision
-checks reject stale writes; turn IDs make retries idempotent. Reloading the
-workspace retains the conversation and recorded answers.
+input mode, Hands-free setting, author, routing, provider metadata, and recording
+outcome. Revision checks reject stale writes; turn IDs make retries idempotent.
+Reloading the workspace retains the conversation and recorded answers.
 
 ## Verification
 
-`apps/api/tests/test_incident_conversation.py` covers confirmation, alternative
-nodes, ambiguity, multiple answers, invalid model output, stale proposals,
+`apps/api/tests/test_incident_conversation.py` covers Hands-free auto-recording,
+manual confirmation, alternative nodes, ambiguity, multiple answers, invalid model
+output, stale proposals,
 idempotent retries, token authentication, provider errors, and policy enforcement.
 `test/e2e/incident-conversation.spec.ts` covers answer cards, keyboard selection,
-sidebar separation, desktop/mobile layout, persisted
-chat, committed speech, spoken replies and confirmation, microphone muting during
-playback, mode isolation, playback failures, microphone session cleanup, and typed
-fallback, plus session stages, interruption, replay, word highlighting, keyboard
-controls, mobile layout, and reduced motion. Provider streams, tokens, and speech playback are simulated in regression tests;
+sidebar separation, desktop/mobile layout, persisted chat, committed speech,
+automatic node progression, spoken replies and manual confirmation, microphone
+muting during playback, mode isolation, playback failures, microphone session
+cleanup, and typed fallback, plus compact session status, interruption, replay,
+word highlighting, keyboard controls, mobile layout, and reduced motion. Provider
+streams, tokens, and speech playback are simulated in regression tests;
 live audio quality, accent recognition, and factory noise require an on-site trial.

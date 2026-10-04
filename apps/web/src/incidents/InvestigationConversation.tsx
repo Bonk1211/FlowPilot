@@ -15,9 +15,6 @@ import {
   PaperPlaneTilt,
   Stop,
   SpeakerHigh,
-  Sparkle,
-  Check,
-  ArrowCounterClockwise,
 } from "@phosphor-icons/react";
 import type {
   ConversationRequest,
@@ -58,7 +55,7 @@ export function InvestigationConversation({
   disabled: boolean;
   readOnly: boolean;
   onUpdated: (incident: Incident) => void;
-  onSpotlight: (id: string) => void;
+  onSpotlight: (id: string | null) => void;
   onSelectEvidence: (id: string) => void;
   onSendingChange: (sending: boolean) => void;
   onShowSources: () => void;
@@ -223,7 +220,6 @@ export function InvestigationConversation({
         now - audioLevel.current.at < 700 ? audioLevel.current.value : 0;
       level +=
         (target - level) * (1 - Math.exp(-delta / (target > level ? 60 : 180)));
-      container.current?.style.setProperty("--voice-level", level.toFixed(3));
       phase += delta * (0.002 + level * 0.012);
       bars.forEach((bar, index) => {
         const wave = (Math.sin(phase + index * 0.8) + 1) / 2;
@@ -349,11 +345,9 @@ export function InvestigationConversation({
         current.current.incident = updated;
         current.current.onUpdated(updated);
         const last = updated.conversation?.at(-1);
-        const target =
-          last?.status === "recorded"
-            ? updated.investigation?.active_node_id
-            : last?.node_ids?.[0];
-        if (target) current.current.onSpotlight(target);
+        if (last?.status === "recorded") current.current.onSpotlight(null);
+        else if (last?.node_ids?.[0])
+          current.current.onSpotlight(last.node_ids[0]);
         queue.current.shift();
         failed.current = null;
         if (last?.id === utterance.turn_id && replySession === session.current)
@@ -412,6 +406,7 @@ export function InvestigationConversation({
             turn_id: `TURN-${crypto.randomUUID()}`,
             text,
             input_mode: inputMode,
+            hands_free: inputMode === "voice" && mode.current,
             spotlight_node_id: nodeId ?? current.current.spotlight?.id ?? null,
           },
     );
@@ -557,20 +552,6 @@ export function InvestigationConversation({
           : latest?.status === "pending" && !partial
             ? "confirming"
             : "listening";
-  const sessionHeading = {
-    connecting: "Let's get connected.",
-    listening: partial ? "I'm listening…" : "Tell me what you see.",
-    thinking: "Working through that.",
-    speaking: "Here's what I found.",
-    confirming: "Did I get that right?",
-  }[voicePhase];
-  const sessionHint = {
-    connecting: "Allow microphone access to start your conversation.",
-    listening: "Speak naturally. A pause sends your answer.",
-    thinking: "Your observation is being checked against the investigation.",
-    speaking: "Microphone paused. Tap Talk now to take your turn.",
-    confirming: "Say “confirm” or “cancel”, or choose below.",
-  }[voicePhase];
   const voiceText = handsFree
     ? partial || voiceTranscript
     : [draft, partial].filter(Boolean).join(" ");
@@ -585,26 +566,28 @@ export function InvestigationConversation({
       aria-live={liveHandsFree && speaking ? "off" : "polite"}
     >
       <div className="conversation-reply-heading">
-        <strong>
-          {liveHandsFree ? (
-            <>
-              <Sparkle aria-hidden="true" /> FlowPilot
-            </>
-          ) : (
-            "Troubleshooting agent"
-          )}
-        </strong>
+        <strong>{liveHandsFree ? "FlowPilot" : "Troubleshooting agent"}</strong>
         {liveHandsFree && (
           <button
             type="button"
-            aria-label="Replay last reply"
+            aria-label={speaking ? "Interrupt reply" : "Replay last reply"}
             className="hands-free-replay"
             disabled={
-              speaking || disabled || sending || voiceState !== "listening"
+              !speaking && (disabled || sending || voiceState !== "listening")
             }
-            onClick={() => speakReply(latest.reply)}
+            onClick={() =>
+              speaking ? stopSpeaking() : speakReply(latest.reply)
+            }
           >
-            <SpeakerHigh aria-hidden="true" /> Replay
+            {speaking ? (
+              <>
+                <Microphone aria-hidden="true" /> Talk now
+              </>
+            ) : (
+              <>
+                <SpeakerHigh aria-hidden="true" /> Replay
+              </>
+            )}
           </button>
         )}
       </div>
@@ -631,7 +614,6 @@ export function InvestigationConversation({
             disabled={disabled || sending}
             onClick={() => enqueue("confirm", "text")}
           >
-            {liveHandsFree && <Check aria-hidden="true" />}
             Confirm answer
           </button>
           <button
@@ -639,7 +621,6 @@ export function InvestigationConversation({
             disabled={disabled || sending}
             onClick={() => enqueue("cancel", "text")}
           >
-            {liveHandsFree && <ArrowCounterClockwise aria-hidden="true" />}
             Correct me
           </button>
         </div>
@@ -715,13 +696,8 @@ export function InvestigationConversation({
       {listening && (
         <div className="voice-message-heading">
           <strong>
-            {liveHandsFree ? (
-              <>
-                <Sparkle aria-hidden="true" /> Hands-free session
-              </>
-            ) : (
-              "Voice message"
-            )}
+            <Microphone aria-hidden="true" />
+            {liveHandsFree ? "Hands-free" : "Voice message"}
           </strong>
           <span className="voice-message-time">
             <span aria-hidden="true" className="voice-listening-dot" />
@@ -743,58 +719,6 @@ export function InvestigationConversation({
           </span>
         </div>
       )}
-      {liveHandsFree && (
-        <div className="hands-free-stage">
-          <div className="hands-free-orb" aria-hidden="true">
-            <span className="hands-free-orb-ring" />
-            <span className="hands-free-orb-core">
-              {speaking ? (
-                <SpeakerHigh />
-              ) : voicePhase === "thinking" ? (
-                <Sparkle />
-              ) : voicePhase === "confirming" ? (
-                <Check />
-              ) : (
-                <Microphone />
-              )}
-            </span>
-          </div>
-          <div className="hands-free-stage-copy">
-            <div className="hands-free-steps" aria-label="Conversation stages">
-              {["Listen", "Think", "Reply"].map((step, index) => (
-                <span
-                  key={step}
-                  aria-current={
-                    index ===
-                    (voicePhase === "speaking"
-                      ? 2
-                      : voicePhase === "thinking"
-                        ? 1
-                        : 0)
-                      ? "step"
-                      : undefined
-                  }
-                >
-                  {step}
-                </span>
-              ))}
-            </div>
-            <h3>{sessionHeading}</h3>
-            <p>{sessionHint}</p>
-            {speaking && (
-              <button
-                type="button"
-                className="hands-free-interrupt"
-                aria-label="Interrupt reply"
-                onClick={stopSpeaking}
-              >
-                <Microphone aria-hidden="true" /> Talk now{" "}
-                <span>Interrupt reply</span>
-              </button>
-            )}
-          </div>
-        </div>
-      )}
       {progressMode && !liveHandsFree ? (
         <InvestigationProgress
           incident={incident}
@@ -811,18 +735,7 @@ export function InvestigationConversation({
           <div className={liveHandsFree ? "hands-free-turns" : undefined}>
             {liveHandsFree && conversationHistory}
             <div className="voice-input-turn">
-              {liveHandsFree && (
-                <div className="voice-turn-label">
-                  <span>You</span>
-                  <span>
-                    {partial
-                      ? "Hearing you live"
-                      : voiceTranscript
-                        ? "Sent"
-                        : "Your microphone is on"}
-                  </span>
-                </div>
-              )}
+              {liveHandsFree && <span className="voice-turn-label">You</span>}
               <p
                 className="voice-message-transcript"
                 aria-live="polite"
@@ -843,10 +756,9 @@ export function InvestigationConversation({
               </div>
             </div>
             {liveHandsFree && reply}
-            {liveHandsFree && evidencePanel}
+            {historyOpen && evidencePanel}
           </div>
           <div className="voice-message-tray">
-            {!liveHandsFree && evidencePanel}
             <div className="voice-message-controls">
               <button
                 type="button"
@@ -857,7 +769,7 @@ export function InvestigationConversation({
                 <span>
                   <Stop aria-hidden="true" />
                 </span>
-                {liveHandsFree ? "End session" : "Tap to stop"}
+                Stop
               </button>
               <button
                 type="button"
@@ -872,6 +784,16 @@ export function InvestigationConversation({
                 }}
               >
                 <span>Hands-free</span>
+              </button>
+              <button
+                type="button"
+                className="voice-history-toggle"
+                aria-label="Conversation history"
+                title="Conversation history"
+                aria-expanded={historyOpen}
+                onClick={() => setHistoryOpen(!historyOpen)}
+              >
+                <ChatCircle aria-hidden="true" />
               </button>
               {!liveHandsFree && (
                 <button
@@ -890,15 +812,6 @@ export function InvestigationConversation({
               )}
             </div>
           </div>
-          <button
-            type="button"
-            className="voice-history-toggle"
-            aria-label="Conversation history"
-            aria-expanded={historyOpen}
-            onClick={() => setHistoryOpen(!historyOpen)}
-          >
-            <ChatCircle aria-hidden="true" /> Conversation
-          </button>
         </div>
       ) : (
         <form
@@ -971,7 +884,7 @@ export function InvestigationConversation({
           ? "Speaking · microphone paused · tap Talk now to interrupt"
           : voiceState === "listening"
             ? handsFree
-              ? "Listening · pauses send automatically · say ‘confirm my answer’, ‘cancel’ or ‘stop listening’"
+              ? "Listening · pauses save answers automatically · say ‘stop listening’ to pause"
               : "Dictating · say ‘send message’, ‘confirm my answer’ or ‘stop listening’"
             : progressMode
               ? "The chart and timeline will refresh when analysis is ready."

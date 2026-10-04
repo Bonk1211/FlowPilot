@@ -1159,3 +1159,258 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.knowledge-graph-viewport {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.knowledge-node-arrival {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  margin: -50px 0 0 -50px;
+  pointer-events: none;
+  z-index: 1;
+  color: var(--graph-finding);
+}
+.knowledge-node-arrival i {
+  position: absolute;
+  inset: 0;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  opacity: 0;
+  animation: knowledge-node-ring 2200ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.knowledge-node-arrival i:nth-child(2) {
+  animation-delay: 180ms;
+}
+.knowledge-node-arrival i:nth-child(3) {
+  animation-delay: 360ms;
+}
+.knowledge-node-arrival span {
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  font:
+    600 10px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+  padding: 7px 11px;
+  border: 1px solid currentColor;
+  border-radius: 5px;
+  background: var(--surface-document);
+  animation: knowledge-node-label 3s ease-out both;
+}
+@keyframes knowledge-node-ring {
+  0% {
+    opacity: 0.95;
+    transform: scale(0.15);
+  }
+  25% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(3.4);
+  }
+}
+@keyframes knowledge-node-label {
+  0% {
+    opacity: 0;
+    translate: 0 8px;
+  }
+  20%,
+  80% {
+    opacity: 1;
+    translate: 0 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .knowledge-node-arrival {
+    display: none;
+  }
+  .knowledge-node-arrival i,
+  .knowledge-node-arrival span {
+    animation: none;
+  }
+}
+
+.knowledge-connection-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 2;
+  color: var(--graph-finding);
+}
+.knowledge-connection-overlay g {
+  opacity: 0;
+}
+.knowledge-connection-overlay g[data-wave="library"] {
+  color: var(--graph-reference);
+}
+.knowledge-connection-overlay[data-phase="3"] {
+  opacity: 0;
+  transition: opacity 450ms ease-out;
+}
+.knowledge-link-track,
+.knowledge-link-draw,
+.knowledge-link-pulse {
+  fill: none;
+  stroke: currentColor;
+}
+.knowledge-link-track {
+  stroke-width: 8;
+  opacity: 0.12;
+}
+.knowledge-link-draw {
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  filter: drop-shadow(0 0 5px currentColor);
+}
+.knowledge-link-particle {
+  opacity: 0;
+  fill: var(--white);
+  stroke: currentColor;
+  stroke-width: 2;
+  filter: drop-shadow(0 0 6px currentColor);
+}
+.knowledge-link-pulse {
+  opacity: 0;
+  stroke-width: 2;
+}
+.knowledge-connection-story {
+  margin: 0 24px 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: var(--surface-measurement);
+}
+.knowledge-connection-story ol {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.knowledge-connection-story li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.knowledge-connection-story li > span {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  flex: 0 0 23px;
+  border: 1px solid var(--border-default);
+  border-radius: 50%;
+  font:
+    10px "IBM Plex Mono",
+    monospace;
+}
+.knowledge-connection-story li[data-state="active"],
+.knowledge-connection-story li[data-state="complete"] {
+  color: var(--graph-finding);
+}
+.knowledge-connection-story li[data-state="active"] > span {
+  border-color: currentColor;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--graph-finding) 25%, transparent);
+}
+.knowledge-connection-story li[data-state="complete"] > span {
+  background: var(--graph-finding);
+  border-color: var(--graph-finding);
+  color: var(--surface-document);
+}
+.knowledge-connection-story p {
+  min-height: 2.8em;
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+@media (max-width: 600px) {
+  .knowledge-connection-story {
+    margin-inline: 14px;
+    padding: 12px;
+  }
+  .knowledge-connection-story li {
+    align-items: start;
+    flex-direction: column;
+    flex: 1;
+    font-size: 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .knowledge-connection-overlay {
+    display: none;
+  }
+}
+
+.learning-graph-stage {
+  cursor: grab;
+}
+.learning-graph-stage[data-hovering="true"] {
+  cursor: pointer;
+}
+.learning-graph-stage:active {
+  cursor: grabbing;
+}
+.knowledge-graph-preview {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 3;
+  max-width: min(360px, calc(100% - 32px));
+  padding: 10px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-document);
+  color: var(--text-primary);
+  box-shadow: 0 4px 20px rgb(0 0 0 / 18%);
+  pointer-events: none;
+  overflow-wrap: anywhere;
+  animation: graph-preview-in 160ms ease-out;
+}
+.knowledge-graph-preview strong,
+.knowledge-graph-preview span {
+  display: block;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.knowledge-graph-preview span {
+  margin-top: 3px;
+  color: var(--text-secondary);
+}
+@keyframes graph-preview-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .knowledge-graph-preview {
+    animation: none;
+  }
+}

@@ -14,7 +14,7 @@ from sqlalchemy import Integer, String, UniqueConstraint, case, select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.orm import Mapped, mapped_column
 
-from flowpilot.incidents import service
+from flowpilot.incidents import diagnostic, service
 from flowpilot.incidents.access import Actor, require_permission
 from flowpilot.incidents.models import AssessmentSnapshot, HandoffDraft, Incident, IncidentEvent
 from flowpilot.investigations.models import Contract
@@ -343,7 +343,9 @@ async def generate_handoff(
         "trigger_time": incident.trigger_time,
         "evidence": [item.model_dump(mode="json") for item in evidence],
         "observations": [item.model_dump(mode="json") for item in observations],
-        "assessment": incident.assessment.model_dump(mode="json") if incident.assessment else None,
+        "assessment": diagnostic.model_payload(incident.assessment)
+        if incident.assessment
+        else None,
         "template": template.body,
         "unknowns": unknowns,
     }

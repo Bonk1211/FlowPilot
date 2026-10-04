@@ -23,8 +23,20 @@ from flowpilot.incidents.models import (
 from flowpilot.incidents.question_types import classify_question
 from flowpilot.settings import Settings
 
-# Bounded, record-only facts within the three existing mechanisms. No operating procedures.
+# Record-only questions within hardware and software branches. No operating procedures.
 FACTS = {
+    "recipe_change": (
+        "Do available records show a recipe or parameter change before the defect?",
+        ["changed", "unchanged"],
+        "Compare the last-known-good and first-bad recipe records. A change is a lead, "
+        "not a confirmed software fault; unchanged records can miss unrecorded changes.",
+    ),
+    "controller_events": (
+        "Do controller logs show errors or sequence interruptions near the affected samples?",
+        ["present", "absent"],
+        "Compare controller events with affected samples. An error may be a cause or a "
+        "response to a hardware problem; absent events do not rule out software.",
+    ),
     "frequency": (
         "Is the defect progressive, intermittent, continuous or sudden?",
         ["progressive", "intermittent", "continuous", "sudden"],
@@ -82,6 +94,8 @@ FACTS = {
     ),
 }
 FACT_HYPOTHESES = {
+    "recipe_change": [],
+    "controller_events": [],
     "pressure_trend": ["unstable_delivery"],
     "material_condition": ["material_condition"],
     "idle_history": ["material_condition"],
@@ -125,11 +139,20 @@ def facts(incident):
     return values
 
 
-def question_for(fact, assessment):
+SOFTWARE_FACTS = ("recipe_change", "controller_events", "timing", "comparability")
+
+
+def question_for(fact, assessment, branch=None):
     prompt, values, why = FACTS[fact]
-    hypotheses = FACT_HYPOTHESES.get(fact, list(diagnostic.HYPOTHESES))
+    branch = branch or ("software" if fact in SOFTWARE_FACTS[:2] else "hardware")
+    if branch == "software" and fact == "timing":
+        prompt = "Do existing recipe and controller records align with the affected samples?"
+    hypotheses = (
+        [] if branch == "software" else FACT_HYPOTHESES.get(fact, list(diagnostic.HYPOTHESES))
+    )
     return InvestigationQuestion(
         id=f"question_{fact}",
+        branch=branch,
         target_fact=fact,
         prompt=prompt,
         why=why,
@@ -152,7 +175,16 @@ def question_for(fact, assessment):
                 component for key in hypotheses for component in diagnostic.HYPOTHESES[key][2]
             )
         ),
-        source_refs=[source.id for source in assessment.sources if source.applicable][:3],
+        source_refs=[
+            source.id
+            for source in assessment.sources
+            if source.applicable
+            and (
+                source.id in {"s932-records", "s932-replay"}
+                if branch == "software"
+                else source.id != "s932-records"
+            )
+        ][:3],
     )
 
 
@@ -180,10 +212,35 @@ def baseline_candidates(incident):
             )
         return [terminal]
     known = facts(incident)
+    answered = current_answers(incident)
+    parent = (
+        next(node for node in incident.investigation.nodes if node.id == answered[-1].node_id)
+        if answered
+        else None
+    )
+    software = [
+        question_for(key, assessment, "software") for key in SOFTWARE_FACTS if key not in known
+    ]
+    for candidate in software:
+        candidate.evidence_ids = [
+            item.id for item in active_evidence(incident) if item.status == "collected"
+        ][:100]
+    if parent and parent.branch == "software":
+        return software + [
+            InvestigationQuestion(
+                id="software_review",
+                branch="software",
+                kind="review",
+                target_fact="software_review",
+                prompt="Review the software findings with engineering",
+                why="Review recipe changes, controller events, timing and comparability. "
+                "These records guide the software investigation; they do not confirm a cause. "
+                "Keep the hardware branch open until distinguishing evidence is available.",
+            )
+        ]
     missing = [key for key, _, _ in diagnostic.DISCOVERY if key not in known]
     order = (["frequency"] if "frequency" in missing else []) + missing
     # A recorded timing answer opens a useful record question beyond the five discovery fields.
-    answered = current_answers(incident)
     if answered:
         last = answered[-1]
         parent = next(node for node in incident.investigation.nodes if node.id == last.node_id)
@@ -236,7 +293,7 @@ def baseline_candidates(incident):
     references = [item.id for item in active_evidence(incident) if item.status == "collected"][:100]
     for candidate in candidates:
         candidate.evidence_ids = references
-    return candidates + [review]
+    return candidates + (software if parent is None else []) + [review]
 
 
 def eligible(incident, node, correcting=False):
@@ -507,7 +564,9 @@ def append_expansion(
     # Retain the selected option and the baseline before other useful alternatives.
     kept = list({item.id: item for item in [selected, candidates[0], *candidates]}.values())[:3]
     if parent is None:
-        kept = [selected]
+        # Both starting possibilities remain visible, regardless of the provider's preference.
+        alternative = next((item for item in candidates if item.branch != selected.branch), None)
+        kept = [selected, alternative] if alternative else [selected]
     expansion_id = (
         "EXP-"
         + digest([generation.input_fingerprint, parent.id if parent else None, clarification_for])[
@@ -526,6 +585,7 @@ def append_expansion(
                 for node in graph.nodes
                 if node.parent_answer_id == (parent.id if parent else None)
                 and node.target_fact == candidate.target_fact
+                and node.evidence_ids == candidate.evidence_ids
                 and not any(answer.node_id == node.id for answer in graph.answers)
             ),
             None,
@@ -677,6 +737,28 @@ async def advance(incident, fingerprint, settings=None, generate=None, client=No
         active and graph.selections and graph.selections[-1].node_id == active.id
     )
     if active and (not graph.retry_requested or manually_selected):
+        # Older saved paths gain the software branch without replacing their active work.
+        if not mandatory_stop and not any(
+            node.branch == "software" and node.status in {"active", "proposed", "answered"}
+            for node in graph.nodes
+        ):
+            from flowpilot.incidents.service import active_evidence, digest
+
+            missing = next((key for key in SOFTWARE_FACTS if key not in facts(incident)), None)
+            if missing:
+                candidate = question_for(missing, incident.assessment, "software")
+                candidate.evidence_ids = [
+                    item.id for item in active_evidence(incident) if item.status == "collected"
+                ][:100]
+                append_expansion(
+                    incident,
+                    [candidate],
+                    None,
+                    generation.model_copy(
+                        update={"input_fingerprint": digest([fingerprint, "software-branch"])}
+                    ),
+                )
+                activate(incident, active)
         set_next_step(incident, active)
         graph.retry_requested = False
         return
@@ -802,7 +884,8 @@ def report_lines(incident):
                 f"  Parent: {node.parent_id or 'root'}; answer: {node.parent_answer_id or 'none'}; "
                 f"source incident revision: {node.source_revision}.",
                 f"  Why: {node.why}",
-                f"  Question type: {node.question_type}; target fact: {node.target_fact}; "
+                f"  Branch: {node.branch}; question type: {node.question_type}; "
+                f"target fact: {node.target_fact}; "
                 f"evidence: {', '.join(node.evidence_ids) or 'none'}.",
                 "  Source versions: " + json.dumps(node.source_versions, ensure_ascii=False),
             ]

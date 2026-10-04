@@ -43,6 +43,88 @@ def analyzed(client):
     return act(client, incident, "analyze")
 
 
+def test_demo_knowledge_capture_requires_review_and_preserves_closure_on_retry(client):
+    incident = replay(client)
+    evidence = [item for item in incident["evidence"] if item["status"] == "collected"]
+    payload = {
+        "action": "capture_knowledge",
+        "revision": incident["revision"],
+        "knowledge_id": "KN-demo-finding",
+        "title": "Coverage comparison needs material context",
+        "summary": "Keep the before/after sources together while material history is checked.",
+        "evidence_ids": [item["id"] for item in evidence],
+    }
+    path = f"/api/incidents/{incident['id']}/actions"
+    response = client.post(path, json=payload)
+    assert response.status_code == 422
+    assert "review and outcome" in response.json()["detail"]
+    assert client.get(f"/api/incidents/{incident['id']}").json() == incident
+    incident = act(
+        client,
+        incident,
+        "close",
+        role="engineer",
+        reviewer="Reviewer",
+        outcome="inconclusive",
+        notes="Material history still needs confirmation.",
+    )
+    payload["revision"] = incident["revision"]
+    response = client.post(path, json=payload)
+    assert response.status_code == 200, response.text
+    saved = response.json()
+    assert saved["status"] == "closed"
+    assert saved["closure"] == incident["closure"]
+    assert saved["learning"] == incident["learning"]
+    assert saved["handoff"] == incident["handoff"]
+    finding = saved["captured_knowledge"][0]
+    assert finding["status"] == "draft" and finding["demo"] is True
+    assert finding["source_revision"] == incident["revision"]
+    assert finding["source_refs"] == [item["source_ref"] for item in evidence]
+    assert saved["history"][-1]["action"] == "capture_knowledge"
+    assert client.get(f"/api/incidents/{incident['id']}").json() == saved
+    assert client.post(path, json=payload).json() == saved
+    assert client.post(path, json={**payload, "summary": "Different content"}).status_code == 409
+    assert client.post(path, json={**payload, "knowledge_id": "KN-stale"}).status_code == 409
+    reopened = act(client, saved, "advance_replay")
+    assert reopened["closure"] is None
+    response = client.post(
+        path,
+        json={
+            **payload,
+            "revision": reopened["revision"],
+            "knowledge_id": "KN-after-reopen",
+        },
+    )
+    assert response.status_code == 422
+    assert "review and outcome" in response.json()["detail"]
+
+
+@pytest.mark.parametrize("evidence_ids", [[], ["unknown-source"], ["machine-log-pending"]])
+def test_demo_knowledge_capture_requires_collected_incident_sources(client, evidence_ids):
+    incident = act(
+        client,
+        replay(client),
+        "close",
+        role="engineer",
+        reviewer="Reviewer",
+        outcome="inconclusive",
+        notes="Source comparison remains inconclusive.",
+    )
+    response = client.post(
+        f"/api/incidents/{incident['id']}/actions",
+        json={
+            "action": "capture_knowledge",
+            "revision": incident["revision"],
+            "knowledge_id": "KN-bad-source",
+            "title": "Draft finding",
+            "summary": "A note.",
+            "evidence_ids": evidence_ids,
+        },
+    )
+    assert response.status_code == 422
+    assert client.get(f"/api/incidents/{incident['id']}").json() == incident
+
+
 def test_saved_gemini_assessment_and_history_load_without_breaking_incident_list(client):
     incident = analyzed(client)
     incident["assessment"]["provider"] = "gemini"

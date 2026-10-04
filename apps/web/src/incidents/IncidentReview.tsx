@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { Incident, IncidentCommand } from "./api";
 import { useIncidentAccess } from "./AccessPanel";
 import "./review.css";
@@ -7,6 +7,9 @@ export function IncidentReview({
   incident,
   busy,
   onAction,
+  onDemo,
+  demoDisabled = false,
+  demoRunning = false,
 }: {
   incident: Incident;
   busy: boolean;
@@ -14,8 +17,14 @@ export function IncidentReview({
     action: IncidentCommand,
     role?: "technician" | "engineer",
   ) => Promise<void>;
+  onDemo?: (
+    review: Extract<IncidentCommand, { action: "close" }>,
+  ) => Promise<void>;
+  demoDisabled?: boolean;
+  demoRunning?: boolean;
 }) {
   const access = useIncidentAccess();
+  const titleId = useId();
   const [reviewer, setReviewer] = useState("");
   const [notes, setNotes] = useState("");
   const [outcome, setOutcome] = useState<"supported" | "inconclusive">(
@@ -60,24 +69,73 @@ export function IncidentReview({
     }
   }
 
+  async function runDemo() {
+    if (!onDemo || busy || demoDisabled) return;
+    const draft = {
+      action: "close" as const,
+      reviewer: incident.closure?.reviewer ?? "Demo reviewer",
+      outcome: incident.closure?.outcome ?? ("inconclusive" as const),
+      notes:
+        incident.closure?.notes ??
+        "Demo conclusion: the available replay evidence is inconclusive. Compare coverage observations with material and fluid-path history before attributing a cause.",
+      conclusion: incident.closure?.conclusion ?? null,
+    };
+    setReviewer(draft.reviewer);
+    setOutcome(draft.outcome);
+    setNotes(draft.notes);
+    setConclusion(draft.conclusion ?? "");
+    setEngineer(true);
+    setError("");
+    setNotice("");
+    try {
+      await onDemo(draft);
+      setNotice(
+        "Demo knowledge recorded. Playing its connections in the graph.",
+      );
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Demo could not finish. Your filled fields are retained; try again.",
+      );
+    }
+  }
+
   return (
     <section
+      id="knowledge-review"
       className="incident-card incident-review"
-      aria-labelledby="incident-review-title"
+      aria-labelledby={titleId}
     >
       <div className="incident-section-title">
         <div>
-          <p className="eyebrow">Human review</p>
-          <h2 id="incident-review-title">Conclusion & learning</h2>
+          <h2 id={titleId}>Conclusion & learning</h2>
         </div>
         <span className="incident-tag">
           {closed ? "Closed" : "Review required"}
         </span>
       </div>
-      <p>
-        Close with a supported explanation or preserve an inconclusive finding.
-        Closing an investigation does not release equipment or material.
-      </p>
+      {onDemo && (
+        <button
+          type="button"
+          className="secondary incident-demo-knowledge"
+          disabled={busy || demoDisabled}
+          onClick={() => void runDemo()}
+        >
+          {demoRunning
+            ? "Recording demo knowledge…"
+            : "Demo conclusion & record knowledge"}
+        </button>
+      )}
+      {error && (
+        <p role="alert" className="incident-review-error">
+          {error}
+        </p>
+      )}
+      {notice && <p role="status">{notice}</p>}
+      {!closed && (
+        <p className="incident-muted">Review the outcome to unlock saving.</p>
+      )}
       {incident.closure && (
         <div className="incident-review-record">
           <strong>
@@ -94,37 +152,7 @@ export function IncidentReview({
         </div>
       )}
       {incident.learning && (
-        <div className="incident-review-record">
-          <strong>Experience: {incident.learning.status}</strong>
-          <p>{incident.learning.summary}</p>
-          <small>
-            Source revision {incident.learning.source_revision} ·{" "}
-            {incident.learning.evidence_ids.length} evidence references
-          </small>
-          <p className="incident-muted">
-            Reviewed replay experience provides historical context. It is not an
-            approved machine procedure.
-          </p>
-          {(incident.learning.reviews ?? []).length > 0 && (
-            <details>
-              <summary>
-                Publication history ({(incident.learning.reviews ?? []).length})
-              </summary>
-              <ol>
-                {(incident.learning.reviews ?? []).map((review) => (
-                  <li key={review.version}>
-                    <strong>
-                      {review.decision === "approve"
-                        ? "Published"
-                        : "Withdrawn"}
-                    </strong>{" "}
-                    by {review.reviewer}: {review.notes}
-                  </li>
-                ))}
-              </ol>
-            </details>
-          )}
-        </div>
+        <p className="incident-muted">Experience: {incident.learning.status}</p>
       )}
       <details open={!closed}>
         <summary>
@@ -132,6 +160,39 @@ export function IncidentReview({
             ? "Review experience for reuse"
             : "Record an investigation review"}
         </summary>
+        {incident.learning && (
+          <div className="incident-review-record">
+            <p>{incident.learning.summary}</p>
+            <small>
+              Source revision {incident.learning.source_revision} ·{" "}
+              {incident.learning.evidence_ids.length} evidence references
+            </small>
+            <p className="incident-muted">
+              Reviewed replay experience provides historical context. It is not
+              an approved machine procedure.
+            </p>
+            {(incident.learning.reviews ?? []).length > 0 && (
+              <details>
+                <summary>
+                  Publication history (
+                  {(incident.learning.reviews ?? []).length})
+                </summary>
+                <ol>
+                  {(incident.learning.reviews ?? []).map((review) => (
+                    <li key={review.version}>
+                      <strong>
+                        {review.decision === "approve"
+                          ? "Published"
+                          : "Withdrawn"}
+                      </strong>{" "}
+                      by {review.reviewer}: {review.notes}
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            )}
+          </div>
+        )}
         <form
           onSubmit={(event) => {
             event.preventDefault();
@@ -165,10 +226,6 @@ export function IncidentReview({
                 />
                 Use the engineer role for this local demonstration
               </label>
-              <p className="incident-muted incident-caption">
-                This role switch demonstrates the review workflow; it does not
-                authenticate a site engineer.
-              </p>
             </>
           )}
           {access.mode === "configured" && !authorized && (
@@ -224,17 +281,11 @@ export function IncidentReview({
             <textarea
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              rows={3}
+              rows={2}
               required
               maxLength={2000}
             />
           </label>
-          {error && (
-            <p role="alert" className="incident-review-error">
-              {error}
-            </p>
-          )}
-          {notice && <p role="status">{notice}</p>}
           <div className="incident-review-actions">
             {!closed ? (
               <button className="primary" disabled={!ready}>

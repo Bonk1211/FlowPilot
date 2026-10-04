@@ -1,0 +1,102 @@
+.incident-handoff-focus .incident-main {
+  padding-top: 16px;
+}
+.handoff-toolbar {
+  align-items: center;
+  margin-bottom: 12px;
+}
+.handoff-toolbar h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.handoff-toolbar p {
+  margin: 4px 0 0;
+}
+.handoff-toolbar > div:first-child {
+  min-width: 0;
+}
+.handoff-toolbar .incident-inline {
+  justify-content: flex-end;
+}
+.handoff-panel-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+.handoff-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: 20px;
+  margin-block: 12px 24px;
+}
+.handoff-email,
+.handoff-report {
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: var(--surface-document);
+  overflow-wrap: anywhere;
+}
+.handoff-email h3,
+.handoff-report h3 {
+  margin: 4px 0 12px;
+}
+.handoff-email {
+  display: flex;
+  flex-direction: column;
+}
+.handoff-email form,
+.handoff-email form > label {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 12px;
+}
+.handoff-email textarea {
+  flex: 1;
+  min-height: 560px;
+  resize: vertical;
+}
+.handoff-email > details {
+  margin-top: 20px;
+}
+.handoff-report button {
+  min-height: 44px;
+}
+.handoff-report iframe {
+  width: 100%;
+  height: 680px;
+  margin-top: 16px;
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  background: white;
+}
+@media (max-width: 1024px) {
+  .handoff-toolbar {
+    flex-wrap: wrap;
+  }
+  .handoff-toolbar .incident-inline {
+    justify-content: flex-start;
+  }
+  .handoff-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .handoff-email textarea {
+    min-height: 360px;
+  }
+}
+@media (max-width: 650px) {
+  .handoff-email,
+  .handoff-report {
+    padding: 16px;
+  }
+  .handoff-report .incident-actions {
+    align-items: stretch;
+  }
+  .handoff-report button {
+    width: 100%;
+    justify-content: center;
+  }
+}

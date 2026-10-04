@@ -11,7 +11,7 @@ npm run db:migrate
 npm run dev:mock
 ```
 
-Open `http://127.0.0.1:5173/` at 1440×900. `dev:mock` runs background analysis and draft jobs, so the workspace can update while you click. Replay collection, analysis and draft refresh tolerate those background updates. Other actions show "Incident changed" if a background job saved first; reload and repeat.
+Open `http://127.0.0.1:5173/incidents` at 1440×900. The home page at `/` now introduces FlowPilot; its demo buttons open this workspace. `dev:mock` runs background analysis and draft jobs, so the workspace can update while you click. Replay collection, analysis and draft refresh tolerate those background updates. Other actions show "Incident changed" if a background job saved first; reload and repeat.
 
 ## Segment 1 — 0:00–0:20 · Incident response (Person 1)
 
@@ -67,6 +67,21 @@ To be written by Person 2: answer a question and load a labelled check result. P
 ## Alternate result
 
 If asked whether the system just follows a script, record **supported** instead of **contradicted** at the first check. The ranking, next step, handoff draft and report all change to follow that result.
+
+## Optional learning demonstration
+
+Open **Knowledge** during the current investigation. The overall graph includes existing reference knowledge, saved cases and discoveries from other investigations.
+
+For a one-click demo, choose **Demo conclusion & record knowledge**. It fills the review and finding fields, records an inconclusive demo review if needed, saves the finding with collected evidence, and plays its graph connections. An existing conclusion is preserved. Clicking again replays the same finding without duplicating it. This shortcut is available in local demo mode for replay or synthetic investigations.
+
+To walk through the steps manually:
+
+1. Edit **Knowledge title** and **New knowledge** in the **Save a finding** panel. Expand **Linked evidence** to show the source records attached to the finding.
+2. Complete **Conclusion & learning** first: record a supported conclusion or an inconclusive outcome, then **Save review and close**. Click **Save knowledge**. After the server saves the finding, a new node pops into the overall graph. Green connections draw one by one to its investigation, configuration, symptom and matching existing library nodes. Light travels along each line and its destination pulses; a second teal wave follows real library edges into reference sections and past cases. The three-step progress strip narrates the sequence, and the connections stay highlighted afterward. The saved conclusion stays unchanged.
+3. Select the new node to inspect the finding and original references. Reload to demonstrate persistence; a later investigation can browse the same finding in the overall library.
+4. Use **Replay animation** to repeat the visual without creating another record. Reduced-motion users receive the saved node and confirmation immediately.
+
+Captured findings are labelled **Demo · Pending review**. This capture does not publish an approved experience or establish a cause. Conclusion and publication are available in **Conclusion & learning** on the same **Knowledge** page.
 
 ## What not to claim
 

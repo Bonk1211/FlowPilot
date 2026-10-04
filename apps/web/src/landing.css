@@ -1,0 +1,497 @@
+.story-page {
+  --story-gutter: clamp(24px, 5vw, 88px);
+  height: 100svh;
+  background: var(--surface-shell);
+  color: var(--text-on-shell);
+  --control-focus-ring: var(--focus-ring-on-instrument);
+}
+.story-scroll {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-shell) var(--surface-shell);
+  outline: none;
+}
+.story-track {
+  height: 440svh;
+  position: relative;
+}
+.story-stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+  isolation: isolate;
+}
+.story-header {
+  position: absolute;
+  z-index: 3;
+  inset: 0 0 auto;
+  height: 88px;
+  display: flex;
+  align-items: center;
+  padding-inline: var(--story-gutter);
+  gap: 32px;
+  border-bottom: 1px solid
+    color-mix(in srgb, var(--border-shell) 50%, transparent);
+  background: color-mix(in srgb, var(--surface-shell) 85%, transparent);
+}
+.story-header .wordmark {
+  color: var(--text-on-shell);
+  text-decoration: none;
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+.story-header .wordmark > span {
+  width: 5px;
+  height: 5px;
+  background: var(--selection-active-on-instrument);
+  border-radius: 50%;
+  margin-top: 14px;
+  margin-left: -4px;
+}
+.story-header nav {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  margin-inline: auto;
+}
+.story-header nav a {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  color: var(--text-muted-on-instrument);
+  text-decoration: none;
+  font-size: var(--font-caption);
+  position: relative;
+}
+.story-header nav a[aria-current] {
+  color: var(--selection-active-on-instrument);
+}
+.story-header nav a[aria-current]::after {
+  content: "";
+  position: absolute;
+  height: 2px;
+  inset: auto 0 0;
+  background: currentColor;
+}
+.story-button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 24px;
+  min-height: 48px;
+  width: fit-content;
+  padding: 12px 20px;
+  border: 1px solid var(--text-on-shell);
+  border-radius: var(--radius-control);
+  background: var(--text-on-shell);
+  color: var(--surface-shell);
+  text-decoration: none;
+  font-size: var(--font-compact);
+  font-weight: 500;
+}
+.story-button:hover {
+  background: var(--text-shell-muted);
+}
+.story-header-cta {
+  min-height: 42px;
+  padding: 8px 14px;
+  font-size: var(--font-caption);
+}
+.story-copy {
+  position: absolute;
+  z-index: 2;
+  left: var(--story-gutter);
+  top: 50%;
+  width: min(41vw, 570px);
+  transform: translateY(-50%);
+  display: grid;
+  pointer-events: none;
+}
+.story-panel {
+  opacity: 0;
+  visibility: hidden;
+  grid-area: 1/1;
+  align-self: center;
+  pointer-events: auto;
+  will-change: transform, opacity;
+}
+.story-panel:first-child {
+  opacity: 1;
+  visibility: visible;
+}
+.story-panel[inert] {
+  pointer-events: none;
+}
+.story-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
+  color: var(--text-shell-muted);
+  font:
+    11px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.07em;
+}
+.story-eyebrow > span {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  background: var(--selection-active-on-instrument);
+}
+.story-panel h1,
+.story-panel h2 {
+  font-size: clamp(36px, 4.55vw, 70px);
+  font-weight: 400;
+  line-height: 1.07;
+  letter-spacing: -0.045em;
+  text-wrap: balance;
+}
+.story-panel em {
+  font-style: normal;
+  color: var(--selection-active-on-instrument);
+}
+.story-description {
+  max-width: 420px;
+  margin-top: 24px;
+  font-size: clamp(14px, 1.12vw, 17px);
+  color: var(--text-shell-muted);
+  line-height: 1.7;
+}
+.story-comparison {
+  margin-block: 28px;
+  padding-left: 16px;
+  border-left: 1px solid var(--border-shell);
+  font-size: var(--font-caption);
+  line-height: 1.8;
+  color: var(--text-muted-on-instrument);
+}
+.story-comparison p + p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  color: var(--text-shell-muted);
+}
+.story-comparison span {
+  display: block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--selection-active-on-instrument);
+}
+.story-text-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  gap: 24px;
+  color: var(--text-on-shell);
+  font-size: var(--font-compact);
+  text-decoration: none;
+}
+.story-text-link:hover {
+  color: var(--selection-active-on-instrument);
+}
+.story-microcopy {
+  font:
+    10px "IBM Plex Mono",
+    monospace;
+  color: var(--text-muted-on-instrument);
+}
+.story-scene-label {
+  position: absolute;
+  z-index: 1;
+  bottom: 110px;
+  left: 52%;
+  right: 6%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font:
+    9px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.055em;
+  color: var(--text-shell-muted);
+}
+.story-scene-label > span:last-child {
+  color: var(--text-muted-on-instrument);
+  margin-left: 16px;
+}
+.story-scene-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--selection-active-on-instrument);
+}
+.story-footer {
+  position: absolute;
+  z-index: 3;
+  bottom: 0;
+  inset-inline: 0;
+  height: 78px;
+  display: flex;
+  align-items: center;
+  padding-inline: var(--story-gutter);
+  gap: 24px;
+  border-top: 1px solid color-mix(in srgb, var(--border-shell) 60%, transparent);
+}
+.story-count {
+  font:
+    11px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.06em;
+  color: var(--text-muted-on-instrument);
+}
+.story-count strong {
+  color: var(--text-on-shell);
+  font-weight: 400;
+}
+.story-footer > p {
+  margin-left: auto;
+  font-size: var(--font-caption);
+  color: var(--text-muted-on-instrument);
+}
+.story-footer > a {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  color: var(--text-on-shell);
+  border: 1px solid var(--border-shell);
+  border-radius: 50%;
+}
+.story-footer > a:hover {
+  color: var(--selection-active-on-instrument);
+  border-color: currentColor;
+}
+.story-progress {
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  background: var(--border-shell);
+}
+.story-progress-fill {
+  display: block;
+  height: 100%;
+  transform: scaleX(0);
+  transform-origin: left;
+  background: var(--selection-active-on-instrument);
+}
+.story-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.story-canvas canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.story-scene-status {
+  position: absolute;
+  top: 48%;
+  left: 58%;
+  max-width: 30%;
+  color: var(--text-muted-on-instrument);
+  font-size: var(--font-caption);
+}
+.story-fallback {
+  position: absolute;
+  top: 25%;
+  right: 8%;
+  width: 38%;
+  padding: 32px;
+  border: 1px solid var(--border-shell);
+  background: var(--surface-instrument-panel);
+  border-radius: var(--radius-pane);
+}
+.story-fallback ol {
+  padding-left: 24px;
+  color: var(--text-shell-muted);
+}
+.story-fallback li {
+  margin-block: 20px;
+}
+.story-fallback strong {
+  display: block;
+  color: var(--selection-active-on-instrument);
+}
+.story-fallback p {
+  color: var(--text-muted-on-instrument);
+  font-size: var(--font-caption);
+}
+@media (max-width: 1100px) {
+  .story-header {
+    height: 72px;
+    gap: 20px;
+  }
+  .story-header nav {
+    gap: 18px;
+  }
+  .story-copy {
+    width: 41vw;
+  }
+  .story-panel h1,
+  .story-panel h2 {
+    font-size: clamp(34px, 4.6vw, 52px);
+  }
+  .story-scene-label > span:last-child {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .story-header {
+    height: 64px;
+    gap: 12px;
+    padding-inline: 20px;
+  }
+  .story-header .wordmark {
+    font-size: var(--font-section);
+  }
+  .story-header nav {
+    position: absolute;
+    top: 72px;
+    left: 20px;
+    right: 20px;
+    justify-content: space-between;
+    margin: 0;
+  }
+  .story-header nav a {
+    font-size: 11px;
+    min-height: 36px;
+  }
+  .story-header-cta {
+    margin-left: auto;
+    font-size: 11px;
+    min-height: 38px;
+    gap: 10px;
+  }
+  .story-copy {
+    left: 24px;
+    right: 24px;
+    top: auto;
+    bottom: 96px;
+    width: auto;
+    transform: none;
+  }
+  .story-panel h1,
+  .story-panel h2 {
+    font-size: clamp(30px, 7.7vw, 42px);
+    line-height: 1.08;
+  }
+  .story-eyebrow {
+    font-size: 9px;
+    margin-bottom: 12px;
+  }
+  .story-description {
+    margin-top: 14px;
+    font-size: 13px;
+    max-width: 430px;
+    line-height: 1.6;
+  }
+  .story-comparison {
+    margin-block: 14px;
+    font-size: 11px;
+    padding-left: 12px;
+  }
+  .story-comparison p:first-child {
+    display: none;
+  }
+  .story-microcopy {
+    font-size: 9px;
+  }
+  .story-text-link {
+    font-size: 12px;
+    min-height: 36px;
+  }
+  .story-panel .story-button {
+    font-size: 12px;
+    min-height: 44px;
+    padding: 8px 14px;
+  }
+  .story-scene-label {
+    display: none;
+  }
+  .story-footer {
+    height: 64px;
+    padding-inline: 24px;
+    gap: 16px;
+  }
+  .story-footer > p {
+    font-size: 10px;
+  }
+  .story-footer > a {
+    width: 36px;
+    height: 36px;
+  }
+  .story-scene-status {
+    top: 30%;
+    left: 24px;
+    right: 24px;
+    text-align: center;
+    max-width: none;
+  }
+  .story-fallback {
+    top: 120px;
+    left: 24px;
+    right: 24px;
+    width: auto;
+    padding: 12px 20px;
+  }
+  .story-fallback ol {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 24px;
+  }
+  .story-fallback li {
+    margin-block: 4px;
+    font-size: 11px;
+  }
+  .story-fallback p {
+    font-size: 10px;
+  }
+}
+@media (max-height: 700px) and (max-width: 760px) {
+  .story-copy {
+    bottom: 76px;
+  }
+  .story-panel h1,
+  .story-panel h2 {
+    font-size: 28px;
+  }
+  .story-description {
+    font-size: 12px;
+    margin-top: 8px;
+  }
+  .story-comparison {
+    margin-block: 8px;
+  }
+  .story-eyebrow {
+    margin-bottom: 8px;
+  }
+  .story-text-link {
+    min-height: 32px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-panel {
+    will-change: auto;
+  }
+  .story-scroll {
+    scroll-behavior: auto;
+  }
+}
+@media (min-width: 761px) {
+  .story-panel h2 {
+    font-size: clamp(34px, 3.8vw, 60px);
+  }
+}

@@ -71,7 +71,7 @@ test("configured access gates loading, preserves the tab session, and signs out"
   ).toBeDisabled();
   await page
     .getByRole("navigation", { name: "Incident features" })
-    .getByRole("link", { name: "Review", exact: true })
+    .getByRole("link", { name: "Knowledge", exact: true })
     .click();
   await expect(
     page.getByRole("button", { name: "Save review and close" }),
@@ -79,18 +79,29 @@ test("configured access gates loading, preserves the tab session, and signs out"
   await expect(
     page.getByLabel("Use the engineer role for this local demonstration"),
   ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", {
+      name: "Demo conclusion & record knowledge",
+      exact: true,
+    }),
+  ).toHaveCount(0);
   expect(requests.length).toBeGreaterThan(0);
   expect(
     await page.evaluate(() => localStorage.getItem("flowpilot.incident-token")),
   ).toBeNull();
   await page.reload();
+  await page
+    .getByRole("button", { name: "Incident details", exact: true })
+    .click();
   await expect(
     page.getByText("Signed in as engineer@example.test"),
   ).toBeVisible();
   const download = page.waitForEvent("download");
   await page.getByRole("link", { name: "Export report", exact: true }).click();
-  expect((await download).suggestedFilename()).toBe(`${incident.id}-report.md`);
-  expect(requests.some((path) => path.endsWith("/report.md"))).toBeTruthy();
+  expect((await download).suggestedFilename()).toMatch(
+    new RegExp(`${incident.id}-r[0-9]+-handoff.html`),
+  );
+  expect(requests.some((path) => path.endsWith("/experiments"))).toBeTruthy();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Sign in to investigate" }),
@@ -106,13 +117,13 @@ test("configured review uses the authenticated subject and separates closure fro
   page,
 }) => {
   await configuredAccess(page, ["view", "edit", "close"]);
-  await page.goto("/");
+  await page.goto("/incidents");
   await signIn(page);
   await page.getByRole("button", { name: "Start S932 replay" }).click();
   await expect(page).toHaveURL(/\/incidents\/INC-/);
   await page
     .getByRole("navigation", { name: "Incident features" })
-    .getByRole("link", { name: "Review", exact: true })
+    .getByRole("link", { name: "Knowledge", exact: true })
     .click();
   await expect(page.getByLabel("Reviewer name")).toHaveValue(
     "engineer@example.test",
@@ -149,7 +160,7 @@ test("authenticated source upload preserves bytes, links evidence and survives c
   page,
 }) => {
   const requests = await configuredAccess(page, ["view", "edit"]);
-  await page.goto("/");
+  await page.goto("/incidents");
   await signIn(page);
   await page.getByRole("button", { name: "Start S932 replay" }).click();
   await expect(page).toHaveURL(/\/incidents\/INC-/);

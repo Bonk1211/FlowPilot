@@ -1,5 +1,7 @@
 import {
   Activity,
+  lazy,
+  Suspense,
   useCallback,
   useEffect,
   useRef,
@@ -10,7 +12,6 @@ import {
 import {
   ArrowLeft,
   Books,
-  CheckSquare,
   ClockCounterClockwise,
   Cube,
   Info,
@@ -27,8 +28,6 @@ import {
 import {
   actOnIncident,
   createIncident,
-  downloadIncidentReport,
-  incidentReportUrl,
   listIncidents,
   loadIncident,
   startReplay,
@@ -37,14 +36,14 @@ import {
   type Incident,
   type IncidentCommand,
 } from "./api";
+import { downloadIncidentReport } from "./reportExports";
 import { EvidenceExplorer } from "./EvidenceExplorer";
+import { WorkspaceLoading } from "../components/WorkspaceLoading";
 import { displayTime } from "./time";
 import { MechanismView } from "./MechanismView";
 import { MonitoringDashboard } from "./MonitoringDashboard";
 import { InvestigationPanel } from "./InvestigationPanel";
 import { InvestigationGraph } from "./InvestigationGraph";
-import { IncidentReview } from "./IncidentReview";
-import { PastIncidents } from "./PastIncidents";
 import { AccessPanel, AccessStatus, useIncidentAccess } from "./AccessPanel";
 import { RawArtifacts } from "./RawArtifacts";
 import { JobStatus, type AnalysisJobStatus } from "./JobStatus";
@@ -53,7 +52,6 @@ import {
   type InvestigationProgressMode,
 } from "./InvestigationProgress";
 import { HandoffPage } from "./HandoffPage";
-import { KnowledgeRegistry } from "./KnowledgeRegistry";
 import { SimulationPanel } from "./SimulationPanel";
 import { ExperimentLab } from "./ExperimentLab";
 import { ExperimentsPanel } from "./ExperimentsPanel";
@@ -72,6 +70,12 @@ import {
 } from "./experimentDefaults";
 import "./incidents.css";
 
+const IncidentLearningDatabase = lazy(() =>
+  import("./IncidentLearningDatabase").then((module) => ({
+    default: module.IncidentLearningDatabase,
+  })),
+);
+
 const featureIcons = {
   investigation: MagnifyingGlass,
   evidence: ClockCounterClockwise,
@@ -79,7 +83,6 @@ const featureIcons = {
   experiments: Flask,
   handoff: PaperPlaneTilt,
   knowledge: Books,
-  review: CheckSquare,
 };
 
 function PackageImport({
@@ -319,6 +322,9 @@ function IncidentWorkspaceContent({
     historicalRevision === null &&
     graphExpanded;
   const canvasPage = timelinePage || investigationCanvas;
+  const handoffPage = route.page === "handoff";
+  const compactOverview =
+    canvasPage || handoffPage || route.page === "knowledge";
 
   const [manualTool, setManualTool] = useState("S932-DEMO-01");
   const [manualSymptom, setManualSymptom] = useState(
@@ -505,7 +511,7 @@ function IncidentWorkspaceContent({
 
   return (
     <div
-      className={`incident-app${incident ? " incident-workspace" : ""}${canvasPage ? " incident-timeline-page" : ""}${investigationCanvas ? " incident-investigation-page" : ""}${monitoringPage ? " incident-monitoring-page" : ""}`}
+      className={`incident-app${incident ? " incident-workspace" : ""}${canvasPage ? " incident-timeline-page" : ""}${investigationCanvas ? " incident-investigation-page" : ""}${monitoringPage ? " incident-monitoring-page" : ""}${handoffPage ? " incident-handoff-focus" : ""}${route.page === "knowledge" ? " incident-knowledge-focus" : ""}`}
     >
       <a className="skip-link" href="#main">
         Skip to main content
@@ -513,19 +519,18 @@ function IncidentWorkspaceContent({
       <header className="command-bar incident-command-bar">
         <a
           className="wordmark"
-          href="/incidents"
-          aria-label="FlowPilot incidents"
-          onClick={followLink}
+          href="http://localhost:5173/"
+          aria-label="FlowPilot home"
         >
           <Flask aria-hidden="true" />
           FlowPilot
         </a>
         <span className="incident-nav-context">
-          {canvasPage
-            ? `${incident.tool_id} · ${timelinePage ? "Evidence timeline" : "Investigation"}`
+          {compactOverview && incident
+            ? `${incident.tool_id} · ${handoffPage ? "Handoff" : route.page === "knowledge" ? "Knowledge" : timelinePage ? "Evidence timeline" : "Investigation"}`
             : "S932 · Incident workspace"}
         </span>
-        {canvasPage && (
+        {compactOverview && (
           <button
             className="incident-overview-toggle"
             aria-expanded={overviewOpen}
@@ -539,12 +544,21 @@ function IncidentWorkspaceContent({
           <a href="/incidents" onClick={followLink}>
             Incidents
           </a>
-          <a href="/knowledge">Learning database</a>
+          <a
+            href={
+              route.incidentId
+                ? incidentPageUrl(route.incidentId, "knowledge")
+                : "/knowledge"
+            }
+            onClick={route.incidentId ? followLink : undefined}
+          >
+            Learning database
+          </a>
         </nav>
         <span className="demo-badge">Prototype / Simulated data</span>
       </header>
       <main id="main" tabIndex={-1} className="incident-main">
-        {!canvasPage && (
+        {!compactOverview && (
           <div className="incident-access-banner">
             <AccessStatus />
           </div>
@@ -573,9 +587,13 @@ function IncidentWorkspaceContent({
           </div>
         )}
         {loading ? (
-          <div className="incident-loading" role="status">
-            Loading saved incidents…
-          </div>
+          <WorkspaceLoading
+            detail={
+              route.incidentId
+                ? "Loading the investigation and its evidence…"
+                : "Loading your saved investigations…"
+            }
+          />
         ) : route.invalid && !route.incidentId ? (
           <section className="incident-card incident-page-error">
             <h1>Page not found</h1>
@@ -734,9 +752,9 @@ function IncidentWorkspaceContent({
               id="incident-overview"
               className="incident-overview"
               aria-label="Incident details"
-              hidden={canvasPage && !overviewOpen}
+              hidden={compactOverview && !overviewOpen}
               onKeyDown={(event) => {
-                if (canvasPage && event.key === "Escape") {
+                if (compactOverview && event.key === "Escape") {
                   setOverviewOpen(false);
                   document
                     .querySelector<HTMLButtonElement>(
@@ -746,7 +764,7 @@ function IncidentWorkspaceContent({
                 }
               }}
             >
-              {canvasPage && (
+              {compactOverview && (
                 <div className="incident-access-banner">
                   <AccessStatus />
                   <button
@@ -780,7 +798,7 @@ function IncidentWorkspaceContent({
                   </span>
                   <a
                     className="incident-button-link"
-                    href={incidentReportUrl(incident.id)}
+                    href={incidentPageUrl(incident.id, "handoff")}
                     download
                     onClick={(event) => {
                       event.preventDefault();
@@ -890,7 +908,7 @@ function IncidentWorkspaceContent({
               </aside>
               <div className="incident-feature-content">
                 <header
-                  className={`incident-feature-heading${investigationCanvas || monitoringPage ? " sr-only" : ""}`}
+                  className={`incident-feature-heading${investigationCanvas || monitoringPage || handoffPage || route.page === "knowledge" ? " sr-only" : ""}`}
                 >
                   <h2 ref={featureHeading} tabIndex={-1}>
                     {route.page
@@ -1256,43 +1274,41 @@ function IncidentWorkspaceContent({
                       className="incident-knowledge-page"
                       aria-label="Knowledge workspace"
                     >
-                      <PastIncidents incident={incident} />
-                      <KnowledgeRegistry
-                        configuration={incident.configuration}
-                      />
-                    </section>
-                  </Activity>
-                )}
-                {route.visited.includes("review") && (
-                  <Activity
-                    mode={route.page === "review" ? "visible" : "hidden"}
-                  >
-                    <section aria-label="Review workspace">
-                      <IncidentReview
-                        incident={incident}
-                        busy={busy}
-                        onAction={onAction}
-                      />
-                      <details className="incident-audit">
-                        <summary>
-                          Application activity (
-                          {(incident.history ?? []).length})
-                        </summary>
-                        <p className="incident-muted">
-                          These are application actions, separate from machine
-                          and source event times.
-                        </p>
-                        <ol>
-                          {(incident.history ?? []).map((item, index) => (
-                            <li key={`${item.revision}-${index}`}>
-                              <span className="mono">r{item.revision}</span> ·{" "}
-                              {displayTime(item.timestamp)} ·{" "}
-                              {item.action.replaceAll("_", " ")}
-                              <p>{item.detail}</p>
-                            </li>
-                          ))}
-                        </ol>
-                      </details>
+                      <Suspense
+                        fallback={
+                          <p role="status">Loading learning database…</p>
+                        }
+                      >
+                        <IncidentLearningDatabase
+                          key={incident.id}
+                          incident={incident}
+                          busy={busy}
+                          onAction={onAction}
+                          onRefresh={refreshSaved}
+                          followLink={followLink}
+                        >
+                          <details className="incident-audit">
+                            <summary>
+                              Application activity (
+                              {(incident.history ?? []).length})
+                            </summary>
+                            <p className="incident-muted">
+                              These are application actions, separate from
+                              machine and source event times.
+                            </p>
+                            <ol>
+                              {(incident.history ?? []).map((item, index) => (
+                                <li key={`${item.revision}-${index}`}>
+                                  <span className="mono">r{item.revision}</span>{" "}
+                                  · {displayTime(item.timestamp)} ·{" "}
+                                  {item.action.replaceAll("_", " ")}
+                                  <p>{item.detail}</p>
+                                </li>
+                              ))}
+                            </ol>
+                          </details>
+                        </IncidentLearningDatabase>
+                      </Suspense>
                     </section>
                   </Activity>
                 )}

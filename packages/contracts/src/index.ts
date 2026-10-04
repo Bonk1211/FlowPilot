@@ -51,6 +51,7 @@ export type QuestionPlan = components["schemas"]["QuestionPlan"];
 export type QuestionPlanRequest = components["schemas"]["QuestionPlanRequest"];
 
 export type Incident = components["schemas"]["Incident"];
+export type CapturedKnowledge = components["schemas"]["CapturedKnowledge"];
 export type IncidentEvidence = components["schemas"]["IncidentEvidence"];
 export type EvidenceInput = components["schemas"]["EvidenceInput"];
 export type IncidentObservation = components["schemas"]["IncidentObservation"];
@@ -104,4 +105,5 @@ export type IncidentAction =
   | components["schemas"]["EditHandoffAction"]
   | components["schemas"]["EscalateAction"]
   | components["schemas"]["CloseIncidentAction"]
+  | components["schemas"]["CaptureKnowledgeAction"]
   | components["schemas"]["ReviewLearningAction"];

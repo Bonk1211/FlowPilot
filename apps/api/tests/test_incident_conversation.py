@@ -50,6 +50,49 @@ def test_conversation_confirm_off_spotlight_answer_and_reload(client):
     assert "It is intermittent" in report
 
 
+@pytest.mark.parametrize(
+    ("input_mode", "hands_free", "status"),
+    [("voice", True, "recorded"), ("voice", False, "pending"), ("text", True, "pending")],
+)
+def test_only_hands_free_speech_records_and_advances_immediately(
+    client, input_mode, hands_free, status
+):
+    incident = act(client, replay(client), "analyze")
+    recorded = send(client, incident, "intermittent", input_mode=input_mode, hands_free=hands_free)
+    turn = recorded["conversation"][-1]
+    assert turn["status"] == status
+    assert turn["hands_free"] == hands_free
+    if status == "pending":
+        assert recorded["investigation"] == incident["investigation"]
+        return
+    assert "confirm" not in turn["reply"]
+    assert len(recorded["conversation"]) == 1
+    assert recorded["investigation"]["answers"][0]["confirmed_value"] == "intermittent"
+    next_id = recorded["investigation"]["active_node_id"]
+    assert next_id and next_id != incident["investigation"]["active_node_id"]
+    assert client.get(f"/api/incidents/{incident['id']}").json() == recorded
+    request = {
+        "revision": incident["revision"],
+        "turn_id": turn["id"],
+        "text": turn["text"],
+        "input_mode": input_mode,
+        "hands_free": hands_free,
+    }
+    path = f"/api/incidents/{incident['id']}/conversation"
+    assert client.post(path, json=request).json() == recorded
+    assert client.post(path, json={**request, "hands_free": False}).status_code == 409
+    assert client.post(path, json={**request, "turn_id": "TURN-stale"}).status_code == 409
+    uncertain = send(
+        client, recorded, "Maybe stable, or perhaps unstable", input_mode="voice", hands_free=True
+    )
+    assert uncertain["conversation"][-1]["status"] == "clarification"
+    assert uncertain["investigation"] == recorded["investigation"]
+    following = send(client, uncertain, "stable", input_mode="voice", hands_free=True)
+    assert following["conversation"][-1]["status"] == "recorded"
+    assert following["investigation"]["answers"][-1]["node_id"] == next_id
+    assert len(following["investigation"]["answers"]) == 2
+
+
 def test_ambiguity_cancel_idempotency_and_stale_confirmation(client):
     incident = act(client, replay(client), "analyze")
     uncertain = send(client, incident, "Maybe intermittent, or perhaps progressive")
@@ -112,7 +155,7 @@ def test_spoken_answer_commands(client, words, status):
     assert bool(updated["investigation"]["answers"]) == (status == "recorded")
 
 
-def live_turn(incident, text, plan):
+def live_turn(incident, text, plan, hands_free=False):
     async def generate(payload, schema):
         assert payload["utterance"] == text
         return plan
@@ -125,6 +168,7 @@ def live_turn(incident, text, plan):
                 turn_id=f"TURN-{uuid4()}",
                 text=text,
                 input_mode="voice",
+                hands_free=hands_free,
             ),
             "technician",
             Settings(reasoning_enabled=True, incident_external_data_policy="permitted"),
@@ -133,7 +177,8 @@ def live_turn(incident, text, plan):
     ).model_dump(mode="json")
 
 
-def test_semantic_multi_node_confirmation_and_discussion(client):
+@pytest.mark.parametrize("hands_free", [False, True])
+def test_semantic_multi_node_confirmation_and_discussion(client, hands_free):
     incident = act(client, replay(client), "analyze")
     incident = send(client, send(client, incident, "intermittent"), "confirm")
     nodes = {node["target_fact"]: node for node in incident["investigation"]["nodes"]}
@@ -151,10 +196,13 @@ def test_semantic_multi_node_confirmation_and_discussion(client):
         },
     ]
     pending = live_turn(
-        incident, text, {"intent": "answer", "reply": "Understood", "mappings": mappings}
+        incident,
+        text,
+        {"intent": "answer", "reply": "Understood", "mappings": mappings},
+        hands_free=hands_free,
     )
-    assert pending["conversation"][-1]["status"] == "pending"
-    confirmed = send(client, pending, "confirm", input_mode="voice")
+    assert pending["conversation"][-1]["status"] == ("recorded" if hands_free else "pending")
+    confirmed = pending if hands_free else send(client, pending, "confirm", input_mode="voice")
     assert [answer["confirmed_value"] for answer in confirmed["investigation"]["answers"]][-2:] == [
         "comparable",
         "flux",
@@ -166,13 +214,15 @@ def test_semantic_multi_node_confirmation_and_discussion(client):
             "intent": "discuss",
             "reply": "A restriction remains possible; compare its existing evidence.",
         },
+        hands_free=hands_free,
     )
     assert discussed["conversation"][-1]["status"] == "discussed"
     assert discussed["investigation"] == confirmed["investigation"]
 
 
 @pytest.mark.parametrize("invalid", ["bad_id", "bad_choice", "invented_span", "uncertain"])
-def test_invalid_semantic_mappings_never_record_facts(client, invalid):
+@pytest.mark.parametrize("hands_free", [False, True])
+def test_invalid_semantic_mappings_never_record_facts(client, invalid, hands_free):
     incident = act(client, replay(client, invalid), "analyze")
     mapping = {
         "node_id": incident["investigation"]["active_node_id"],
@@ -194,6 +244,7 @@ def test_invalid_semantic_mappings_never_record_facts(client, invalid):
             "mappings": [mapping],
             "ambiguities": ["uncertain"] if invalid == "uncertain" else [],
         },
+        hands_free=hands_free,
     )
     assert result["conversation"][-1]["status"] == "clarification"
     assert result["investigation"] == incident["investigation"]

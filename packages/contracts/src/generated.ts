@@ -1336,6 +1336,55 @@ export interface components {
             /** Revision */
             revision: number;
         };
+        /** CaptureKnowledgeAction */
+        CaptureKnowledgeAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "capture_knowledge";
+            /** Evidence Ids */
+            evidence_ids: string[];
+            /** Knowledge Id */
+            knowledge_id: string;
+            /** Revision */
+            revision: number;
+            /** Summary */
+            summary: string;
+            /** Title */
+            title: string;
+        };
+        /** CapturedKnowledge */
+        CapturedKnowledge: {
+            /** Created At */
+            created_at: string;
+            /** Created By */
+            created_by: string | null;
+            /**
+             * Demo
+             * @default true
+             * @constant
+             */
+            demo: true;
+            /** Evidence Ids */
+            evidence_ids: string[];
+            /** Id */
+            id: string;
+            /** Source Refs */
+            source_refs: string[];
+            /** Source Revision */
+            source_revision: number;
+            /**
+             * Status
+             * @default draft
+             * @constant
+             */
+            status: "draft";
+            /** Summary */
+            summary: string;
+            /** Title */
+            title: string;
+        };
         /** Case */
         Case: {
             /** Answers */
@@ -1728,6 +1777,11 @@ export interface components {
         };
         /** ConversationRequest */
         ConversationRequest: {
+            /**
+             * Hands Free
+             * @default false
+             */
+            hands_free: boolean;
             /**
              * Input Mode
              * @default text
@@ -2834,6 +2888,8 @@ export interface components {
             assessment?: components["schemas"]["DiagnosticAssessment"] | null;
             /** Assessment History */
             assessment_history?: components["schemas"]["AssessmentSnapshot"][];
+            /** Captured Knowledge */
+            captured_knowledge?: components["schemas"]["CapturedKnowledge"][];
             closure?: components["schemas"]["Closure"] | null;
             /** Closure History */
             closure_history?: components["schemas"]["Closure"][];
@@ -3500,6 +3556,11 @@ export interface components {
             /** Author */
             author?: string | null;
             generation?: components["schemas"]["InvestigationGeneration"] | null;
+            /**
+             * Hands Free
+             * @default false
+             */
+            hands_free: boolean;
             /** Id */
             id: string;
             /** Input Fingerprint */
@@ -3624,6 +3685,12 @@ export interface components {
         InvestigationNode: {
             /** Blocked Reason */
             blocked_reason?: string | null;
+            /**
+             * Branch
+             * @default hardware
+             * @enum {string}
+             */
+            branch: "hardware" | "software";
             /** Choices */
             choices?: components["schemas"]["AnswerChoice"][];
             /** Clarification For */
@@ -5895,7 +5962,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SimpleAction"] | components["schemas"]["AddEvidenceAction"] | components["schemas"]["CorrectEvidenceAction"] | components["schemas"]["RecordResultAction"] | components["schemas"]["AnswerInvestigationAction"] | components["schemas"]["ConfirmInvestigationAction"] | components["schemas"]["SelectInvestigationAction"] | components["schemas"]["RetryInvestigationAction"] | components["schemas"]["EditHandoffAction"] | components["schemas"]["EscalateAction"] | components["schemas"]["CloseIncidentAction"] | components["schemas"]["ReviewLearningAction"];
+                "application/json": components["schemas"]["SimpleAction"] | components["schemas"]["AddEvidenceAction"] | components["schemas"]["CorrectEvidenceAction"] | components["schemas"]["RecordResultAction"] | components["schemas"]["AnswerInvestigationAction"] | components["schemas"]["ConfirmInvestigationAction"] | components["schemas"]["SelectInvestigationAction"] | components["schemas"]["RetryInvestigationAction"] | components["schemas"]["EditHandoffAction"] | components["schemas"]["EscalateAction"] | components["schemas"]["CloseIncidentAction"] | components["schemas"]["CaptureKnowledgeAction"] | components["schemas"]["ReviewLearningAction"];
             };
         };
         responses: {

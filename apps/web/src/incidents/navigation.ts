@@ -28,12 +28,7 @@ export const incidentPages = {
   knowledge: {
     label: "Knowledge",
     description:
-      "Review source documents and previously reviewed incident experience.",
-  },
-  review: {
-    label: "Review",
-    description:
-      "Record the outcome, review reusable learning and inspect the audit history.",
+      "Review the conclusion, save new findings and publish reusable learning.",
   },
 } as const;
 export type IncidentPage = keyof typeof incidentPages;
@@ -97,7 +92,14 @@ function readRoute(): Omit<IncidentRoute, "visited"> {
   } catch {
     return { incidentId: null, page: null, invalid: true, ...experiment };
   }
-  const page = match[2] ?? "investigation";
+  const page =
+    match[2] === "review" ? "knowledge" : (match[2] ?? "investigation");
+  if (match[2] === "review")
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${incidentPageUrl(incidentId, "knowledge")}${window.location.search}${window.location.hash}`,
+    );
   return {
     incidentId,
     page: Object.hasOwn(incidentPages, page) ? (page as IncidentPage) : null,

@@ -67,6 +67,7 @@ import "./InvestigationGraph.css";
 type Draft = { choice: string; text: string; notes: string; id: string };
 const stages = {
   start: { label: "Start", height: 64 },
+  branch: { label: "Investigation branch", height: 116 },
   evidence: { label: "Evidence", height: 128 },
   decision: { label: "Decision", height: 200 },
   check: { label: "Check", height: 116 },
@@ -143,6 +144,8 @@ type ChartNode = Node<
   "stage"
 >;
 const questionTitles: Record<string, string> = {
+  recipe_change: "Did the recipe or parameters change?",
+  controller_events: "Do controller logs show errors?",
   frequency: "How does the defect develop?",
   material: "Which material is recorded?",
   coverage: "What coverage do the images show?",
@@ -237,7 +240,7 @@ function StageNode({ data }: NodeProps<ChartNode>) {
         aria-pressed={start ? undefined : data.inspected}
         title={data.prompt}
         onClick={data.onInspect}
-        disabled={start}
+        disabled={start || (data.stage === "branch" && !data.onInspect)}
       >
         <StageShape stage={data.stage} />
         <span className="flowchart-shape-text">
@@ -398,17 +401,25 @@ function GraphControls({
     // Frame this question's family rather than unrelated branches at the same depth.
     const connections = getEdges();
     const parent = connections.find((edge) => edge.target === focusId)?.source;
+    const startingBranches = parent?.startsWith("branch-");
     const family = new Set(
       connections
         .filter((edge) => edge.source === parent)
         .map((edge) => edge.target),
     );
     const neighbors = getNodes().filter((item) =>
-      narrow
-        ? item.id === focusId
-        : item.id === focusId ||
-          (item.data.status !== "deferred" &&
-            (family.has(item.id) || item.id === parent)),
+      startingBranches
+        ? item.id === "flow-start" ||
+          item.data.stage === "branch" ||
+          connections.some(
+            (edge) =>
+              edge.target === item.id && edge.source.startsWith("branch-"),
+          )
+        : narrow
+          ? item.id === focusId
+          : item.id === focusId ||
+            (item.data.status !== "deferred" &&
+              (family.has(item.id) || item.id === parent)),
     );
     void fitView({
       nodes: neighbors,
@@ -585,22 +596,22 @@ export function InvestigationGraph({
   );
   const deferredIds = new Set(
     graph.expansions
-      .filter(
-        (expansion) =>
-          !expansion.superseded &&
-          expansion.child_ids.some((id) =>
-            visibleNodes.some(
-              (node) => node.id === id && node.status === "answered",
-            ),
-          ),
-      )
-      .flatMap((expansion) => expansion.child_ids)
-      .filter((id) =>
-        visibleNodes.some(
-          (node) =>
-            node.id === id &&
-            (node.status === "proposed" || node.status === "blocked"),
-        ),
+      .filter((expansion) => !expansion.superseded)
+      .flatMap((expansion) =>
+        visibleNodes
+          .filter(
+            (node) =>
+              expansion.child_ids.includes(node.id) &&
+              (node.status === "proposed" || node.status === "blocked") &&
+              visibleNodes.some(
+                (sibling) =>
+                  expansion.child_ids.includes(sibling.id) &&
+                  sibling.status === "answered" &&
+                  (sibling.branch ?? "hardware") ===
+                    (node.branch ?? "hardware"),
+              ),
+          )
+          .map((node) => node.id),
       ),
   );
   const detail =
@@ -950,6 +961,7 @@ export function InvestigationGraph({
               : stages[stageFor(node)].label}
           </span>
           <span>
+            {node.branch === "software" ? "Software" : "Hardware"} ·{" "}
             {status === "active"
               ? "Current step"
               : status === "deferred"
@@ -1062,14 +1074,16 @@ export function InvestigationGraph({
     node.parent_answer_id &&
     responseIds.has(responseNodeId(node.parent_answer_id))
       ? responseNodeId(node.parent_answer_id)
-      : (node.parent_id ?? "flow-start");
+      : (node.parent_id ?? `branch-${node.branch ?? "hardware"}`);
+  const branches = ["hardware", "software"] as const;
   // Findings hang under the mini experiment, or the latest response without one.
+  // Every simulated mechanism is a hardware/material one, so the last resort is that branch.
   const findingParent =
     experiment && experimentId
       ? experimentId
       : lastResponse && responseIds.has(responseNodeId(lastResponse.id))
         ? responseNodeId(lastResponse.id)
-        : "flow-start";
+        : "branch-hardware";
   const positions = investigationLayout(
     [
       {
@@ -1077,6 +1091,13 @@ export function InvestigationGraph({
         status: "start",
         height: (stages.start.height * 240) / 280 + 56,
       },
+      ...branches.map((branch) => ({
+        id: `branch-${branch}`,
+        parent_id: "flow-start",
+        status: "open",
+        height: (stages.branch.height * 240) / 280 + 56,
+        gapAfter: 72,
+      })),
       ...(experiment && experimentId
         ? [
             {
@@ -1172,7 +1193,41 @@ export function InvestigationGraph({
       ariaLabel: `${responseStatus(response.status)}: ${response.text}`,
     };
   });
-  const nodes = [...questionNodes, ...responseNodes];
+  const branchNodes: ChartNode[] = branches.map((branch) => {
+    const first =
+      visibleNodes.find(
+        (node) =>
+          (node.branch ?? "hardware") === branch && node.status === "active",
+      ) ??
+      visibleNodes.find(
+        (node) =>
+          (node.branch ?? "hardware") === branch && node.status === "proposed",
+      ) ??
+      visibleNodes.find((node) => (node.branch ?? "hardware") === branch);
+    return {
+      id: `branch-${branch}`,
+      type: "stage",
+      position: positions.get(`branch-${branch}`)!,
+      width: 240,
+      height: (stages.branch.height * 240) / 280 + 56,
+      measured: dimensions[`branch-${branch}`],
+      data: {
+        stage: "branch",
+        title: branch === "hardware" ? "Hardware" : "Software",
+        prompt:
+          branch === "hardware"
+            ? "Hardware: physical components, delivery and material conditions"
+            : "Software: recipes, parameters and controller events",
+        status: "open possibility",
+        onInspect: questionNodes.find((node) => node.id === first?.id)?.data
+          .onInspect,
+      },
+      draggable: false,
+      selectable: true,
+      focusable: false,
+    };
+  });
+  const nodes = [...branchNodes, ...questionNodes, ...responseNodes];
   if (experiment && experimentId)
     nodes.push({
       id: experimentId,
@@ -1282,6 +1337,10 @@ export function InvestigationGraph({
     };
   }
   const edges: RelationshipEdge[] = [
+    ...branches.map((branch) => ({
+      ...connect(`branch-${branch}`, "flow-start", false, false),
+      label: "Possible cause",
+    })),
     ...(experiment && experimentId
       ? [
           {
@@ -1818,7 +1877,34 @@ export function InvestigationGraph({
         spotlight={visibleNodes.find(
           (node) => node.id === (detailId ?? currentId),
         )}
-        answerControls={!textView && detail ? responseControls(detail) : null}
+        answerControls={
+          !textView && detail ? (
+            <>
+              <nav
+                className="investigation-branch-navigation"
+                aria-label="Investigation branches"
+              >
+                {branchNodes.map((branch) => (
+                  <button
+                    type="button"
+                    key={branch.id}
+                    aria-pressed={
+                      branch.id === `branch-${detail.branch ?? "hardware"}`
+                    }
+                    disabled={!branch.data.onInspect}
+                    onClick={() => {
+                      branch.data.onInspect?.();
+                      setPanelOpen(false);
+                    }}
+                  >
+                    {branch.data.title}
+                  </button>
+                ))}
+              </nav>
+              {responseControls(detail)}
+            </>
+          ) : null
+        }
         disabled={disabled}
         readOnly={readOnly}
         progressMode={activity}

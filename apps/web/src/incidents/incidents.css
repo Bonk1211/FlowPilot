@@ -1636,7 +1636,8 @@
   background-image: radial-gradient(var(--border-default) 1px, transparent 1px);
   background-size: 24px 24px;
 }
-.incident-timeline-page .incident-overview {
+.incident-timeline-page .incident-overview,
+.incident-handoff-focus .incident-overview {
   position: fixed;
   z-index: 7;
   top: 76px;

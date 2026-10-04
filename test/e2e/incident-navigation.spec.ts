@@ -14,7 +14,6 @@ const features = [
   { slug: "experiments", label: "Experiments" },
   { slug: "handoff", label: "Handoff" },
   { slug: "knowledge", label: "Knowledge" },
-  { slug: "review", label: "Review" },
 ] as const;
 
 type Feature = (typeof features)[number];
@@ -367,9 +366,15 @@ test("background completion refreshes a non-investigation page without losing it
   expect(response.ok()).toBeTruthy();
   const updated: Incident = await response.json();
   completed = true;
+  await page
+    .getByRole("button", { name: "Incident details", exact: true })
+    .click();
   await expect(
     page.getByText(`Evidence revision ${updated.revision}`, { exact: true }),
   ).toBeVisible({ timeout: 10000 });
+  await page
+    .getByRole("button", { name: "Close incident details", exact: true })
+    .click();
   await expect(featureHeading(page, "Handoff")).toBeVisible();
   await expect(
     page.getByRole("textbox", { name: "Handoff message", exact: true }),
@@ -991,4 +996,26 @@ test("choosing the mechanism shown on the other side swaps the comparison", asyn
   await a.selectOption(second);
   await expect(a).toHaveValue(second);
   await expect(b).toHaveValue(first);
+});
+
+test("legacy review links open the combined knowledge page", async ({
+  page,
+  request,
+}) => {
+  const incident = await replay(request);
+  await page.goto(`/incidents/${incident.id}/review?source=bookmark`);
+  await expect(page).toHaveURL(
+    `/incidents/${incident.id}/knowledge?source=bookmark`,
+  );
+  await expect(featureHeading(page, "Knowledge")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Conclusion & learning" }),
+  ).toBeVisible();
+  await expect(
+    page
+      .getByRole("navigation", { name: "Incident features", exact: true })
+      .getByRole("link", { name: "Review", exact: true }),
+  ).toHaveCount(0);
+  await page.reload();
+  await expect(featureHeading(page, "Knowledge")).toBeVisible();
 });

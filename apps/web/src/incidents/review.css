@@ -63,3 +63,9 @@
   color: var(--text-selection);
   font-weight: 600;
 }
+
+.incident-demo-knowledge {
+  width: 100%;
+  margin-top: var(--space-3);
+  white-space: normal;
+}

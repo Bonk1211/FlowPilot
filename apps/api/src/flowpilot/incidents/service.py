@@ -14,6 +14,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 from flowpilot.incidents import diagnostic
 from flowpilot.incidents.models import (
     AssessmentSnapshot,
+    CapturedKnowledge,
     Closure,
     CreateIncident,
     EvidenceInput,
@@ -541,6 +542,39 @@ def apply_action(incident: Incident, action: IncidentAction, actor: str | None =
             else {},
         )
         detail = f"{action.reviewer} closed as {action.outcome}; equipment disposition unchanged."
+    elif action.action == "capture_knowledge":
+        if incident.status != "closed" or incident.closure is None:
+            raise HTTPException(
+                422, "Record an investigation review and outcome before saving knowledge."
+            )
+        if incident.mode == "live":
+            raise HTTPException(
+                422, "Demo knowledge capture requires a replay or synthetic incident."
+            )
+        if len(incident.captured_knowledge) >= 100:
+            raise HTTPException(422, "This investigation already has 100 captured findings.")
+        available = {
+            item.id: item for item in active_evidence(incident) if item.status == "collected"
+        }
+        if not set(action.evidence_ids) <= available.keys():
+            raise HTTPException(
+                422, "Link the finding to collected evidence from this investigation."
+            )
+        incident.captured_knowledge.append(
+            CapturedKnowledge(
+                id=action.knowledge_id,
+                title=action.title,
+                summary=action.summary,
+                source_revision=action.revision,
+                evidence_ids=list(dict.fromkeys(action.evidence_ids)),
+                source_refs=list(
+                    dict.fromkeys(available[key].source_ref for key in action.evidence_ids)
+                ),
+                created_at=incident.updated_at,
+                created_by=actor,
+            )
+        )
+        detail = f"Captured demo knowledge: {action.title}; retained as an unreviewed finding."
     elif action.action == "review_learning":
         if incident.learning is None or incident.closure is None:
             raise HTTPException(422, "Close and capture the incident before reviewing learning.")
@@ -555,7 +589,7 @@ def apply_action(incident: Incident, action: IncidentAction, actor: str | None =
             )
         )
         detail = f"Learning {action.decision} by {action.reviewer}: {action.notes}"
-    if action.action != "edit_handoff":
+    if action.action not in {"edit_handoff", "capture_knowledge"}:
         refresh_draft(incident)
     incident.history.append(
         IncidentEvent(
@@ -571,7 +605,7 @@ def apply_action(incident: Incident, action: IncidentAction, actor: str | None =
 BACKGROUND_ACTOR = "system:incident-coordinator"
 BACKGROUND_EVENTS = {"background_analysis", "background_handoff"}
 # The intent of these actions does not depend on the assessment or draft a background job refreshed.
-REBASEABLE_ACTIONS = {"advance_replay", "analyze", "refresh_handoff"}
+REBASEABLE_ACTIONS = {"advance_replay", "analyze", "refresh_handoff", "capture_knowledge"}
 
 
 def only_background_changes(incident: Incident, since_revision: int) -> bool:
@@ -589,6 +623,21 @@ def act(incident_id: str, action: IncidentAction, actor: str | None = None) -> I
     rebaseable = action.action in REBASEABLE_ACTIONS
     for attempt in range(3):
         incident = get_incident(incident_id)
+        if action.action == "capture_knowledge":
+            previous = next(
+                (item for item in incident.captured_knowledge if item.id == action.knowledge_id),
+                None,
+            )
+            if previous:
+                if (
+                    previous.title != action.title
+                    or previous.summary != action.summary
+                    or previous.evidence_ids != list(dict.fromkeys(action.evidence_ids))
+                ):
+                    raise HTTPException(
+                        409, "This knowledge ID was already used for different content."
+                    )
+                return incident
         if action.action == "answer_investigation":
             previous = next(
                 (item for item in incident.investigation.answers if item.id == action.answer_id),
@@ -640,16 +689,15 @@ def save_incident(incident: Incident, expected_revision: int, actor: str | None 
     return saved
 
 
-def report_markdown(incident: Incident, communications=(), experiments=()) -> str:
+def report_markdown(incident: Incident, experiments=()) -> str:
     snapshot = digest(
         {
             "incident": incident.model_dump(mode="json"),
-            "communications": [item.model_dump(mode="json") for item in communications],
             "experiments": [item.model_dump(mode="json") for item in experiments],
         }
     )
     lines = [
-        f"# Incident {incident.id}",
+        f"# Technical assessment report — {incident.id}",
         "",
         f"Recorded revision: {incident.revision}",
         f"Report snapshot SHA-256: {snapshot}",
@@ -715,9 +763,10 @@ def report_markdown(incident: Incident, communications=(), experiments=()) -> st
                     f"Sources: {', '.join(check.source_refs)}.",
                 ]
             )
-    if incident.conversation:
+    assessment_turns = [turn for turn in incident.conversation if turn.node_ids or turn.sources]
+    if assessment_turns:
         lines.extend(["", "## Investigation conversation", ""])
-        for turn in incident.conversation:
+        for turn in assessment_turns:
             lines.extend(
                 [
                     f"- {turn.id} at {turn.recorded_at}; {turn.input_mode}; {turn.author}; "
@@ -921,56 +970,4 @@ def report_markdown(incident: Incident, communications=(), experiments=()) -> st
         )
     else:
         lines.append("Investigation open; no final conclusion.")
-    if incident.learning:
-        lines.extend(
-            [
-                "",
-                "## Reviewed learning",
-                "",
-                f"Status: {incident.learning.status}; "
-                f"source revision {incident.learning.source_revision}.",
-                "Recorded source fingerprint: " + incident.learning.source_fingerprint,
-                *[
-                    f"- Review {review.version}: {review.decision} by {review.reviewer} "
-                    f"at {review.timestamp}; {review.notes}"
-                    for review in incident.learning.reviews
-                ],
-            ]
-        )
-    lines.extend(
-        ["", "## Handoff (draft only)", "", incident.handoff.subject, "", incident.handoff.body]
-    )
-    if communications:
-        lines.extend(["", "## Communication snapshots", ""])
-        for message in communications:
-            label = "SIMULATED — no email sent" if message.transport == "mock" else "SMTP"
-            lines.extend(
-                [
-                    f"### {message.id} — {label}",
-                    "",
-                    f"Status: {message.status}; communication revision: {message.revision}; "
-                    f"incident revision: {message.incident_revision}; "
-                    f"draft version: {message.draft_version}.",
-                    f"Approval: {message.approved_by} at {message.approved_at}.",
-                    "Recipients: " + ", ".join(message.recipients),
-                    *[
-                        f"- Attempt {attempt.number}: {attempt.status}; {attempt.detail}"
-                        for attempt in message.attempts
-                    ],
-                    *[
-                        f"- Receipt: {receipt.status}; {receipt.reference}; "
-                        f"recorded by {receipt.actor}; {receipt.notes}"
-                        for receipt in message.receipts
-                    ],
-                    "",
-                    "Preserved communication content:",
-                    "",
-                    message.subject,
-                    "",
-                    message.body,
-                    "",
-                ]
-            )
-    lines.extend(["", "## Application audit", ""])
-    lines.extend(f"- r{e.revision} {e.timestamp}: {e.detail}" for e in incident.history)
     return "\n".join(lines) + "\n"
