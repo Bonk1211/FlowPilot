@@ -45,6 +45,10 @@ export type IncidentRoute = {
   visited: IncidentPage[];
   experimentCheckId: string | null;
   experimentAnswerId: string | null;
+  /** `?run=all`: run the three suggested experiments on arrival. */
+  experimentRun: boolean;
+  /** `?plan=`: show an experiment plan that was already run. */
+  experimentPlanId: string | null;
 };
 
 function readRoute(): Omit<IncidentRoute, "visited"> {
@@ -53,6 +57,8 @@ function readRoute(): Omit<IncidentRoute, "visited"> {
   const experiment = {
     experimentCheckId: query.get("check"),
     experimentAnswerId: query.get("from"),
+    experimentRun: query.get("run") === "all",
+    experimentPlanId: query.get("plan"),
   };
   if (!path || path === "/incidents")
     return { incidentId: null, page: null, invalid: false, ...experiment };
@@ -107,6 +113,14 @@ export function useIncidentRoute() {
     },
     [readLocation],
   );
+  /** Change the address without adding a history entry, e.g. once a run has a plan id. */
+  const replace = useCallback(
+    (path: string) => {
+      window.history.replaceState(null, "", path);
+      readLocation();
+    },
+    [readLocation],
+  );
   function followLink(event: MouseEvent<HTMLAnchorElement>) {
     if (
       event.defaultPrevented ||
@@ -121,5 +135,5 @@ export function useIncidentRoute() {
     event.preventDefault();
     navigate(`${event.currentTarget.pathname}${event.currentTarget.search}`);
   }
-  return { route, navigate, followLink };
+  return { route, navigate, replace, followLink };
 }

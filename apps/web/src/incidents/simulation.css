@@ -62,25 +62,25 @@
   stroke: var(--border-default);
   stroke-width: 1;
 }
-.incident-simulation .fixture-mass,
-.incident-simulation .learned-mass {
+:is(.incident-simulation, .guided-playback) .fixture-mass,
+:is(.incident-simulation, .guided-playback) .learned-mass {
   fill: none;
   stroke: var(--text-selection);
   stroke-width: 2.5;
 }
-.incident-simulation .fixture-coverage,
-.incident-simulation .learned-coverage {
+:is(.incident-simulation, .guided-playback) .fixture-coverage,
+:is(.incident-simulation, .guided-playback) .learned-coverage {
   fill: none;
   stroke: var(--state-provisional);
   stroke-width: 2.5;
 }
-.incident-simulation .learned-mass {
+:is(.incident-simulation, .guided-playback) .learned-mass {
   stroke-dasharray: 8 3;
 }
-.incident-simulation .fixture-coverage {
+:is(.incident-simulation, .guided-playback) .fixture-coverage {
   stroke-dasharray: 2 4;
 }
-.incident-simulation .learned-coverage {
+:is(.incident-simulation, .guided-playback) .learned-coverage {
   stroke-dasharray: 9 3 2 3;
 }
 .incident-simulation-legend {

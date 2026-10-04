@@ -55,6 +55,7 @@ import {
 import { HandoffPage } from "./HandoffPage";
 import { KnowledgeRegistry } from "./KnowledgeRegistry";
 import { SimulationPanel } from "./SimulationPanel";
+import { ExperimentLab } from "./ExperimentLab";
 import {
   resolveInvestigationExperiment,
   type InvestigationExperiment,
@@ -220,10 +221,12 @@ function AddEvidence({
 function IncidentWorkspaceContent({
   route,
   navigate,
+  replace,
   followLink,
 }: {
   route: IncidentRoute;
   navigate: (path: string) => void;
+  replace: (path: string) => void;
   followLink: (event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const access = useIncidentAccess();
@@ -248,6 +251,24 @@ function IncidentWorkspaceContent({
   const [historicalRevision, setHistoricalRevision] = useState<number | null>(
     null,
   );
+  const labKey = `flowpilot.lab-plan.${route.incidentId}`;
+  // The last experiment plan run in this tab, so Simulation still shows it after a reload.
+  const [labPlanId, setLabPlanState] = useState<string | null>(() => {
+    try {
+      return sessionStorage.getItem(labKey);
+    } catch {
+      return null;
+    }
+  });
+  const setLabPlanId = (id: string | null) => {
+    setLabPlanState(id);
+    try {
+      if (id) sessionStorage.setItem(labKey, id);
+      else sessionStorage.removeItem(labKey);
+    } catch {
+      // Storage can be blocked; the plan is then remembered for this page only.
+    }
+  };
   const featureHeading = useRef<HTMLHeadingElement>(null);
   const [navigationExpanded, setNavigationExpanded] = useState(false);
   const [overviewOpen, setOverviewOpen] = useState(false);
@@ -421,6 +442,10 @@ function IncidentWorkspaceContent({
       `${incidentPageUrl(incident.id, "simulation")}?${new URLSearchParams({ check: experiment.check.id, from: experiment.answer.id })}`,
     );
   }
+  // A plan id in the address wins; otherwise the lab keeps showing the plan it just ran.
+  const labPlan =
+    route.experimentPlanId ?? (route.experimentRun ? null : labPlanId);
+  const showLab = !!incident && (route.experimentRun || labPlan !== null);
   const closed = incident?.status === "closed";
   const incidentId = incident?.id;
   const refreshSaved = useCallback(async () => {
@@ -1144,6 +1169,26 @@ function IncidentWorkspaceContent({
                     mode={route.page === "simulation" ? "visible" : "hidden"}
                   >
                     <section aria-label="Simulation workspace">
+                      {showLab && (
+                        <ExperimentLab
+                          incident={incident}
+                          planId={labPlan}
+                          runRequested={route.experimentRun}
+                          onPlan={(id) => {
+                            setLabPlanId(id);
+                            if (route.experimentRun && !route.experimentPlanId)
+                              replace(
+                                `${incidentPageUrl(incident.id, "simulation")}?plan=${encodeURIComponent(id)}`,
+                              );
+                          }}
+                          onRefresh={refreshSaved}
+                          experimentsHref={incidentPageUrl(
+                            incident.id,
+                            "experiments",
+                          )}
+                          onOpenLink={followLink}
+                        />
+                      )}
                       {simulationExperiment && simulationPanel}
                       <MechanismView
                         hypotheses={assessment?.hypotheses}
