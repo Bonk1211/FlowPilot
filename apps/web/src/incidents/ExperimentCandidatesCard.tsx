@@ -1,4 +1,4 @@
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { CaretDown, CaretUp, Flask, Play } from "@phosphor-icons/react";
 import type { MechanismId } from "./experimentDefaults";
 import type { InvestigationExperiments } from "./investigationExperiment";
@@ -13,19 +13,34 @@ function ExperimentBrief({
   item,
   disabled,
   onRun,
+  focus,
 }: {
   item: Item;
   disabled: boolean;
   onRun: () => void;
+  /** A request (from the graph) to show this experiment; each new `n` repeats it. */
+  focus: number | null;
 }) {
   const [open, setOpen] = useState(false);
+  const [seen, setSeen] = useState<number | null>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
   const id = useId();
+  if (focus !== null && focus !== seen) {
+    setSeen(focus);
+    setOpen(true);
+  }
+  useEffect(() => {
+    if (focus === null) return;
+    toggle.current?.scrollIntoView({ block: "nearest" });
+    toggle.current?.focus({ preventScroll: true });
+  }, [focus]);
   const { hypothesis, check } = item;
   const brief = check.brief;
   const prediction = brief?.prediction;
   return (
     <li className="experiment-brief" data-open={open}>
       <button
+        ref={toggle}
         type="button"
         className="experiment-brief-toggle"
         aria-expanded={open}
@@ -145,12 +160,19 @@ export function ExperimentCandidatesCard({
   offer,
   disabled,
   onRun,
+  focus = null,
 }: {
   offer: InvestigationExperiments;
   disabled: boolean;
   onRun: (ids?: MechanismId[]) => void;
+  focus?: { id: string; n: number } | null;
 }) {
   const [open, setOpen] = useState(true);
+  const [seen, setSeen] = useState<number | null>(null);
+  if (focus && focus.n !== seen) {
+    setSeen(focus.n);
+    setOpen(true);
+  }
   const count = offer.items.length;
   return (
     <aside
@@ -187,6 +209,7 @@ export function ExperimentCandidatesCard({
               item={item}
               disabled={disabled}
               onRun={() => onRun([item.hypothesis.id as MechanismId])}
+              focus={focus?.id === item.hypothesis.id ? focus.n : null}
             />
           ))}
         </ol>

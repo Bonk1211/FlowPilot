@@ -48,7 +48,6 @@ import { CausalReasoning } from "./CausalReasoning";
 import { InvestigationConversation } from "./InvestigationConversation";
 import { LiveTimeline } from "./LiveTimeline";
 import { TroubleshootingMap } from "./TroubleshootingMap";
-import { ExperimentPreview } from "./ExperimentPreview";
 import { mechanismTitles, type MechanismId } from "./experimentDefaults";
 import { returnedFindings } from "./experimentFindings";
 import { useIncidentPlans } from "./experimentRuns";
@@ -61,7 +60,6 @@ import { responseNodeId, responseStatement } from "./investigationResponses";
 import {
   suggestInvestigationExperiment,
   suggestInvestigationExperiments,
-  type InvestigationExperiment,
 } from "./investigationExperiment";
 import "@xyflow/react/dist/style.css";
 import "./InvestigationGraph.css";
@@ -251,7 +249,7 @@ function StageNode({ data }: NodeProps<ChartNode>) {
             </span>
           )}
           <strong>{data.title}</strong>
-          {data.stage === "experiment" && <small>Preview experiment →</small>}
+          {data.stage === "experiment" && <small>Open experiment →</small>}
           {data.stage === "finding" && <small>Not evidence · open →</small>}
         </span>
       </button>
@@ -490,7 +488,6 @@ export function InvestigationGraph({
   onSelectHypothesis,
   onSelectEvidence,
   onOpenTimeline,
-  onOpenExperiment,
   onRunExperiments,
   onUpdated,
   progressMode,
@@ -508,7 +505,6 @@ export function InvestigationGraph({
   onSelectHypothesis: (id: string) => void;
   onSelectEvidence: (id: string) => void;
   onOpenTimeline: () => void;
-  onOpenExperiment: (experiment: InvestigationExperiment) => void;
   /** Run the given suggested experiments, or all of them. */
   onRunExperiments: (ids?: MechanismId[]) => void;
   onUpdated: (incident: Incident) => void;
@@ -533,8 +529,11 @@ export function InvestigationGraph({
     }
   });
   const [textView, setTextView] = useState(false);
-  const [previewExperiment, setPreviewExperiment] =
-    useState<InvestigationExperiment | null>(null);
+  // Asking the rail to show one experiment's explanation; `n` repeats a request.
+  const [briefRequest, setBriefRequest] = useState<{
+    id: string;
+    n: number;
+  } | null>(null);
   const [whyHowOpen, setWhyHowOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelWidth, setPanelWidth] = useState(368);
@@ -634,6 +633,12 @@ export function InvestigationGraph({
     (item) => item.finding.hypothesis_id === openFinding,
   );
   const lastResponse = graph.answers.at(-1);
+  /** Show an experiment's explanation in the rail, or run it if none is offered. */
+  function openBrief(id: string) {
+    if (experimentOffer?.items.some((item) => item.hypothesis.id === id))
+      setBriefRequest((current) => ({ id, n: (current?.n ?? 0) + 1 }));
+    else onRunExperiments([id as MechanismId]);
+  }
   const hypothesis =
     hypotheses.find((item) => item.id === selectedHypothesisId) ??
     hypotheses[0];
@@ -904,10 +909,10 @@ export function InvestigationGraph({
             type="button"
             className="investigation-experiment-link"
             disabled={!!activity}
-            onClick={() => setPreviewExperiment(experiment)}
+            onClick={() => openBrief(experiment.check.hypothesis_id)}
           >
             <Flask aria-hidden="true" />
-            Preview mini experiment
+            Open the experiment
           </button>
         )}
       </div>
@@ -1179,9 +1184,9 @@ export function InvestigationGraph({
       data: {
         stage: "experiment",
         title: `Explore ${hypotheses.find((item) => item.id === experiment.check.hypothesis_id)?.title.toLowerCase() ?? "possible causes"}`,
-        prompt: `Preview mini experiment: ${experiment.check.title}`,
+        prompt: `Open mini experiment: ${experiment.check.title}`,
         status: "suggested",
-        onInspect: () => setPreviewExperiment(experiment),
+        onInspect: () => openBrief(experiment.check.hypothesis_id),
       },
       draggable: false,
       selectable: true,
@@ -1688,18 +1693,6 @@ export function InvestigationGraph({
           onChanged={reloadPlans}
         />
       )}
-      {previewExperiment && (
-        <ExperimentPreview
-          incident={incident}
-          experiment={previewExperiment}
-          onCancel={() => setPreviewExperiment(null)}
-          onReady={(updated, prepared) => {
-            setPreviewExperiment(null);
-            onUpdated(updated);
-            onOpenExperiment(prepared);
-          }}
-        />
-      )}
       <div className="investigation-graph-heading">
         <div>
           <p className="eyebrow">Response flow</p>
@@ -1969,6 +1962,7 @@ export function InvestigationGraph({
                     offer={experimentOffer}
                     disabled={!!activity || readOnly}
                     onRun={onRunExperiments}
+                    focus={briefRequest}
                   />
                 )
               }

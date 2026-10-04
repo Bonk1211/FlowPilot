@@ -56,10 +56,6 @@ import { HandoffPage } from "./HandoffPage";
 import { KnowledgeRegistry } from "./KnowledgeRegistry";
 import { SimulationPanel } from "./SimulationPanel";
 import { ExperimentLab } from "./ExperimentLab";
-import {
-  resolveInvestigationExperiment,
-  type InvestigationExperiment,
-} from "./investigationExperiment";
 import { ExperimentsPanel } from "./ExperimentsPanel";
 import {
   incidentPages,
@@ -69,7 +65,11 @@ import {
   type IncidentRoute,
   experimentQuery,
 } from "./navigation";
-import { mechanismIds, type MechanismId } from "./experimentDefaults";
+import {
+  mechanismChecks,
+  mechanismIds,
+  type MechanismId,
+} from "./experimentDefaults";
 import "./incidents.css";
 
 const featureIcons = {
@@ -422,28 +422,26 @@ function IncidentWorkspaceContent({
   const assessment = snapshot?.assessment ?? incident?.assessment ?? null;
   const monitoringPage =
     route.page === "investigation" && !assessment && !progressMode;
-  const simulationExperiment = incident
-    ? resolveInvestigationExperiment(
-        incident,
-        route.experimentCheckId,
-        route.experimentAnswerId,
-      )
-    : null;
   const hypothesisId = assessment
     ? assessment.hypotheses.some((item) => item.id === selectedHypothesis)
       ? selectedHypothesis
-      : (simulationExperiment?.check.hypothesis_id ??
-        assessment.hypotheses[0]?.id ??
-        null)
+      : (assessment.hypotheses[0]?.id ?? null)
     : selectedHypothesis;
-  function openExperiment(experiment: InvestigationExperiment) {
-    if (!incident) return;
-    setSelectedHypothesis(experiment.check.hypothesis_id);
-    setHistoricalRevision(null);
-    navigate(
-      `${incidentPageUrl(incident.id, "simulation")}?${new URLSearchParams({ check: experiment.check.id, from: experiment.answer.id })}`,
+  // Older single-experiment links open the lab running that one experiment.
+  const legacyCheck =
+    route.page === "simulation" && route.experimentCheckId
+      ? route.experimentCheckId
+      : null;
+  useEffect(() => {
+    if (!legacyCheck || !route.incidentId) return;
+    const mechanism = mechanismIds.find(
+      (id) => mechanismChecks[id] === legacyCheck,
     );
-  }
+    const page = incidentPageUrl(route.incidentId, "simulation");
+    replace(
+      mechanism ? `${page}?${experimentQuery({ runs: [mechanism] })}` : page,
+    );
+  }, [legacyCheck, route.incidentId, replace]);
   function runExperiments(ids: readonly MechanismId[] = mechanismIds) {
     if (!incident) return;
     setLabPlanIds([]);
@@ -482,15 +480,8 @@ function IncidentWorkspaceContent({
   );
   const simulationPanel = incident && (
     <SimulationPanel
-      key={`${incident.id}:${route.experimentCheckId ?? ""}:${route.experimentAnswerId ?? ""}`}
+      key={incident.id}
       incident={incident}
-      experiment={simulationExperiment}
-      experimentRequested={
-        !!(route.experimentCheckId || route.experimentAnswerId)
-      }
-      onReturnToInvestigation={() =>
-        navigate(incidentPageUrl(incident.id, "investigation"))
-      }
       selectedHypothesis={hypothesisId}
       onSelectHypothesis={setSelectedHypothesis}
       selectedEvidenceId={eventId}
@@ -1050,7 +1041,6 @@ function IncidentWorkspaceContent({
                           onOpenTimeline={() =>
                             navigate(incidentPageUrl(incident.id, "evidence"))
                           }
-                          onOpenExperiment={openExperiment}
                           onRunExperiments={runExperiments}
                           focusFinding={route.experimentFinding}
                           onOpenLink={followLink}
@@ -1217,7 +1207,6 @@ function IncidentWorkspaceContent({
                           onOpenLink={followLink}
                         />
                       )}
-                      {simulationExperiment && simulationPanel}
                       <MechanismView
                         hypotheses={assessment?.hypotheses}
                         hypothesisId={hypothesisId}
@@ -1234,7 +1223,7 @@ function IncidentWorkspaceContent({
                             ?.label ?? selectedObservation?.check_id
                         }
                       />
-                      {!simulationExperiment && simulationPanel}
+                      {simulationPanel}
                     </section>
                   </Activity>
                 )}

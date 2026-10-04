@@ -44,8 +44,8 @@ export type IncidentRoute = {
   page: IncidentPage | null;
   invalid: boolean;
   visited: IncidentPage[];
+  /** `?check=`: an older link to one experiment; it now opens the lab running it. */
   experimentCheckId: string | null;
-  experimentAnswerId: string | null;
   /** `?run=all` or `?run=restriction,…`: run these experiments on arrival. */
   experimentRuns: MechanismId[];
   /** `?plan=a,b`: show experiment plans that were already started. */
@@ -79,7 +79,6 @@ function readRoute(): Omit<IncidentRoute, "visited"> {
   const query = new URLSearchParams(window.location.search);
   const experiment = {
     experimentCheckId: query.get("check"),
-    experimentAnswerId: query.get("from"),
     experimentRuns: readRuns(query.get("run")),
     experimentPlanIds: (query.get("plan") ?? "")
       .split(",")

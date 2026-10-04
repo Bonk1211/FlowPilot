@@ -13,24 +13,10 @@ function currentResponses(incident: Incident) {
   });
 }
 
-export function resolveInvestigationExperiment(
-  incident: Incident,
-  checkId: string | null,
-  answerId: string | null,
-) {
-  const source = currentResponses(incident).find(
-    ({ answer }) => answer.id === answerId && answer.status === "confirmed",
-  );
-  const check = incident.assessment?.checks.find(
-    (check) => check.id === checkId && check.eligible,
-  );
-  if (!source || !check) return null;
-  return { ...source, check };
-}
-
-export type InvestigationExperiment = NonNullable<
-  ReturnType<typeof resolveInvestigationExperiment>
->;
+type Response = ReturnType<typeof currentResponses>[number];
+type Check = NonNullable<Incident["assessment"]>["checks"][number];
+/** The check the investigation would run next, with the response it follows. */
+export type InvestigationExperiment = Response & { check: Check };
 
 export function suggestInvestigationExperiment(
   incident: Incident,
