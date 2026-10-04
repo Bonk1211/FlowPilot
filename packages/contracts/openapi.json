@@ -9575,7 +9575,7 @@
             "type": "string"
           },
           "model_version": {
-            "default": "s932-illustrative-surrogate-1",
+            "default": "s932-illustrative-surrogate-2",
             "title": "Model Version",
             "type": "string"
           },
@@ -9647,6 +9647,28 @@
             "title": "Coverage Fraction",
             "type": "number"
           },
+          "feed_flow": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Feed Flow"
+          },
+          "flow_resistance": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flow Resistance"
+          },
           "learned_coverage_fraction": {
             "title": "Learned Coverage Fraction",
             "type": "number"
@@ -9654,6 +9676,17 @@
           "learned_relative_mass": {
             "title": "Learned Relative Mass",
             "type": "number"
+          },
+          "path_open": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Path Open"
           },
           "position": {
             "title": "Position",
@@ -9663,9 +9696,42 @@
             "title": "Relative Mass",
             "type": "number"
           },
+          "spray_width": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spray Width"
+          },
           "step": {
             "title": "Step",
             "type": "integer"
+          },
+          "supply_pressure": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Supply Pressure"
+          },
+          "valve_duty": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valve Duty"
           }
         },
         "required": [
@@ -9775,7 +9841,7 @@
             "type": "string"
           },
           "model_version": {
-            "default": "s932-illustrative-surrogate-1",
+            "default": "s932-illustrative-surrogate-2",
             "title": "Model Version",
             "type": "string"
           },

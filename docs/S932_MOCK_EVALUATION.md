@@ -77,7 +77,7 @@ Per-case agreement means agreement with an authored workflow expectation. It is 
 
 ## Illustrative learned subsystem
 
-`s932-illustrative-surrogate-1` fits separate second-degree polynomial regressions to a disclosed synthetic response generator. The generator depicts increasing restriction, oscillating delivery and increasing material resistance. Its coefficients, scalar coverage response and dimensionless ratios are illustrative assumptions.
+`s932-illustrative-surrogate-2` fits separate second-degree polynomial regressions to a disclosed synthetic response generator. The generator depicts increasing restriction, oscillating delivery and increasing material resistance. Its coefficients, scalar coverage response and dimensionless ratios are illustrative assumptions. Version 2 keeps the same equations, fit and errors as version 1 and adds illustrative channels (supply pressure, feed flow, open path, flow resistance, valve duty, spray width) derived from those equations to drive the 3D view. None of them is a sensor reading; valve actuation is not modelled. The benchmark JSON records the version that was current when it was run.
 
 Training uses 120 synthetic incidents / 1,560 sequence points. Evaluation uses 27 other incidents / 351 points; complete operating-condition pairs and severity levels are held out before fitting. A test changes held-out targets and verifies fitted coefficients remain identical. All data still comes from the same toy generator; this is not evidence of transfer to real equipment.
 

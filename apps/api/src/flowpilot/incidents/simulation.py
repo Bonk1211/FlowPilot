@@ -17,7 +17,7 @@ from flowpilot.incidents.access import Actor, require_permission
 from flowpilot.investigations.models import Contract
 
 Scenario = Literal["restriction", "unstable_delivery", "material_condition"]
-MODEL_VERSION = "s932-illustrative-surrogate-1"
+MODEL_VERSION = "s932-illustrative-surrogate-2"
 FIXTURE_VERSION = "synthetic-flux-fixture-1"
 SCENARIOS = ("restriction", "unstable_delivery", "material_condition")
 COMPONENTS = {
@@ -32,6 +32,10 @@ ASSUMPTIONS = [
     "Restriction and material resistance grow along the sequence; delivery instability oscillates.",
     "Delivery, valve-actuation and atomizing-air paths are distinct; "
     "only a toy delivery response is modelled.",
+    "Supply pressure, feed flow, open path, flow resistance, valve duty and spray width are "
+    "illustrative channels derived from the same equations to drive the 3D view; "
+    "none is a sensor reading.",
+    "Valve actuation is not modelled; valve duty is shown at a constant illustrative rate.",
 ]
 LIMITS = [
     "No real-machine training, calibration or validation has been performed.",
@@ -48,6 +52,12 @@ UNITS = {
     "position": "normalized sequence position, not elapsed seconds",
     "relative_mass": "dimensionless relative to synthetic deposited-mass reference",
     "coverage_fraction": "dimensionless fraction, 0–1",
+    "supply_pressure": "illustrative, relative to synthetic delivery reference",
+    "feed_flow": "illustrative, relative to synthetic flow reference",
+    "path_open": "illustrative open fraction of the fluid path, 0–1",
+    "flow_resistance": "illustrative, relative to synthetic material resistance reference",
+    "valve_duty": "illustrative constant; valve actuation is not modelled",
+    "spray_width": "illustrative fraction of the reference spray width, 0–1",
 }
 
 
@@ -71,6 +81,13 @@ class SimulationPoint(Contract):
     coverage_fraction: float
     learned_relative_mass: float
     learned_coverage_fraction: float
+    # Illustrative channels for the 3D view (absent on runs from model version 1).
+    supply_pressure: float | None = None
+    feed_flow: float | None = None
+    path_open: float | None = None
+    flow_resistance: float | None = None
+    valve_duty: float | None = None
+    spray_width: float | None = None
 
 
 class SimulationRun(Contract):
@@ -162,6 +179,28 @@ def predicted_response(scenario: Scenario, severity: float):
     """Mass and coverage the toy equations give at one severity, other settings nominal."""
     _, response = fixture_response(scenario, SimulationParameters(severity=severity))
     return response[:, 0], response[:, 1]
+
+
+def illustrative_channels(scenario: Scenario, parameters: SimulationParameters, positions, targets):
+    """Derived from the toy equations above so the 3D view can show them; not measurements."""
+    severity = parameters.severity
+    ones = np.ones(len(positions))
+    supply = ones * parameters.delivery_ratio
+    path_open, resistance = ones.copy(), ones * parameters.material_ratio
+    if scenario == "restriction":
+        path_open = 1 - 0.65 * severity * positions
+    elif scenario == "unstable_delivery":
+        supply = supply * (1 - 0.45 * severity * (0.5 + 0.5 * np.sin(6 * np.pi * positions)))
+    else:
+        resistance = resistance * (1 + 0.8 * severity * positions)
+    return {
+        "supply_pressure": supply,
+        "feed_flow": targets[:, 0],
+        "path_open": path_open,
+        "flow_resistance": resistance,
+        "valve_duty": ones,
+        "spray_width": targets[:, 1],
+    }
 
 
 def features(parameters: SimulationParameters, positions):
@@ -300,6 +339,7 @@ def simulate(
     predicted = clip_predictions(
         features(request.parameters, positions) @ coefficients[request.scenario]
     )
+    channels = illustrative_channels(request.scenario, request.parameters, positions, targets)
     return SimulationRun(
         id=f"SIM-{uuid4().hex[:12]}",
         incident_id=incident_id,
@@ -315,6 +355,7 @@ def simulate(
                 coverage_fraction=float(target[1]),
                 learned_relative_mass=float(learned[0]),
                 learned_coverage_fraction=float(learned[1]),
+                **{name: float(values[index]) for name, values in channels.items()},
             )
             for index, (position, target, learned) in enumerate(
                 zip(positions, targets, predicted, strict=True)

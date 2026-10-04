@@ -4640,7 +4640,7 @@ export interface components {
             method: string;
             /**
              * Model Version
-             * @default s932-illustrative-surrogate-1
+             * @default s932-illustrative-surrogate-2
              */
             model_version: string;
             /** Scenarios */
@@ -4676,16 +4676,28 @@ export interface components {
         SimulationPoint: {
             /** Coverage Fraction */
             coverage_fraction: number;
+            /** Feed Flow */
+            feed_flow?: number | null;
+            /** Flow Resistance */
+            flow_resistance?: number | null;
             /** Learned Coverage Fraction */
             learned_coverage_fraction: number;
             /** Learned Relative Mass */
             learned_relative_mass: number;
+            /** Path Open */
+            path_open?: number | null;
             /** Position */
             position: number;
             /** Relative Mass */
             relative_mass: number;
+            /** Spray Width */
+            spray_width?: number | null;
             /** Step */
             step: number;
+            /** Supply Pressure */
+            supply_pressure?: number | null;
+            /** Valve Duty */
+            valve_duty?: number | null;
         };
         /** SimulationRequest */
         SimulationRequest: {
@@ -4733,7 +4745,7 @@ export interface components {
             incident_id: string;
             /**
              * Model Version
-             * @default s932-illustrative-surrogate-1
+             * @default s932-illustrative-surrogate-2
              */
             model_version: string;
             parameters: components["schemas"]["SimulationParameters"];
