@@ -390,3 +390,91 @@ def test_a_running_plan_is_never_run_twice_and_resumes_only_after_its_worker_sto
     resumed = command_plan(client, current, plan, "run")
     assert resumed["status"] == "completed" and len(calls) == 2
     assert [row["condition"] for row in resumed["results"]] == resumed["matrix"]
+
+
+def with_mass_record(current):
+    return act(
+        current.id,
+        AddEvidenceAction(
+            action="add_evidence",
+            revision=current.revision,
+            evidence=EvidenceInput(
+                id="mass-log",
+                kind="log",
+                role="machine_log",
+                label="Falling mass",
+                source_ref="test:mass",
+                synthetic=True,
+                values={
+                    "mass_trend": "falling",
+                    "samples": [{"mass_mg": value} for value in (12.0, 11.1, 10.3, 9.2)],
+                    "units": {"mass": "mg"},
+                },
+            ),
+        ),
+    )
+
+
+def run_single(client, current, hypothesis, check):
+    plan = propose(client, current, **single(current, hypothesis, check))
+    return command_plan(client, current, command_plan(client, current, plan, "approve"), "run")
+
+
+def test_findings_compare_the_simulated_shape_with_the_records(client):
+    current = with_mass_record(incident())
+    restriction = run_single(client, current, "restriction", "restriction_review")
+    unstable = run_single(client, current, "unstable_delivery", "delivery_review")
+    (consistent,) = restriction["analysis"]["findings"]
+    assert consistent["outcome"] == "consistent"
+    assert consistent["label"] == "Simulated · consistent with the records"
+    assert consistent["simulated_shape"] == "monotonic"
+    assert consistent["suggested_check_id"] == "restriction_review"
+    assert consistent["diagnostic_confirmation"] is False
+    assert all(item["met"] for item in consistent["criteria"])
+    assert "does not confirm fluid-path restriction" in consistent["summary"]
+    assert "12.0 → 11.1 → 10.3 → 9.2 mg" in consistent["summary"]
+    (opposite,) = unstable["analysis"]["findings"]
+    assert opposite["outcome"] == "conflicts"
+    assert opposite["simulated_shape"] == "oscillating"
+    assert "does not rule the explanation out" in opposite["summary"]
+    for finding in (consistent, opposite):
+        assert "most likely" not in finding["summary"]
+    # Without any shape record the simulation cannot be compared.
+    other = create_incident(replay_request("doe-test-no-shape"))
+    bare = run_single(client, other, "material_condition", "material_review")
+    assert bare["analysis"]["findings"][0]["outcome"] == "not_distinguishable"
+
+
+def test_only_a_current_consistent_finding_returns_and_nothing_becomes_evidence(client):
+    current = with_mass_record(incident())
+    before = get_incident(current.id)
+    plan = run_single(client, current, "restriction", "restriction_review")
+    other = run_single(client, current, "unstable_delivery", "delivery_review")
+    path = f"/api/incidents/{current.id}/experiments"
+
+    def send(item, decision, hypothesis):
+        return client.post(
+            f"{path}/{item['id']}/handback",
+            json={"revision": item["revision"], "decision": decision, "hypothesis_id": hypothesis},
+            headers=EDITOR_HEADERS,
+        )
+
+    returned = send(plan, "return", "restriction")
+    assert returned.status_code == 200, returned.text
+    body = returned.json()
+    assert [item["decision"] for item in body["handbacks"]] == ["return"]
+    assert body["handbacks"][0]["suggested_check_id"] == "restriction_review"
+    assert body["history"][-1]["action"] == "return"
+    # Asking again changes nothing.
+    assert send(body, "return", "restriction").json()["revision"] == body["revision"]
+    assert send(other, "return", "unstable_delivery").status_code == 409
+    set_aside = send(other, "set_aside", "unstable_delivery")
+    assert set_aside.status_code == 200
+    assert set_aside.json()["handbacks"][0]["decision"] == "set_aside"
+    after = get_incident(current.id)
+    assert after.evidence == before.evidence and after.observations == before.observations
+    assert after.assessment == before.assessment and after.revision == before.revision
+    # Once the evidence changes, a finding can no longer be returned.
+    fresh = run_single(client, current, "material_condition", "material_review")
+    add_context(after)
+    assert send(fresh, "return", "material_condition").status_code == 409

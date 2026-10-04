@@ -592,6 +592,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/incidents/{incident_id}/experiments/{plan_id}/handback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Handback
+         * @description Record that the engineer took a simulated finding back to the investigation.
+         *
+         *     The finding stays on the plan; nothing is written to the incident's evidence,
+         *     observations or assessment, and the suggested check is still done by hand.
+         */
+        post: operations["handback_api_incidents__incident_id__experiments__plan_id__handback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/incidents/{incident_id}/experiments/{plan_id}/run": {
         parameters: {
             query?: never;
@@ -2305,6 +2328,8 @@ export interface components {
             diagnostic_confirmation: false;
             /** Effects */
             effects: components["schemas"]["ExperimentEffect"][];
+            /** Findings */
+            findings?: components["schemas"]["ExperimentFinding"][];
             /** Limitations */
             limitations: string[];
             /**
@@ -2393,7 +2418,7 @@ export interface components {
              * Action
              * @enum {string}
              */
-            action: "propose" | "approve" | "start" | "complete" | "withdraw";
+            action: "propose" | "approve" | "start" | "complete" | "withdraw" | "return" | "set_aside";
             /** Actor */
             actor: string;
             /** Detail */
@@ -2410,6 +2435,80 @@ export interface components {
              * @enum {string}
              */
             name: "severity" | "delivery_ratio" | "material_ratio";
+        };
+        /**
+         * ExperimentFinding
+         * @description How one simulated response compares with the records, under stated criteria.
+         *
+         *     It is never evidence: a consistent finding only suggests a manual check.
+         */
+        ExperimentFinding: {
+            /** Conflicting Evidence Ids */
+            conflicting_evidence_ids: string[];
+            /** Criteria */
+            criteria: components["schemas"]["FindingCriterion"][];
+            /**
+             * Diagnostic Confirmation
+             * @default false
+             * @constant
+             */
+            diagnostic_confirmation: false;
+            /**
+             * Hypothesis Id
+             * @enum {string}
+             */
+            hypothesis_id: "restriction" | "unstable_delivery" | "material_condition";
+            /** Label */
+            label: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "consistent" | "conflicts" | "not_distinguishable";
+            /** Shape Facts */
+            shape_facts: components["schemas"]["ShapeFact"][];
+            /**
+             * Simulated Shape
+             * @enum {string}
+             */
+            simulated_shape: "monotonic" | "oscillating";
+            /**
+             * Suggested Check Id
+             * @enum {string}
+             */
+            suggested_check_id: "delivery_review" | "restriction_review" | "material_review";
+            /** Summary */
+            summary: string;
+        };
+        /**
+         * ExperimentHandback
+         * @description A simulated finding the engineer took back to the investigation, or set aside.
+         */
+        ExperimentHandback: {
+            /** Actor */
+            actor: string;
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "return" | "set_aside";
+            /**
+             * Hypothesis Id
+             * @enum {string}
+             */
+            hypothesis_id: "restriction" | "unstable_delivery" | "material_condition";
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "consistent" | "conflicts" | "not_distinguishable";
+            /**
+             * Suggested Check Id
+             * @enum {string}
+             */
+            suggested_check_id: "delivery_review" | "restriction_review" | "material_review";
+            /** Timestamp */
+            timestamp: string;
         };
         /**
          * ExperimentPrediction
@@ -2514,6 +2613,20 @@ export interface components {
             prompt_version: "s932-explanation-1";
             result?: components["schemas"]["IncidentExplanation"] | null;
         };
+        /** FindingCriterion */
+        FindingCriterion: {
+            /** Detail */
+            detail: string;
+            /**
+             * Id
+             * @enum {string}
+             */
+            id: "completed" | "responds" | "shape_matches" | "no_conflict";
+            /** Label */
+            label: string;
+            /** Met */
+            met: boolean;
+        };
         /** GoldenScenario */
         GoldenScenario: {
             /** Findings */
@@ -2591,6 +2704,21 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HandbackCommand */
+        HandbackCommand: {
+            /**
+             * Decision
+             * @enum {string}
+             */
+            decision: "return" | "set_aside";
+            /**
+             * Hypothesis Id
+             * @enum {string}
+             */
+            hypothesis_id: "restriction" | "unstable_delivery" | "material_condition";
+            /** Revision */
+            revision: number;
         };
         /** HandoffDraft */
         HandoffDraft: {
@@ -2977,6 +3105,8 @@ export interface components {
             domain: "synthetic_only";
             /** Fixture Version */
             fixture_version: string;
+            /** Handbacks */
+            handbacks?: components["schemas"]["ExperimentHandback"][];
             /** History */
             history: components["schemas"]["ExperimentEvent"][];
             /** Id */
@@ -6278,6 +6408,42 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ExperimentCommand"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentExperiment"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    handback_api_incidents__incident_id__experiments__plan_id__handback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: string;
+                plan_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HandbackCommand"];
             };
         };
         responses: {

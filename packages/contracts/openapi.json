@@ -3374,6 +3374,13 @@
             "title": "Effects",
             "type": "array"
           },
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/ExperimentFinding"
+            },
+            "title": "Findings",
+            "type": "array"
+          },
           "limitations": {
             "items": {
               "type": "string"
@@ -3582,7 +3589,9 @@
               "approve",
               "start",
               "complete",
-              "withdraw"
+              "withdraw",
+              "return",
+              "set_aside"
             ],
             "title": "Action",
             "type": "string"
@@ -3636,6 +3645,154 @@
           "levels"
         ],
         "title": "ExperimentFactor",
+        "type": "object"
+      },
+      "ExperimentFinding": {
+        "additionalProperties": false,
+        "description": "How one simulated response compares with the records, under stated criteria.\n\nIt is never evidence: a consistent finding only suggests a manual check.",
+        "properties": {
+          "conflicting_evidence_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Conflicting Evidence Ids",
+            "type": "array"
+          },
+          "criteria": {
+            "items": {
+              "$ref": "#/components/schemas/FindingCriterion"
+            },
+            "title": "Criteria",
+            "type": "array"
+          },
+          "diagnostic_confirmation": {
+            "const": false,
+            "default": false,
+            "title": "Diagnostic Confirmation",
+            "type": "boolean"
+          },
+          "hypothesis_id": {
+            "enum": [
+              "restriction",
+              "unstable_delivery",
+              "material_condition"
+            ],
+            "title": "Hypothesis Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "consistent",
+              "conflicts",
+              "not_distinguishable"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "shape_facts": {
+            "items": {
+              "$ref": "#/components/schemas/ShapeFact"
+            },
+            "title": "Shape Facts",
+            "type": "array"
+          },
+          "simulated_shape": {
+            "enum": [
+              "monotonic",
+              "oscillating"
+            ],
+            "title": "Simulated Shape",
+            "type": "string"
+          },
+          "suggested_check_id": {
+            "enum": [
+              "delivery_review",
+              "restriction_review",
+              "material_review"
+            ],
+            "title": "Suggested Check Id",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hypothesis_id",
+          "outcome",
+          "label",
+          "summary",
+          "simulated_shape",
+          "criteria",
+          "shape_facts",
+          "conflicting_evidence_ids",
+          "suggested_check_id"
+        ],
+        "title": "ExperimentFinding",
+        "type": "object"
+      },
+      "ExperimentHandback": {
+        "additionalProperties": false,
+        "description": "A simulated finding the engineer took back to the investigation, or set aside.",
+        "properties": {
+          "actor": {
+            "title": "Actor",
+            "type": "string"
+          },
+          "decision": {
+            "enum": [
+              "return",
+              "set_aside"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "hypothesis_id": {
+            "enum": [
+              "restriction",
+              "unstable_delivery",
+              "material_condition"
+            ],
+            "title": "Hypothesis Id",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "consistent",
+              "conflicts",
+              "not_distinguishable"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "suggested_check_id": {
+            "enum": [
+              "delivery_review",
+              "restriction_review",
+              "material_review"
+            ],
+            "title": "Suggested Check Id",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          }
+        },
+        "required": [
+          "hypothesis_id",
+          "decision",
+          "outcome",
+          "suggested_check_id",
+          "actor",
+          "timestamp"
+        ],
+        "title": "ExperimentHandback",
         "type": "object"
       },
       "ExperimentPrediction": {
@@ -3910,6 +4067,41 @@
         "title": "ExplanationRun",
         "type": "object"
       },
+      "FindingCriterion": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "id": {
+            "enum": [
+              "completed",
+              "responds",
+              "shape_matches",
+              "no_conflict"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "met": {
+            "title": "Met",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "met",
+          "detail"
+        ],
+        "title": "FindingCriterion",
+        "type": "object"
+      },
       "GoldenScenario": {
         "additionalProperties": false,
         "properties": {
@@ -4138,6 +4330,40 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HandbackCommand": {
+        "additionalProperties": false,
+        "properties": {
+          "decision": {
+            "enum": [
+              "return",
+              "set_aside"
+            ],
+            "title": "Decision",
+            "type": "string"
+          },
+          "hypothesis_id": {
+            "enum": [
+              "restriction",
+              "unstable_delivery",
+              "material_condition"
+            ],
+            "title": "Hypothesis Id",
+            "type": "string"
+          },
+          "revision": {
+            "minimum": 1,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision",
+          "hypothesis_id",
+          "decision"
+        ],
+        "title": "HandbackCommand",
         "type": "object"
       },
       "HandoffDraft": {
@@ -5141,6 +5367,13 @@
           "fixture_version": {
             "title": "Fixture Version",
             "type": "string"
+          },
+          "handbacks": {
+            "items": {
+              "$ref": "#/components/schemas/ExperimentHandback"
+            },
+            "title": "Handbacks",
+            "type": "array"
           },
           "history": {
             "items": {
@@ -12610,6 +12843,68 @@
           }
         },
         "summary": "Approve",
+        "tags": [
+          "mock factorial experiments"
+        ]
+      }
+    },
+    "/api/incidents/{incident_id}/experiments/{plan_id}/handback": {
+      "post": {
+        "description": "Record that the engineer took a simulated finding back to the investigation.\n\nThe finding stays on the plan; nothing is written to the incident's evidence,\nobservations or assessment, and the suggested check is still done by hand.",
+        "operationId": "handback_api_incidents__incident_id__experiments__plan_id__handback_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "title": "Incident Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "plan_id",
+            "required": true,
+            "schema": {
+              "title": "Plan Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandbackCommand"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IncidentExperiment"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Handback",
         "tags": [
           "mock factorial experiments"
         ]
