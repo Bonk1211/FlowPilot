@@ -147,6 +147,23 @@ def fixture_response(scenario: Scenario, parameters: SimulationParameters):
     return position, np.column_stack((mass, coverage))
 
 
+# The comparison each suggested experiment runs: a control condition and two tested severities.
+DEMO_CONTROL_SEVERITY = 0.7
+DEMO_TESTED_SEVERITIES = (0.2, 0.8)
+# The response shape each toy equation produces, read straight from its form above.
+SIGNATURES = {
+    "restriction": "steady_fall",
+    "unstable_delivery": "oscillation",
+    "material_condition": "decelerating_fall",
+}
+
+
+def predicted_response(scenario: Scenario, severity: float):
+    """Mass and coverage the toy equations give at one severity, other settings nominal."""
+    _, response = fixture_response(scenario, SimulationParameters(severity=severity))
+    return response[:, 0], response[:, 1]
+
+
 def features(parameters: SimulationParameters, positions):
     raw = np.column_stack(
         (

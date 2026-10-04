@@ -1980,6 +1980,7 @@ export interface components {
         DiagnosticCheck: {
             /** Blocked Reason */
             blocked_reason: string;
+            brief?: components["schemas"]["ExperimentBrief"] | null;
             /** Distinguishes */
             distinguishes: string[];
             /** Eligible */
@@ -2323,6 +2324,23 @@ export interface components {
              */
             threshold_validated_for_machine: false;
         };
+        /**
+         * ExperimentBrief
+         * @description Why a simulated experiment is worth running and how its result may be read.
+         */
+        ExperimentBrief: {
+            /** Limits */
+            limits: string[];
+            prediction: components["schemas"]["ExperimentPrediction"];
+            /** Reading */
+            reading: components["schemas"]["ReadingRule"][];
+            /** Shape Facts */
+            shape_facts: components["schemas"]["ShapeFact"][];
+            /** Verifies */
+            verifies: string;
+            /** Why */
+            why: string[];
+        };
         /** ExperimentCommand */
         ExperimentCommand: {
             /** Revision */
@@ -2389,6 +2407,42 @@ export interface components {
              * @enum {string}
              */
             name: "severity" | "delivery_ratio" | "material_ratio";
+        };
+        /**
+         * ExperimentPrediction
+         * @description What the illustrative equations give if the explanation holds; never a measurement.
+         */
+        ExperimentPrediction: {
+            /** Basis */
+            basis: string;
+            /** Control Relative Mass */
+            control_relative_mass: number[];
+            /** Control Severity */
+            control_severity: number;
+            /** Coverage Fraction */
+            coverage_fraction: number[];
+            /** If Holds */
+            if_holds: string;
+            /** If Not */
+            if_not: string;
+            /** Model Version */
+            model_version: string;
+            /** Positions */
+            positions: number[];
+            /** Relative Mass */
+            relative_mass: number[];
+            /**
+             * Shape
+             * @enum {string}
+             */
+            shape: "monotonic" | "oscillating";
+            /**
+             * Signature
+             * @enum {string}
+             */
+            signature: "steady_fall" | "oscillation" | "decelerating_fall";
+            /** Tested Severity */
+            tested_severity: number;
         };
         /** ExperimentProposal */
         ExperimentProposal: {
@@ -4248,6 +4302,18 @@ export interface components {
             /** Score */
             score: number;
         };
+        /** ReadingRule */
+        ReadingRule: {
+            /** Criterion */
+            criterion: string;
+            /** Label */
+            label: string;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "consistent" | "conflicts" | "not_distinguishable";
+        };
         /** ReasoningRun */
         ReasoningRun: {
             critic?: components["schemas"]["CriticResult"] | null;
@@ -4502,6 +4568,26 @@ export interface components {
             node_id: string;
             /** Revision */
             revision: number;
+        };
+        /**
+         * ShapeFact
+         * @description A recorded or confirmed description of how the defect changed over the sequence.
+         */
+        ShapeFact: {
+            /** Description */
+            description: string;
+            /** Evidence Id */
+            evidence_id: string;
+            /**
+             * Shape
+             * @enum {string}
+             */
+            shape: "monotonic" | "oscillating" | "not_modelled";
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "confirmed_answer" | "record";
         };
         /** SimpleAction */
         SimpleAction: {

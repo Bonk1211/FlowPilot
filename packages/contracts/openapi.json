@@ -2470,6 +2470,16 @@
             "title": "Blocked Reason",
             "type": "string"
           },
+          "brief": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExperimentBrief"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "distinguishes": {
             "items": {
               "type": "string"
@@ -3405,6 +3415,57 @@
         "title": "ExperimentAnalysis",
         "type": "object"
       },
+      "ExperimentBrief": {
+        "additionalProperties": false,
+        "description": "Why a simulated experiment is worth running and how its result may be read.",
+        "properties": {
+          "limits": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Limits",
+            "type": "array"
+          },
+          "prediction": {
+            "$ref": "#/components/schemas/ExperimentPrediction"
+          },
+          "reading": {
+            "items": {
+              "$ref": "#/components/schemas/ReadingRule"
+            },
+            "title": "Reading",
+            "type": "array"
+          },
+          "shape_facts": {
+            "items": {
+              "$ref": "#/components/schemas/ShapeFact"
+            },
+            "title": "Shape Facts",
+            "type": "array"
+          },
+          "verifies": {
+            "title": "Verifies",
+            "type": "string"
+          },
+          "why": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Why",
+            "type": "array"
+          }
+        },
+        "required": [
+          "why",
+          "verifies",
+          "prediction",
+          "reading",
+          "limits",
+          "shape_facts"
+        ],
+        "title": "ExperimentBrief",
+        "type": "object"
+      },
       "ExperimentCommand": {
         "additionalProperties": false,
         "properties": {
@@ -3574,6 +3635,97 @@
           "levels"
         ],
         "title": "ExperimentFactor",
+        "type": "object"
+      },
+      "ExperimentPrediction": {
+        "additionalProperties": false,
+        "description": "What the illustrative equations give if the explanation holds; never a measurement.",
+        "properties": {
+          "basis": {
+            "title": "Basis",
+            "type": "string"
+          },
+          "control_relative_mass": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Control Relative Mass",
+            "type": "array"
+          },
+          "control_severity": {
+            "title": "Control Severity",
+            "type": "number"
+          },
+          "coverage_fraction": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Coverage Fraction",
+            "type": "array"
+          },
+          "if_holds": {
+            "title": "If Holds",
+            "type": "string"
+          },
+          "if_not": {
+            "title": "If Not",
+            "type": "string"
+          },
+          "model_version": {
+            "title": "Model Version",
+            "type": "string"
+          },
+          "positions": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Positions",
+            "type": "array"
+          },
+          "relative_mass": {
+            "items": {
+              "type": "number"
+            },
+            "title": "Relative Mass",
+            "type": "array"
+          },
+          "shape": {
+            "enum": [
+              "monotonic",
+              "oscillating"
+            ],
+            "title": "Shape",
+            "type": "string"
+          },
+          "signature": {
+            "enum": [
+              "steady_fall",
+              "oscillation",
+              "decelerating_fall"
+            ],
+            "title": "Signature",
+            "type": "string"
+          },
+          "tested_severity": {
+            "title": "Tested Severity",
+            "type": "number"
+          }
+        },
+        "required": [
+          "signature",
+          "shape",
+          "model_version",
+          "control_severity",
+          "tested_severity",
+          "positions",
+          "relative_mass",
+          "coverage_fraction",
+          "control_relative_mass",
+          "if_holds",
+          "if_not",
+          "basis"
+        ],
+        "title": "ExperimentPrediction",
         "type": "object"
       },
       "ExperimentProposal": {
@@ -8683,6 +8835,35 @@
         "title": "RankedCause",
         "type": "object"
       },
+      "ReadingRule": {
+        "additionalProperties": false,
+        "properties": {
+          "criterion": {
+            "title": "Criterion",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "outcome": {
+            "enum": [
+              "consistent",
+              "conflicts",
+              "not_distinguishable"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outcome",
+          "label",
+          "criterion"
+        ],
+        "title": "ReadingRule",
+        "type": "object"
+      },
       "ReasoningRun": {
         "additionalProperties": false,
         "properties": {
@@ -9252,6 +9433,45 @@
           "node_id"
         ],
         "title": "SelectInvestigationAction",
+        "type": "object"
+      },
+      "ShapeFact": {
+        "additionalProperties": false,
+        "description": "A recorded or confirmed description of how the defect changed over the sequence.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "evidence_id": {
+            "title": "Evidence Id",
+            "type": "string"
+          },
+          "shape": {
+            "enum": [
+              "monotonic",
+              "oscillating",
+              "not_modelled"
+            ],
+            "title": "Shape",
+            "type": "string"
+          },
+          "source": {
+            "enum": [
+              "confirmed_answer",
+              "record"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "evidence_id",
+          "source",
+          "description",
+          "shape"
+        ],
+        "title": "ShapeFact",
         "type": "object"
       },
       "SimpleAction": {

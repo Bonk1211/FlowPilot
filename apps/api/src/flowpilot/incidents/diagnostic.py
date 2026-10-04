@@ -101,6 +101,49 @@ class MiniExperiment(Contract):
     repeat_plan: str
 
 
+class ShapeFact(Contract):
+    """A recorded or confirmed description of how the defect changed over the sequence."""
+
+    evidence_id: str
+    source: Literal["confirmed_answer", "record"]
+    description: str
+    shape: Literal["monotonic", "oscillating", "not_modelled"]
+
+
+class ExperimentPrediction(Contract):
+    """What the illustrative equations give if the explanation holds; never a measurement."""
+
+    signature: Literal["steady_fall", "oscillation", "decelerating_fall"]
+    shape: Literal["monotonic", "oscillating"]
+    model_version: str
+    control_severity: float
+    tested_severity: float
+    positions: list[float]
+    relative_mass: list[float]
+    coverage_fraction: list[float]
+    control_relative_mass: list[float]
+    if_holds: str
+    if_not: str
+    basis: str
+
+
+class ReadingRule(Contract):
+    outcome: Literal["consistent", "conflicts", "not_distinguishable"]
+    label: str
+    criterion: str
+
+
+class ExperimentBrief(Contract):
+    """Why a simulated experiment is worth running and how its result may be read."""
+
+    why: list[str]
+    verifies: str
+    prediction: ExperimentPrediction
+    reading: list[ReadingRule]
+    limits: list[str]
+    shape_facts: list[ShapeFact]
+
+
 class DiagnosticCheck(Contract):
     id: str
     title: str
@@ -119,6 +162,7 @@ class DiagnosticCheck(Contract):
     operational_allowed: bool = False
     blocked_reason: str
     mini_experiment: MiniExperiment | None = None
+    brief: ExperimentBrief | None = None
 
 
 class DiagnosticNextStep(Contract):
@@ -396,6 +440,216 @@ def check_catalog(configuration: str) -> list[DiagnosticCheck]:
     ]
 
 
+FREQUENCY_SHAPES = {
+    "progressive": "monotonic",
+    "intermittent": "oscillating",
+    "sudden": "not_modelled",
+    "continuous": "not_modelled",
+}
+SIGNATURE_WORDS = {
+    "steady_fall": "a steady, straight decline",
+    "oscillation": "a decline that comes and goes",
+    "decelerating_fall": "a decline that slows down",
+}
+READING = [
+    ReadingRule(
+        outcome="consistent",
+        label="Consistent with the records",
+        criterion="The tested condition differs from the control by at least 0.02, the simulated "
+        "shape (a steady decline or one that comes and goes) matches at least one recorded or "
+        "confirmed fact, and the assessment lists no conflicting record for this explanation.",
+    ),
+    ReadingRule(
+        outcome="conflicts",
+        label="Conflicts with the records",
+        criterion="A recorded or confirmed fact describes the opposite shape, or the assessment "
+        "lists a record that conflicts with this explanation.",
+    ),
+    ReadingRule(
+        outcome="not_distinguishable",
+        label="Not distinguishable",
+        criterion="No record describes the shape, the recorded change is one the model does not "
+        "represent (sudden or continuous), the response stays within 0.02 of the control, or "
+        "the run did not finish.",
+    ),
+]
+LIMITS = [
+    "A simulation cannot confirm a cause or say which explanation is most likely.",
+    "Several explanations can be consistent with the records at the same time.",
+    "The model is illustrative and uncalibrated; its numbers are dimensionless, not measurements.",
+    "A straight fall and a slowing fall cannot be told apart from a few recorded points.",
+    "Nothing here is a machine setting or instruction. "
+    "Any next step is a manual review of records.",
+]
+
+
+def sign_changes(values: list[float]) -> int:
+    steps = [b - a for a, b in zip(values, values[1:], strict=False) if abs(b - a) > 1e-9]
+    return sum(1 for a, b in zip(steps, steps[1:], strict=False) if (a < 0) != (b < 0))
+
+
+def shape_facts(records: list[dict], observations: list[dict]) -> list[ShapeFact]:
+    """Only these recorded or confirmed facts describe the shape of the decline."""
+    facts = []
+    for item in observations:
+        value = str(item.get("result", "")).casefold()
+        if item.get("check_id") == "question_frequency" and value in FREQUENCY_SHAPES:
+            facts.append(
+                ShapeFact(
+                    evidence_id=item["id"],
+                    source="confirmed_answer",
+                    description=f"Your confirmed answer says the defect is {value}.",
+                    shape=FREQUENCY_SHAPES[value],
+                )
+            )
+        if item.get("check_id") == "question_pressure_trend" and value == "unstable":
+            facts.append(
+                ShapeFact(
+                    evidence_id=item["id"],
+                    source="confirmed_answer",
+                    description="Your confirmed answer says recorded pressure is unstable.",
+                    shape="oscillating",
+                )
+            )
+    for record in records:
+        values = record.get("values", {})
+        masses = [
+            sample["mass_mg"]
+            for sample in values.get("samples", [])
+            if isinstance(sample, dict) and isinstance(sample.get("mass_mg"), int | float)
+        ]
+        if values.get("mass_trend") and len(masses) >= 3:
+            shape = "oscillating" if sign_changes(masses) else "monotonic"
+            facts.append(
+                ShapeFact(
+                    evidence_id=record["id"],
+                    source="record",
+                    description=f"The record shows mass across {len(masses)} samples: "
+                    + " → ".join(str(value) for value in masses)
+                    + f" {values.get('units', {}).get('mass', '')}".rstrip()
+                    + ".",
+                    shape=shape,
+                )
+            )
+        elif str(values.get("frequency", "")).casefold().startswith("progressive"):
+            facts.append(
+                ShapeFact(
+                    evidence_id=record["id"],
+                    source="record",
+                    description="The record describes a progressive decline.",
+                    shape="monotonic",
+                )
+            )
+        if values.get("pressure_trend") == "unstable":
+            facts.append(
+                ShapeFact(
+                    evidence_id=record["id"],
+                    source="record",
+                    description="The record reports an unstable pressure trend.",
+                    shape="oscillating",
+                )
+            )
+    return facts
+
+
+def prediction_for(hypothesis: str) -> ExperimentPrediction:
+    from flowpilot.incidents import simulation
+
+    severity = max(simulation.DEMO_TESTED_SEVERITIES)
+    mass, coverage = simulation.predicted_response(hypothesis, severity)
+    control, _ = simulation.predicted_response(hypothesis, simulation.DEMO_CONTROL_SEVERITY)
+    positions = [index / (len(mass) - 1) for index in range(len(mass))]
+    signature = simulation.SIGNATURES[hypothesis]
+    start, end = float(mass[0]), float(mass[-1])
+    if signature == "steady_fall":
+        holds = (
+            f"Mass falls in a straight line along the sequence, from {start:.2f} to {end:.2f} "
+            f"at severity {severity:.2f}, and coverage from {coverage[0]:.2f} to "
+            f"{coverage[-1]:.2f}."
+        )
+        not_holds = "There is no steady decline: the response stays level or comes and goes."
+    elif signature == "oscillation":
+        holds = (
+            f"Mass rises and falls in three cycles between {float(mass.max()):.2f} and "
+            f"{float(mass.min()):.2f} at severity {severity:.2f}, and coverage swings between "
+            f"{float(coverage.max()):.2f} and {float(coverage.min()):.2f}."
+        )
+        not_holds = "The decline is steady, without cycles."
+    else:
+        half = start - (start - end) / 2
+        reached = next(p for p, value in zip(positions, mass, strict=True) if value <= half)
+        holds = (
+            f"Mass falls quickly at first and then more slowly, from {start:.2f} to {end:.2f} "
+            f"at severity {severity:.2f}; half of the drop has happened by position "
+            f"{reached:.2f}. Coverage ends at {coverage[-1]:.2f}."
+        )
+        not_holds = "There is no steady decline: the response stays level or comes and goes."
+    return ExperimentPrediction(
+        signature=signature,
+        shape="oscillating" if signature == "oscillation" else "monotonic",
+        model_version=simulation.MODEL_VERSION,
+        control_severity=simulation.DEMO_CONTROL_SEVERITY,
+        tested_severity=severity,
+        positions=positions,
+        relative_mass=[float(value) for value in mass],
+        coverage_fraction=[float(value) for value in coverage],
+        control_relative_mass=[float(value) for value in control],
+        if_holds=holds,
+        if_not=not_holds,
+        basis="Prediction from the illustrative model's own equations at the experiment's "
+        "settings. Dimensionless; not a measurement.",
+    )
+
+
+def experiment_brief(
+    hypothesis: IncidentHypothesis,
+    open_titles: list[str],
+    facts: list[ShapeFact],
+) -> ExperimentBrief:
+    prediction = prediction_for(hypothesis.id)
+    title = hypothesis.title.lower()
+    others = [item.lower() for item in open_titles if item != hypothesis.title]
+    if not others:
+        why = ["Falling coverage fits this explanation."]
+    elif len(others) == 1:
+        why = [f"Falling coverage fits this and {others[0]}; the records do not separate them."]
+    else:
+        why = [
+            f"Falling coverage fits all {len(others) + 1} open explanations, so the records "
+            "so far do not separate them."
+        ]
+    supports, conflicts = (
+        len(hypothesis.supporting_evidence),
+        len(hypothesis.conflicting_evidence),
+    )
+
+    def count(number: int, verb: str):
+        return f"{number} record {verb}s" if number == 1 else f"{number} records {verb}"
+
+    why.append(
+        "No record supports or conflicts with this explanation yet."
+        if not supports + conflicts
+        else f"{count(supports, 'support')} it and "
+        + (f"{count(conflicts, 'conflict')} with it." if conflicts else "none conflict with it.")
+    )
+    missing = hypothesis.missing_evidence[0]
+    why.append(f"Still missing: {missing[0].lower()}{missing[1:]}")
+    why.append(
+        f"The experiment shows the shape of decline that {title} would produce, so it can be "
+        "compared with how the records describe the change."
+    )
+    return ExperimentBrief(
+        why=why,
+        verifies=f"{hypothesis.mechanism} Under test: would it produce "
+        f"{SIGNATURE_WORDS[prediction.signature]}, and does that match how the records describe "
+        "the change?",
+        prediction=prediction,
+        reading=READING,
+        limits=LIMITS,
+        shape_facts=facts,
+    )
+
+
 def analyze(
     evidence: list[dict], observations: list[dict], configuration: str
 ) -> DiagnosticAssessment:
@@ -630,6 +884,11 @@ def analyze(
     hypotheses.sort(key=lambda item: -scores[item.id])
     for rank, hypothesis in enumerate(hypotheses, 1):
         hypothesis.rank = rank
+    facts = shape_facts(records, observations)
+    open_titles = [item.title for item in hypotheses if item.status in {"possible", "inconclusive"}]
+    for check in checks:
+        focused = next(item for item in hypotheses if item.id == check.hypothesis_id)
+        check.brief = experiment_brief(focused, open_titles, facts)
 
     attempted = {item["check_id"] for item in accepted}
     unanswered = next((field for field in discovery if field.status == "missing"), None)
