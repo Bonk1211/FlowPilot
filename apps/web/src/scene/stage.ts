@@ -16,6 +16,7 @@ import {
   type GroupId,
   type CoreId,
   type Shot,
+  type ReadingTarget,
 } from "./shots";
 
 /** Everything the directed scene needs for one step. All values are illustrative. */
@@ -26,7 +27,10 @@ export type SceneDirection = {
   control: FluidPoint;
   condition: "start" | "tested";
   mechanism: Mechanism;
+  recordAt?: ReadingTarget;
 };
+
+export type ScreenAnchor = { x: number; y: number; visible: boolean };
 
 // Liquid, reservoir air, valve-actuation air and atomizing air keep their own colours.
 const flowColours = {
@@ -146,6 +150,30 @@ export class Stage {
   private matrix = new THREE.Matrix4();
   private scratch = new THREE.Vector3();
   private direction: SceneDirection | null = null;
+
+  /** Project the actual named mesh, including its exploded parent transforms. */
+  readingAnchor(
+    camera: THREE.PerspectiveCamera,
+    width: number,
+    height: number,
+  ): ScreenAnchor | null {
+    const target = this.direction?.recordAt;
+    if (!target) return null;
+    const mesh = this.groups.get(target.part)?.getObjectByName(target.mesh);
+    if (!mesh) return null;
+    const point = mesh
+      .localToWorld(this.scratch.fromArray(target.point))
+      .project(camera);
+    return {
+      x: (point.x * 0.5 + 0.5) * width,
+      y: (-point.y * 0.5 + 0.5) * height,
+      visible:
+        point.z > -1 &&
+        point.z < 1 &&
+        Math.abs(point.x) < 1 &&
+        Math.abs(point.y) < 1,
+    };
+  }
 
   constructor(
     private root: THREE.Group,
@@ -609,7 +637,15 @@ export class Stage {
     const settled = progress > 0.2;
     const reference =
       this.labelLayer.closest('[data-reference="true"]') !== null;
-    const top = reference ? (width < 700 ? 200 : 110) : 52;
+    const top = reference
+      ? width < 700
+        ? 200
+        : 110
+      : this.direction?.recordAt
+        ? width < 700
+          ? 148
+          : 96
+        : 52;
     const bottom = reference ? (width < 700 ? height * 0.36 + 90 : 235) : 20;
     this.lines.setAttribute("viewBox", `0 0 ${width} ${height}`);
     const placed: {
@@ -647,12 +683,12 @@ export class Stage {
       }
     }
     const occupied: LabelBounds[] = [];
-    if (reference) {
+    if (reference || this.direction?.recordAt) {
       const origin = this.labelLayer.getBoundingClientRect();
       for (const panel of this.labelLayer
         .closest(".guided-viewport")!
         .querySelectorAll(
-          ".guided-console, .guided-auxiliary, .assembly-camera-tools",
+          ".guided-console, .guided-auxiliary, .assembly-camera-tools, .model-reading-card",
         )) {
         const rect = panel.getBoundingClientRect();
         occupied.push({

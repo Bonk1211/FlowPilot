@@ -22,6 +22,10 @@ import {
 import { ProcedureDiagram } from "../prototype/ProcedureDiagram";
 import { modelNodes, type ModelNodeId } from "../prototype/model";
 import type { SceneDirection } from "../scene/stage";
+import {
+  ModelReadingAnnotation,
+  type ReadingAnnotationHandle,
+} from "./ModelReadingAnnotation";
 import { SceneBoundary } from "./SceneBoundary";
 import { StatusChip } from "./StatusChip";
 import { ResponsePlot } from "./SimulationPanel";
@@ -44,16 +48,19 @@ export function GuidedPlayback({
   children,
   settings,
   viewTools,
+  stepRecord,
 }: {
   script: { steps: PlaybackStep[]; run?: SimulationRun };
   title: string;
   children?: ReactNode;
   settings?: ReactNode;
   viewTools?: ReactNode;
+  stepRecord?: (index: number, go: (index: number) => void) => ReactNode;
 }) {
   const { steps } = script;
   const last = steps.length - 1;
   const viewport = useRef<HTMLDivElement>(null);
+  const readingAnnotation = useRef<ReadingAnnotationHandle>(null);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [started, setStarted] = useState(false);
@@ -132,8 +139,9 @@ export function GuidedPlayback({
       control: step.control,
       condition: step.condition,
       mechanism: step.mechanism,
+      recordAt: stepRecord ? step.recordAt : undefined,
     }),
-    [step, identity],
+    [step, identity, stepRecord],
   );
   const highlightIds = step.highlightIds.length ? step.highlightIds : undefined;
   const go = (next: number) => {
@@ -168,6 +176,7 @@ export function GuidedPlayback({
       aria-label="Guided simulation playback"
       data-reference={!script.run}
       data-content-switch={!!viewTools}
+      data-recording={!!stepRecord}
     >
       <div
         ref={viewport}
@@ -274,6 +283,9 @@ export function GuidedPlayback({
                     partStates={step.partStates}
                     directed
                     direction={direction}
+                    onReadingAnchor={(anchor) =>
+                      readingAnnotation.current?.place(anchor)
+                    }
                     onShotProgress={(value) => {
                       setProgress(value);
                       if (value >= 1) setPlaying(false);
@@ -307,6 +319,22 @@ export function GuidedPlayback({
             ))}
           </ul>
         </div>
+        {stepRecord && step.recordAt && (
+          <ModelReadingAnnotation
+            ref={readingAnnotation}
+            target={step.recordAt}
+            index={index}
+            total={steps.length}
+            schematic={twoD || failed}
+            onGo={go}
+            onFocus={() => {
+              setPlaying(false);
+              setHeld(true);
+            }}
+          >
+            {stepRecord(index, go)}
+          </ModelReadingAnnotation>
+        )}
         <div className="guided-auxiliary">
           {children}
           {settings && (
@@ -319,7 +347,7 @@ export function GuidedPlayback({
         <details
           className="guided-console"
           aria-label="Step-by-step guide"
-          open={initialGuideOpen}
+          open={stepRecord ? false : initialGuideOpen}
         >
           <summary className="guided-console-heading">
             <span className="eyebrow">Step-by-step guide</span>

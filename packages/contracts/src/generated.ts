@@ -282,6 +282,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/incident-outlook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Status */
+        get: operations["status_api_incident_outlook_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/incident-outlook/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Connect */
+        post: operations["connect_api_incident_outlook_connect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/incident-outlook/disconnect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disconnect */
+        post: operations["disconnect_api_incident_outlook_disconnect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/incident-outlook/drafts/{incident_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Draft */
+        post: operations["create_draft_api_incident_outlook_drafts__incident_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/incident-rag/status": {
         parameters: {
             query?: never;
@@ -2631,6 +2699,18 @@ export interface components {
              */
             response: "relative_mass" | "coverage_fraction";
         };
+        /** ExperimentReadings */
+        ExperimentReadings: {
+            /**
+             * Hypothesis Id
+             * @enum {string}
+             */
+            hypothesis_id: "restriction" | "unstable_delivery" | "material_condition";
+            /** Plan Id */
+            plan_id: string;
+            /** Steps */
+            steps: components["schemas"]["ExperimentStepReading"][];
+        };
         /** ExperimentResult */
         ExperimentResult: {
             condition: components["schemas"]["ExperimentCondition"];
@@ -2639,6 +2719,33 @@ export interface components {
             /** Response Mean */
             response_mean: number;
             run: components["schemas"]["SimulationRun"];
+        };
+        /** ExperimentStepReading */
+        ExperimentStepReading: {
+            /** Condition */
+            condition?: ("good" | "damaged" | "abnormal" | "uncertain" | "not_applicable") | null;
+            /**
+             * Notes
+             * @default
+             */
+            notes: string;
+            /**
+             * Quantity
+             * @default
+             */
+            quantity: string;
+            /**
+             * Step Id
+             * @enum {string}
+             */
+            step_id: "establish" | "follow" | "apart" | "mechanism" | "valve" | "nozzle" | "substrate" | "readout";
+            /**
+             * Unit
+             * @default
+             */
+            unit: string;
+            /** Value */
+            value?: number | null;
         };
         /** ExperimentWithdrawal */
         ExperimentWithdrawal: {
@@ -3322,6 +3429,7 @@ export interface components {
             check_id: string;
             /** Evidence Ids */
             evidence_ids?: string[];
+            experiment?: components["schemas"]["RecordedExperiment"] | null;
             /** Extraction Confidence */
             extraction_confidence?: number | null;
             /** Id */
@@ -4369,6 +4477,41 @@ export interface components {
             /** Value */
             value: string;
         };
+        /** OutlookAuthorization */
+        OutlookAuthorization: {
+            /** Authorization Url */
+            authorization_url: string;
+        };
+        /** OutlookDraft */
+        OutlookDraft: {
+            /** Draft Version */
+            draft_version: number;
+            /** Id */
+            id: string;
+            /** Web Link */
+            web_link: string;
+        };
+        /** OutlookDraftRequest */
+        OutlookDraftRequest: {
+            /** Draft Version */
+            draft_version: number;
+            /** Incident Revision */
+            incident_revision: number;
+            /** Recipients */
+            recipients?: string[];
+        };
+        /** OutlookStatus */
+        OutlookStatus: {
+            /** Configured */
+            configured: boolean;
+            /**
+             * Connected
+             * @default false
+             */
+            connected: boolean;
+            /** Email */
+            email?: string | null;
+        };
         /** PastExperience */
         PastExperience: {
             /** Citation */
@@ -4540,6 +4683,24 @@ export interface components {
             /** Timestamp */
             timestamp: string;
         };
+        /** RecordExperimentAction */
+        RecordExperimentAction: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            action: "record_experiment";
+            /** Observation Id */
+            observation_id: string;
+            readings: components["schemas"]["ExperimentReadings"];
+            /** Revision */
+            revision: number;
+            /**
+             * Synthetic
+             * @default false
+             */
+            synthetic: boolean;
+        };
         /** RecordResultAction */
         RecordResultAction: {
             /**
@@ -4567,6 +4728,20 @@ export interface components {
              * @default true
              */
             synthetic: boolean;
+        };
+        /** RecordedExperiment */
+        RecordedExperiment: {
+            /**
+             * Hypothesis Id
+             * @enum {string}
+             */
+            hypothesis_id: "restriction" | "unstable_delivery" | "material_condition";
+            /** Parent Answer Id */
+            parent_answer_id?: string | null;
+            /** Plan Id */
+            plan_id: string;
+            /** Steps */
+            steps: components["schemas"]["ExperimentStepReading"][];
         };
         /** RecoveryChecks */
         RecoveryChecks: {
@@ -5783,6 +5958,101 @@ export interface operations {
             };
         };
     };
+    status_api_incident_outlook_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutlookStatus"];
+                };
+            };
+        };
+    };
+    connect_api_incident_outlook_connect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutlookAuthorization"];
+                };
+            };
+        };
+    };
+    disconnect_api_incident_outlook_disconnect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutlookStatus"];
+                };
+            };
+        };
+    };
+    create_draft_api_incident_outlook_drafts__incident_id__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                incident_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OutlookDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OutlookDraft"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     index_status_api_incident_rag_status_get: {
         parameters: {
             query?: never;
@@ -5962,7 +6232,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["SimpleAction"] | components["schemas"]["AddEvidenceAction"] | components["schemas"]["CorrectEvidenceAction"] | components["schemas"]["RecordResultAction"] | components["schemas"]["AnswerInvestigationAction"] | components["schemas"]["ConfirmInvestigationAction"] | components["schemas"]["SelectInvestigationAction"] | components["schemas"]["RetryInvestigationAction"] | components["schemas"]["EditHandoffAction"] | components["schemas"]["EscalateAction"] | components["schemas"]["CloseIncidentAction"] | components["schemas"]["CaptureKnowledgeAction"] | components["schemas"]["ReviewLearningAction"];
+                "application/json": components["schemas"]["SimpleAction"] | components["schemas"]["AddEvidenceAction"] | components["schemas"]["CorrectEvidenceAction"] | components["schemas"]["RecordResultAction"] | components["schemas"]["RecordExperimentAction"] | components["schemas"]["AnswerInvestigationAction"] | components["schemas"]["ConfirmInvestigationAction"] | components["schemas"]["SelectInvestigationAction"] | components["schemas"]["RetryInvestigationAction"] | components["schemas"]["EditHandoffAction"] | components["schemas"]["EscalateAction"] | components["schemas"]["CloseIncidentAction"] | components["schemas"]["CaptureKnowledgeAction"] | components["schemas"]["ReviewLearningAction"];
             };
         };
         responses: {

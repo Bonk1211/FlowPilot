@@ -62,6 +62,26 @@
 .handoff-email > details {
   margin-top: 20px;
 }
+.outlook-draft-panel {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-default);
+}
+.outlook-draft-panel h4 {
+  margin: 0 0 8px;
+}
+.outlook-draft-panel .incident-actions {
+  margin-block: 12px;
+}
+.outlook-draft-panel button,
+.outlook-draft-panel input,
+.outlook-draft-panel a {
+  min-height: 44px;
+}
+.outlook-draft-panel a {
+  display: inline-flex;
+  align-items: center;
+}
 .handoff-report button {
   min-height: 44px;
 }

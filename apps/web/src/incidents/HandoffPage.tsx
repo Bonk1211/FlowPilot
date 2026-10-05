@@ -3,6 +3,7 @@ import { type Incident, type IncidentCommand } from "./api";
 import { useIncidentAccess } from "./AccessPanel";
 import { CommunicationPanel } from "./CommunicationPanel";
 import { HandoffReport } from "./HandoffReport";
+import { OutlookDraftPanel } from "./OutlookDraftPanel";
 import { TroubleshootingMap } from "./TroubleshootingMap";
 
 export function HandoffPage({
@@ -131,6 +132,11 @@ export function HandoffPage({
               </button>
             </div>
           </form>
+          <OutlookDraftPanel
+            incident={incident}
+            busy={busy}
+            draftDirty={edited !== null}
+          />
           <details>
             <summary>
               Draft versions ({(incident.handoff_history ?? []).length})

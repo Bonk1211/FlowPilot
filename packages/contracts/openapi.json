@@ -4095,6 +4095,42 @@
         "title": "ExperimentProposal",
         "type": "object"
       },
+      "ExperimentReadings": {
+        "additionalProperties": false,
+        "properties": {
+          "hypothesis_id": {
+            "enum": [
+              "restriction",
+              "unstable_delivery",
+              "material_condition"
+            ],
+            "title": "Hypothesis Id",
+            "type": "string"
+          },
+          "plan_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Plan Id",
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/ExperimentStepReading"
+            },
+            "maxItems": 8,
+            "minItems": 8,
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "plan_id",
+          "hypothesis_id",
+          "steps"
+        ],
+        "title": "ExperimentReadings",
+        "type": "object"
+      },
       "ExperimentResult": {
         "additionalProperties": false,
         "properties": {
@@ -4120,6 +4156,77 @@
           "run"
         ],
         "title": "ExperimentResult",
+        "type": "object"
+      },
+      "ExperimentStepReading": {
+        "additionalProperties": false,
+        "properties": {
+          "condition": {
+            "anyOf": [
+              {
+                "enum": [
+                  "good",
+                  "damaged",
+                  "abnormal",
+                  "uncertain",
+                  "not_applicable"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Condition"
+          },
+          "notes": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Notes",
+            "type": "string"
+          },
+          "quantity": {
+            "default": "",
+            "maxLength": 100,
+            "title": "Quantity",
+            "type": "string"
+          },
+          "step_id": {
+            "enum": [
+              "establish",
+              "follow",
+              "apart",
+              "mechanism",
+              "valve",
+              "nozzle",
+              "substrate",
+              "readout"
+            ],
+            "title": "Step Id",
+            "type": "string"
+          },
+          "unit": {
+            "default": "",
+            "maxLength": 40,
+            "title": "Unit",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "step_id"
+        ],
+        "title": "ExperimentStepReading",
         "type": "object"
       },
       "ExperimentWithdrawal": {
@@ -5955,6 +6062,16 @@
             },
             "title": "Evidence Ids",
             "type": "array"
+          },
+          "experiment": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecordedExperiment"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "extraction_confidence": {
             "anyOf": [
@@ -8800,6 +8917,103 @@
         "title": "ObservationChoice",
         "type": "object"
       },
+      "OutlookAuthorization": {
+        "additionalProperties": false,
+        "properties": {
+          "authorization_url": {
+            "title": "Authorization Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "authorization_url"
+        ],
+        "title": "OutlookAuthorization",
+        "type": "object"
+      },
+      "OutlookDraft": {
+        "additionalProperties": false,
+        "properties": {
+          "draft_version": {
+            "title": "Draft Version",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "web_link": {
+            "title": "Web Link",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "web_link",
+          "draft_version"
+        ],
+        "title": "OutlookDraft",
+        "type": "object"
+      },
+      "OutlookDraftRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "draft_version": {
+            "minimum": 1,
+            "title": "Draft Version",
+            "type": "integer"
+          },
+          "incident_revision": {
+            "minimum": 0,
+            "title": "Incident Revision",
+            "type": "integer"
+          },
+          "recipients": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 20,
+            "title": "Recipients",
+            "type": "array"
+          }
+        },
+        "required": [
+          "incident_revision",
+          "draft_version"
+        ],
+        "title": "OutlookDraftRequest",
+        "type": "object"
+      },
+      "OutlookStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "configured": {
+            "title": "Configured",
+            "type": "boolean"
+          },
+          "connected": {
+            "default": false,
+            "title": "Connected",
+            "type": "boolean"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          }
+        },
+        "required": [
+          "configured"
+        ],
+        "title": "OutlookStatus",
+        "type": "object"
+      },
       "PastExperience": {
         "additionalProperties": false,
         "properties": {
@@ -9340,6 +9554,42 @@
         "title": "ReasoningRun",
         "type": "object"
       },
+      "RecordExperimentAction": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "const": "record_experiment",
+            "title": "Action",
+            "type": "string"
+          },
+          "observation_id": {
+            "pattern": "^OBS-[A-Za-z0-9-]{1,64}$",
+            "title": "Observation Id",
+            "type": "string"
+          },
+          "readings": {
+            "$ref": "#/components/schemas/ExperimentReadings"
+          },
+          "revision": {
+            "minimum": 0,
+            "title": "Revision",
+            "type": "integer"
+          },
+          "synthetic": {
+            "default": false,
+            "title": "Synthetic",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "revision",
+          "action",
+          "observation_id",
+          "readings"
+        ],
+        "title": "RecordExperimentAction",
+        "type": "object"
+      },
       "RecordResultAction": {
         "additionalProperties": false,
         "properties": {
@@ -9406,6 +9656,53 @@
           "result"
         ],
         "title": "RecordResultAction",
+        "type": "object"
+      },
+      "RecordedExperiment": {
+        "additionalProperties": false,
+        "properties": {
+          "hypothesis_id": {
+            "enum": [
+              "restriction",
+              "unstable_delivery",
+              "material_condition"
+            ],
+            "title": "Hypothesis Id",
+            "type": "string"
+          },
+          "parent_answer_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Answer Id"
+          },
+          "plan_id": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Plan Id",
+            "type": "string"
+          },
+          "steps": {
+            "items": {
+              "$ref": "#/components/schemas/ExperimentStepReading"
+            },
+            "maxItems": 8,
+            "minItems": 8,
+            "title": "Steps",
+            "type": "array"
+          }
+        },
+        "required": [
+          "plan_id",
+          "hypothesis_id",
+          "steps"
+        ],
+        "title": "RecordedExperiment",
         "type": "object"
       },
       "RecoveryChecks": {
@@ -11864,6 +12161,121 @@
         ]
       }
     },
+    "/api/incident-outlook": {
+      "get": {
+        "operationId": "status_api_incident_outlook_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutlookStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Status",
+        "tags": [
+          "Outlook drafts"
+        ]
+      }
+    },
+    "/api/incident-outlook/connect": {
+      "post": {
+        "operationId": "connect_api_incident_outlook_connect_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutlookAuthorization"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Connect",
+        "tags": [
+          "Outlook drafts"
+        ]
+      }
+    },
+    "/api/incident-outlook/disconnect": {
+      "post": {
+        "operationId": "disconnect_api_incident_outlook_disconnect_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutlookStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Disconnect",
+        "tags": [
+          "Outlook drafts"
+        ]
+      }
+    },
+    "/api/incident-outlook/drafts/{incident_id}": {
+      "post": {
+        "operationId": "create_draft_api_incident_outlook_drafts__incident_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "incident_id",
+            "required": true,
+            "schema": {
+              "title": "Incident Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OutlookDraftRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OutlookDraft"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Draft",
+        "tags": [
+          "Outlook drafts"
+        ]
+      }
+    },
     "/api/incident-rag/status": {
       "get": {
         "operationId": "index_status_api_incident_rag_status_get",
@@ -12105,6 +12517,7 @@
                     "correct_evidence": "#/components/schemas/CorrectEvidenceAction",
                     "edit_handoff": "#/components/schemas/EditHandoffAction",
                     "escalate": "#/components/schemas/EscalateAction",
+                    "record_experiment": "#/components/schemas/RecordExperimentAction",
                     "record_result": "#/components/schemas/RecordResultAction",
                     "refresh_handoff": "#/components/schemas/SimpleAction",
                     "retry_investigation": "#/components/schemas/RetryInvestigationAction",
@@ -12125,6 +12538,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/RecordResultAction"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RecordExperimentAction"
                   },
                   {
                     "$ref": "#/components/schemas/AnswerInvestigationAction"

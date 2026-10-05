@@ -68,7 +68,7 @@ def action(
     incident = act(incident_id, request, actor=actor.subject)
     if Settings().incident_auto_process:
         schedule_incident(incident)
-    elif request.action in GRAPH_ACTIONS:
+    elif request.action in GRAPH_ACTIONS | {"record_experiment"}:
         # Manual mode still saves the answer before doing any provider work.
         schedule_incident(incident)
         process_next_job("analysis", incident_id=incident.id)

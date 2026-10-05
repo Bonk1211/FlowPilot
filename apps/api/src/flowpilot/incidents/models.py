@@ -76,6 +76,62 @@ class IncidentEvidence(EvidenceInput):
     raw_integrity_ref: str | None = None
 
 
+EXPERIMENT_STEP_TITLES = {
+    "establish": "The machine and the question",
+    "follow": "Following the liquid",
+    "apart": "Taking it apart",
+    "mechanism": "At the mechanism",
+    "valve": "Inside the valve",
+    "nozzle": "At the nozzle",
+    "substrate": "The deposit, position by position",
+    "readout": "Experiment summary",
+}
+
+
+class ExperimentStepReading(Contract):
+    step_id: Literal[
+        "establish", "follow", "apart", "mechanism", "valve", "nozzle", "substrate", "readout"
+    ]
+    quantity: str = Field(default="", max_length=100)
+    value: float | None = Field(default=None, allow_inf_nan=False)
+    unit: str = Field(default="", max_length=40)
+    condition: Literal["good", "damaged", "abnormal", "uncertain", "not_applicable"] | None = None
+    notes: str = Field(default="", max_length=2000)
+
+    @model_validator(mode="after")
+    def complete_reading(self):
+        self.quantity, self.unit, self.notes = (
+            self.quantity.strip(),
+            self.unit.strip(),
+            self.notes.strip(),
+        )
+        if self.value is not None and (not self.quantity or not self.unit):
+            raise ValueError("A measured value needs a quantity and unit.")
+        if self.value is None and (self.quantity or self.unit):
+            raise ValueError("Enter the measured value or clear the quantity and unit.")
+        if self.value is None and self.condition is None and not self.notes:
+            raise ValueError("Record a measurement, condition or observation for every step.")
+        if self.condition == "not_applicable" and not self.notes:
+            raise ValueError("Explain why this step is not applicable.")
+        return self
+
+
+class ExperimentReadings(Contract):
+    plan_id: str = Field(min_length=1, max_length=100)
+    hypothesis_id: Literal["restriction", "unstable_delivery", "material_condition"]
+    steps: list[ExperimentStepReading] = Field(min_length=8, max_length=8)
+
+    @model_validator(mode="after")
+    def all_steps(self):
+        if [step.step_id for step in self.steps] != list(EXPERIMENT_STEP_TITLES):
+            raise ValueError("Record every guide step once, in guide order.")
+        return self
+
+
+class RecordedExperiment(ExperimentReadings):
+    parent_answer_id: str | None = None
+
+
 class IncidentObservation(Contract):
     id: str
     check_id: str
@@ -87,6 +143,7 @@ class IncidentObservation(Contract):
     supersedes_id: str | None = None
     author: str | None = None
     extraction_confidence: float | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
+    experiment: RecordedExperiment | None = None
 
 
 class HandoffDraft(Contract):
@@ -398,6 +455,13 @@ class RecordResultAction(RevisionAction):
     extraction_confidence: float | None = Field(default=None, ge=0, le=1, allow_inf_nan=False)
 
 
+class RecordExperimentAction(RevisionAction):
+    action: Literal["record_experiment"]
+    observation_id: str = Field(pattern=r"^OBS-[A-Za-z0-9-]{1,64}$")
+    readings: ExperimentReadings
+    synthetic: bool = False
+
+
 class AnswerInvestigationAction(RevisionAction):
     action: Literal["answer_investigation"]
     answer_id: str = Field(pattern=r"^ANS-[A-Za-z0-9-]{1,64}$")
@@ -467,6 +531,7 @@ IncidentAction = Annotated[
     | AddEvidenceAction
     | CorrectEvidenceAction
     | RecordResultAction
+    | RecordExperimentAction
     | AnswerInvestigationAction
     | ConfirmInvestigationAction
     | SelectInvestigationAction

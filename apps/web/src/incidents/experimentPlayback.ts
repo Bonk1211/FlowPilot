@@ -1,6 +1,11 @@
 import type { IncidentExperiment, SimulationRun } from "@flowpilot/contracts";
 import { experimentShots, type Mechanism } from "../scene/experimentShots.ts";
-import type { Shot } from "../scene/shots";
+import {
+  partAnnotations,
+  type GroupId,
+  type ReadingTarget,
+  type Shot,
+} from "../scene/shots.ts";
 
 type Result = NonNullable<IncidentExperiment["results"]>[number];
 type Point = SimulationRun["points"][number];
@@ -22,6 +27,7 @@ export type FluidPoint = {
 
 export type PlaybackStep = {
   id: Shot["id"];
+  recordAt?: ReadingTarget;
   title: string;
   /** What is on screen and what it means. Numbers come from the saved run. */
   narration: string;
@@ -237,6 +243,7 @@ export function experimentPlaybackSteps(
     extra: Partial<PlaybackStep> = {},
   ): PlaybackStep => ({
     id,
+    recordAt: readingTarget(id, mechanism),
     title,
     narration,
     caution: SIMULATED,
@@ -346,4 +353,38 @@ export function experimentPlaybackSteps(
     ),
   ];
   return { ok: true, run, baseline: base, steps };
+}
+
+/** The physical location to inspect, independent of the simulated response. */
+function readingTarget(step: string, mechanism: Mechanism): ReadingTarget {
+  if (step === "apart")
+    return mechanism === "restriction"
+      ? {
+          part: "fluid_qd",
+          text: "Fluid QD · seal / O-ring",
+          mesh: "qd-seal",
+          point: [0.126, 0, 0],
+        }
+      : {
+          part: "bfs_lid",
+          text: "BFS lid · O-ring",
+          mesh: "lid-o-ring",
+          point: [0.61, 0, 0],
+        };
+  const mechanismPart: Record<Mechanism, GroupId> = {
+    restriction: "fluid_qd",
+    unstable_delivery: "bfs_air",
+    material_condition: "bfs_bottle",
+  };
+  const parts: Record<string, GroupId> = {
+    establish: "bfs_air",
+    follow: "feed_tube",
+    mechanism: mechanismPart[mechanism],
+    valve: "dj2200_valve",
+    nozzle: "nozzle",
+    substrate: "substrate_tray",
+    readout: "substrate_tray",
+  };
+  const part = parts[step] ?? "substrate_tray";
+  return { part, ...partAnnotations[part] };
 }

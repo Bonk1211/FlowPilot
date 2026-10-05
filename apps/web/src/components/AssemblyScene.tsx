@@ -23,7 +23,7 @@ import {
   type CameraFrame,
   type GroupId,
 } from "../scene/shots";
-import { Stage, type SceneDirection } from "../scene/stage";
+import { Stage, type SceneDirection, type ScreenAnchor } from "../scene/stage";
 
 type Props = {
   step: ProcedureStep;
@@ -49,6 +49,7 @@ type Props = {
   paused?: boolean;
   /** How far the current shot has played, from 0 to 1, reported a few times a second. */
   onShotProgress?: (progress: number) => void;
+  onReadingAnchor?: (anchor: ScreenAnchor | null) => void;
 };
 
 type Material = THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial;
@@ -201,12 +202,18 @@ export default function AssemblyScene({
   direction = null,
   paused = false,
   onShotProgress,
+  onReadingAnchor,
 }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const highlightKey = highlightIds?.join(",");
   const partStatesKey = partStates ? JSON.stringify(partStates) : undefined;
   const runtime = useRef<Runtime | null>(null);
-  const callbacks = useRef({ onFailure, onInteract, onShotProgress });
+  const callbacks = useRef({
+    onFailure,
+    onInteract,
+    onShotProgress,
+    onReadingAnchor,
+  });
   const [isolated, setIsolated] = useState(false);
   const [loaded, setLoaded] = useState(false);
   // Resizing adjusts the camera; retain the scene and its active tour step.
@@ -215,8 +222,13 @@ export default function AssemblyScene({
   );
 
   useEffect(() => {
-    callbacks.current = { onFailure, onInteract, onShotProgress };
-  }, [onFailure, onInteract, onShotProgress]);
+    callbacks.current = {
+      onFailure,
+      onInteract,
+      onShotProgress,
+      onReadingAnchor,
+    };
+  }, [onFailure, onInteract, onShotProgress, onReadingAnchor]);
 
   useEffect(() => {
     const current = runtime.current;
@@ -385,6 +397,9 @@ export default function AssemblyScene({
         const reserved = width < 700 ? height * 0.36 + 300 : 345;
         state.framingSpace = Math.min(1, (height - reserved) / (height * 0.72));
         camera.setViewOffset(width, height, 0, height * 0.1, width, height);
+      } else if (width < 700 && container.closest('[data-recording="true"]')) {
+        state.framingSpace = 0.6;
+        camera.setViewOffset(width, height, 0, height * 0.2, width, height);
       } else {
         state.framingSpace = 1;
         camera.clearViewOffset();
@@ -399,10 +414,12 @@ export default function AssemblyScene({
       state.needsRender = true;
     });
     resize.observe(container);
-    if (container.closest('[data-reference="true"]'))
+    if (container.closest('[data-reference="true"], [data-recording="true"]'))
       container
         .closest(".guided-viewport")
-        ?.querySelectorAll(".guided-console, .guided-auxiliary")
+        ?.querySelectorAll(
+          ".guided-console, .guided-auxiliary, .model-reading-card",
+        )
         .forEach((panel) => resize.observe(panel));
 
     let frame = 0;
@@ -457,6 +474,13 @@ export default function AssemblyScene({
           container.clientWidth,
           container.clientHeight,
           state.isolated ? state.highlight : null,
+        );
+        callbacks.current.onReadingAnchor?.(
+          state.stage.readingAnchor(
+            camera,
+            container.clientWidth,
+            container.clientHeight,
+          ),
         );
         if (
           director.reported >= 0 &&

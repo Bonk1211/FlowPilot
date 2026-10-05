@@ -230,76 +230,57 @@ Architecture references: [Incident workspace](S932_INCIDENT_WORKSPACE.md), [5W2H
 
 ### FROM REPEATED DISCOVERY TO A SHARED INVESTIGATION
 
-Use two process diagrams.
+Use two four-step circular diagrams, with the total time in the centre of each.
 
-**Illustrative planning estimate: manual 60–100 minutes → FlowPilot 40–70 minutes per incident.**
+**Illustrative target scenario: ~80 min manual → ~40 min with FlowPilot.**
 
-These are proposed workflow budgets, not measured technician results. They assume a routine single-equipment incident, accessible images/logs, one investigation cycle, one straightforward check, and an engineer available for a brief review. FlowPilot also assumes the relevant records can be imported through a configured gateway or uploaded without a new integration project.
-
-The comparison covers active work from recording the defect to an engineer-ready investigation package and saved review outcome. Equipment repair, spare-parts delays, waiting for an engineer, extended testing, and production requalification are outside this estimate. The review may record an unresolved or inconclusive outcome.
+*50% less active workflow time at the scenario midpoints; a proposed target, not a measured result.*
 
 ### MANUAL WORKFLOW
 
-1. **Record the defect and initial context — ~5 min.** Note the symptom, machine, affected location, and available production scope.
-2. **Find and organize evidence — ~15–25 min.** Collect images, logs, material changes, and maintenance records; reconstruct their sequence.
-3. **Search references and choose a check — ~10–20 min.** Consult colleagues or documentation and compare possible explanations.
-4. **Complete one check and record its result — ~15–30 min.** Follow the applicable method and document the observation.
-5. **Prepare the engineer handoff — ~10–15 min.** Assemble the evidence, checks, current explanation, and remaining questions.
-6. **Review and save the outcome — ~5 min.** Confirm the report with the engineer and record the finding or unresolved status.
+| **Step** | **Poster label** | **What happens** | **Estimated time** |
+|---|---|---|---:|
+| **1** | **Collect Evidence** | Record the defect; find images, logs, and maintenance records; reconstruct the timeline. | **20–30 min** |
+| **2** | **Search & Diagnose** | Search references, consult experienced colleagues, compare possible causes, and choose a check. | **15–25 min** |
+| **3** | **Check & Record** | Complete one applicable check and document its result. | **15–30 min** |
+| **4** | **Write & Hand Off** | Assemble the report, review it with the engineer, and save the finding or unresolved status. | **10–15 min** |
 
-**Total estimated active workflow time: ~60–100 min per incident.**
+**Centre label: ~80 MIN / INCIDENT**
 
-**Repeat loop:**
+**Planning range: 60–100 minutes.**
 
-Missing context → More questions → Repeated checks → Revised explanation
-
-Additional investigation cycles increase the total beyond this one-cycle estimate.
+*Rework loop: Missing evidence → More questions → Repeat investigation.*
 
 ### FLOWPILOT WORKFLOW
 
-1. **Open the incident and confirm context — ~2–5 min.** Confirm the trigger, equipment identity, observed defect, and available scope.
-2. **Import and review the evidence timeline — ~5–10 min.** Check the correlated records, last-good/first-bad comparison, and missing-source indicators.
-3. **Complete adaptive investigation and select a check — ~8–10 min.** Use 5W2H discovery, RAG references, hypothesis ranking, and the adaptive decision tree. Review the proposed mechanism and remaining uncertainty.
-4. **Complete one check and record its result — ~15–30 min.** Budget the same check duration as the manual workflow; record the result and inspect the updated assessment.
-5. **Review and finalize the generated handoff — ~5–10 min.** Verify the draft against the evidence, preserve any human edits, and confirm the requested engineering help.
-6. **Review and save the outcome — ~5 min.** Record the finding or inconclusive outcome, export the report, and save the learning candidate. Later knowledge-publication review is a separate activity.
+| **Step** | **Poster label** | **What happens** | **Target time** |
+|---|---|---|---:|
+| **1** | **Automated Evidence Correlation** | Ingest images, logs, and incident context; correlate records by equipment identity and time; confirm the consolidated evidence timeline. | **3–5 min** |
+| **2** | **Adaptive Diagnostic Reasoning** | Combine 5W2H problem definition, RAG reference retrieval, and rule-based hypothesis ranking; use the adaptive decision tree and optional Jev selection to identify a discriminating check. | **7–10 min** |
+| **3** | **Discriminating Hypothesis Testing** | Complete the selected check, record supporting, contradicting, or inconclusive results, and reassess competing mechanisms through evidence-linked reasoning. | **15–30 min** |
+| **4** | **Handoff Synthesis & Engineer Review** | Review the structured report generated alongside the investigation, confirm evidence and unresolved questions, and persist the reviewed outcome for subsequent knowledge capture. | **~5 min** |
 
-**Total estimated active workflow time: ~40–70 min per incident.**
+**Centre label: ~40 MIN / INCIDENT**
 
-**Parallel activity:** The handoff worker creates and updates the draft while steps 1–4 continue. The PRD's initial partial-draft target is **p95 ≤15 seconds**, which remains a prototype target. Background drafting is included within those steps, so it is not added again to the total. The 5–10 minutes in step 5 are for human checking and finalization.
+**Target range: 30–50 minutes.**
 
-**Investigation loop:**
+*Reassessment loop: New evidence → Hypothesis reassessment → Handoff synchronization.*
 
-New evidence → Updated explanation → More useful next step
+**Parallel lane — Asynchronous Handoff Orchestration:** Independent analysis and handoff workers process the evolving incident during steps 1–3. Step 4 covers engineer review and finalization; background drafting adds no separate step to the total.
 
-### Time comparison for the poster
+### Poster takeaway
 
-| **Workflow stage** | **Manual estimate** | **FlowPilot estimate** |
-|---|---:|---:|
-| Record incident and context | ~5 min | ~2–5 min |
-| Collect and organize evidence | ~15–25 min | ~5–10 min |
-| Investigate and select a check | ~10–20 min | ~8–10 min |
-| Complete and record one check | ~15–30 min | ~15–30 min |
-| Prepare/finalize engineer handoff | ~10–15 min | ~5–10 min |
-| Review and save outcome | ~5 min | ~5 min |
-| **Total active workflow** | **~60–100 min** | **~40–70 min** |
+**~80 MIN → ~40 MIN**
 
-**Illustrative midpoint: 80 min → 55 min, or 25 minutes less active work per incident.**
+**Target: halve active investigation and handoff time through connected evidence, guided reasoning, and parallel reporting.**
 
-The midpoint is arithmetic from these assumed ranges, not an observed average. This end-to-end scenario is separate from the PRD's **30% handoff-preparation reduction** pilot target. Neither establishes a reduction in machine downtime; validate the stage timings on comparable incidents before using them as performance claims.
+The check remains **15–30 minutes in both workflows**. The assumed savings come from collecting evidence, finding the next step, and preparing the engineer package.
 
-| **Comparison** | **Typical manual workflow** | **FlowPilot** |
-|---|---|---|
-| Evidence | Collected across separate records | Linked to one incident and timeline |
-| Next step | Depends heavily on individual experience | Selected from current evidence and unresolved questions |
-| Explanation | Often verbal or written separately | Connected to sources and component views |
-| Engineer handoff | Manually assembled | Drafted early and updated during investigation |
-| Shift continuity | Requires retelling the incident | Preserves answers, checks, and assessment history |
-| Knowledge retention | Depends on documentation habits | Supports reviewed, reusable case knowledge |
+**Scenario assumptions:** A routine incident with one straightforward check, an available reviewer, prefilled context, configured evidence imports, applicable references, and a generated report requiring only minor edits. This optimistic scenario replaces the earlier 40–70-minute FlowPilot budget; it is not a new benchmark result.
 
-**Takeaway**
+**Timing scope:** Active work through an engineer-ready package and saved finding or unresolved status. Excludes repairs, waiting, spare parts, extra investigation cycles, production requalification, and later knowledge-publication review. Active-work savings do not establish downtime savings. The existing PRD target of **30% less handoff-preparation time** remains a separate pilot metric.
 
-**The technician and engineer work from the same evolving evidence.**
+*Poster footnote: Illustrative target scenario; validate with timed, comparable factory incidents.*
 
 ---
 

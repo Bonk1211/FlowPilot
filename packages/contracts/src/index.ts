@@ -87,6 +87,8 @@ export type ExperimentPrediction =
   components["schemas"]["ExperimentPrediction"];
 export type IncidentCommunication =
   components["schemas"]["IncidentCommunication"];
+export type OutlookStatus = components["schemas"]["OutlookStatus"];
+export type OutlookDraft = components["schemas"]["OutlookDraft"];
 export type CommunicationApprovalRequest =
   components["schemas"]["CommunicationApprovalRequest"];
 export type CommunicationSendRequest =
@@ -98,6 +100,7 @@ export type IncidentAction =
   | components["schemas"]["AddEvidenceAction"]
   | components["schemas"]["CorrectEvidenceAction"]
   | components["schemas"]["RecordResultAction"]
+  | components["schemas"]["RecordExperimentAction"]
   | components["schemas"]["AnswerInvestigationAction"]
   | components["schemas"]["ConfirmInvestigationAction"]
   | components["schemas"]["SelectInvestigationAction"]

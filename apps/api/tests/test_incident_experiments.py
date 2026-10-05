@@ -47,6 +47,9 @@ def client(tmp_path, monkeypatch):
     command.upgrade(config, "head")
     app = FastAPI()
     app.include_router(router)
+    from flowpilot.incidents.routes import router as incident_router
+
+    app.include_router(incident_router)
     with TestClient(app) as client:
         yield client
 
@@ -478,3 +481,79 @@ def test_only_a_current_consistent_finding_returns_and_nothing_becomes_evidence(
     fresh = run_single(client, current, "material_condition", "material_review")
     add_context(after)
     assert send(fresh, "return", "material_condition").status_code == 409
+
+
+def test_technician_readings_are_atomic_durable_and_feed_the_investigation(client, monkeypatch):
+    from copy import deepcopy
+
+    from flowpilot.incidents import diagnostic
+    from flowpilot.incidents.models import EXPERIMENT_STEP_TITLES
+
+    current = incident()
+    plan = propose(client, current)
+    plan = command_plan(client, current, plan, "approve")
+    plan = command_plan(client, current, plan, "run")
+    steps = [
+        {"step_id": step_id, "notes": f"Observed {title.lower()}."}
+        for step_id, title in EXPERIMENT_STEP_TITLES.items()
+    ]
+    steps[0] = {"step_id": "establish", "quantity": "Supply pressure", "value": 0, "unit": "bar"}
+    steps[2] = {"step_id": "apart", "condition": "damaged", "notes": "O-ring split on one side."}
+    body = {
+        "action": "record_experiment",
+        "revision": current.revision,
+        "observation_id": "OBS-technician-test",
+        "readings": {"plan_id": plan["id"], "hypothesis_id": "restriction", "steps": steps},
+    }
+    path = f"/api/incidents/{current.id}/actions"
+    # Missing, duplicated, empty or incomplete readings cannot be partially committed.
+    invalid_steps = [steps[:-1], [steps[0]] * 8]
+    for replacement in [
+        {"step_id": "establish", "notes": "   "},
+        {"step_id": "establish", "quantity": "Pressure", "value": 0},
+        {"step_id": "establish", "quantity": "Pressure", "notes": "Missing value"},
+        {"step_id": "establish", "condition": "not_applicable"},
+        {"step_id": "establish", "quantity": "Pressure", "value": "Infinity", "unit": "bar"},
+    ]:
+        invalid_steps.append([replacement, *steps[1:]])
+    for invalid in invalid_steps:
+        request = deepcopy(body)
+        request["readings"]["steps"] = invalid
+        assert client.post(path, json=request, headers=EDITOR_HEADERS).status_code == 422
+    assert get_incident(current.id).observations == []
+    # A plan from another incident is never a valid source.
+    other = create_incident(replay_request("other-reading-incident"))
+    response = client.post(f"/api/incidents/{other.id}/actions", json=body, headers=EDITOR_HEADERS)
+    assert response.status_code == 404
+    seen = []
+    analyze = diagnostic.analyze
+
+    def capture(evidence, observations, configuration):
+        seen.extend(observations)
+        return analyze(evidence, observations, configuration)
+
+    monkeypatch.setattr(diagnostic, "analyze", capture)
+    response = client.post(path, json=body, headers=EDITOR_HEADERS)
+    assert response.status_code == 200, response.text
+    saved = get_incident(current.id)
+    observation = saved.observations[0]
+    assert observation.synthetic is False
+    assert observation.author == "test:editor"
+    assert observation.experiment.steps[0].value == 0
+    assert observation.experiment.steps[0].unit == "bar"
+    assert observation.experiment.steps[2].condition == "damaged"
+    assert "O-ring split on one side." in observation.notes
+    assert len(observation.experiment.steps) == 8
+    assert any(item["id"] == observation.id and item["experiment"]["steps"] for item in seen)
+    assert saved.assessment is not None
+    assert all(item.status != "supported" for item in saved.assessment.hypotheses)
+    # A retry after a lost response returns the same record, even at the old revision.
+    response = client.post(path, json=body, headers=EDITOR_HEADERS)
+    assert response.status_code == 200, response.text
+    assert len(get_incident(current.id).observations) == 1
+    changed = deepcopy(body)
+    changed["readings"]["steps"][2]["notes"] = "Changed after submission"
+    assert client.post(path, json=changed, headers=EDITOR_HEADERS).status_code == 409
+    report = client.get(f"/api/incidents/{current.id}/report.md", headers=EDITOR_HEADERS)
+    assert "Supply pressure: 0 bar" in report.text
+    assert "O-ring split on one side." in report.text

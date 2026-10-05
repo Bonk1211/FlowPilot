@@ -1,4 +1,5 @@
-.replay-pipeline {
+.replay-pipeline,
+.replay-demo {
   max-width: 1440px;
   margin: 24px auto 0;
 }

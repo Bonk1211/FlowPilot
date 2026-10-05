@@ -1,0 +1,112 @@
+.experiment-notebook {
+  padding-top: var(--space-3);
+  border-top: 2px solid var(--selection-active);
+  display: grid;
+  gap: var(--space-3);
+  font-size: 13px;
+}
+.experiment-notebook-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.experiment-notebook h5 {
+  margin: 0;
+  font-size: 16px;
+}
+.experiment-notebook p {
+  margin: 0;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.experiment-notebook fieldset {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.experiment-notebook label {
+  display: grid;
+  gap: 6px;
+  color: var(--text-primary);
+}
+.experiment-notebook label small {
+  display: contents;
+}
+.experiment-notebook input,
+.experiment-notebook textarea,
+.experiment-notebook select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-control);
+  background: var(--surface-document);
+  color: var(--text-primary);
+  font: inherit;
+}
+.experiment-notebook textarea {
+  resize: vertical;
+}
+.experiment-measurement-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-2);
+}
+.experiment-draft-status,
+.experiment-notebook-heading span {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.experiment-record-error {
+  color: var(--state-conflicting);
+}
+.experiment-demo-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.experiment-demo-status {
+  padding: 8px;
+  background: var(--surface-measurement);
+  border-left: 3px solid var(--selection-active);
+  color: var(--text-primary);
+}
+.experiment-draft-review,
+.experiment-reading-list {
+  display: grid;
+  gap: var(--space-3);
+  padding-left: 24px;
+}
+.experiment-draft-review {
+  list-style: none;
+  padding: 0;
+}
+.experiment-draft-review button {
+  width: 100%;
+  text-align: left;
+}
+.experiment-draft-review p,
+.experiment-reading-list p {
+  margin: 4px 0 0;
+}
+.experiment-reading-notes {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.experiment-record-panel {
+  border-style: solid;
+}
+@media (max-width: 700px) {
+  .experiment-notebook input,
+  .experiment-notebook textarea,
+  .experiment-notebook select {
+    font-size: 16px;
+  }
+}

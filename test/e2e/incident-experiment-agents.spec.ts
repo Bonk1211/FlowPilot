@@ -64,7 +64,7 @@ async function captureModel(scene: Locator, path?: string) {
   return scene.screenshot({
     path,
     style:
-      ".guided-topbar, .guided-auxiliary, .guided-console, .assembly-camera-tools, .guided-shot, .guided-legend, .incident-feature-sidebar { visibility: hidden !important; }",
+      ".guided-topbar, .guided-auxiliary, .guided-console, .model-reading-annotation, .assembly-camera-tools, .guided-shot, .guided-legend, .incident-feature-sidebar { visibility: hidden !important; }",
   });
 }
 
@@ -114,6 +114,9 @@ async function finished(page: Page, which = titles) {
 }
 
 async function chooseStep(playback: Locator, index: number) {
+  const guide = playback.locator(".guided-console");
+  if ((await guide.getAttribute("open")) === null)
+    await guide.locator(":scope > summary").click();
   const steps = playback.getByRole("list", { name: "Playback steps" });
   if (!(await steps.isVisible()))
     await playback
@@ -992,6 +995,7 @@ test("the playback follows the simulated values and changes what the model shows
   const ids = (await plans(request, incident.id)).flatMap(
     (plan) => plan.proposal.hypothesis_ids as string[],
   );
+  await playback.locator(".lab-console > summary").click();
   await tracks(page)
     .getByRole("button", { name: "Open playback of Unstable fluid delivery" })
     .click();
@@ -1027,15 +1031,17 @@ test("each guide step plays, pauses and holds until the viewer advances", async 
   // Advance the scene's clock after loading, without delaying the run requests.
   await page.clock.install();
   const counter = playback.locator(".guided-counter");
-  await playback.getByRole("button", { name: "Next step" }).focus();
+  const navigation = playback.locator(".model-reading-navigation");
+  await navigation.getByRole("button", { name: "Next step" }).focus();
   await page.keyboard.press("ArrowRight");
   await expect(counter).toHaveText("Step 2 of 8");
   await page.keyboard.press("ArrowLeft");
   await expect(counter).toHaveText("Step 1 of 8");
   await expect(
-    playback.getByRole("button", { name: "Previous step" }),
+    navigation.getByRole("button", { name: "Previous step" }),
   ).toBeDisabled();
   await page.clock.fastForward(3000);
+  await playback.locator(".guided-console > summary").click();
 
   await playback
     .getByRole("button", { name: "Replay step", exact: true })
@@ -1073,7 +1079,7 @@ test("each guide step plays, pauses and holds until the viewer advances", async 
 
   // Next moves smoothly through an intermediate frame, then holds without advancing.
   const beforeNext = await captureModel(scene);
-  await playback.getByRole("button", { name: "Next step" }).click();
+  await navigation.getByRole("button", { name: "Next step" }).click();
   await expect(counter).toHaveText("Step 2 of 8");
   await expect(
     playback.getByRole("button", { name: "Pause step", exact: true }),
@@ -1104,7 +1110,7 @@ test("each guide step plays, pauses and holds until the viewer advances", async 
   await playback
     .getByRole("button", { name: "Replay step", exact: true })
     .click();
-  await playback.getByRole("button", { name: "Next step" }).click();
+  await navigation.getByRole("button", { name: "Next step" }).click();
   await page.clock.fastForward(12000);
   await expect(counter).toHaveText("Step 3 of 8");
 
@@ -1112,7 +1118,7 @@ test("each guide step plays, pauses and holds until the viewer advances", async 
   await chooseStep(playback, 7);
   await expect(counter).toHaveText("Step 8 of 8");
   await expect(
-    playback.getByRole("button", { name: "Next step" }),
+    navigation.getByRole("button", { name: "Next step" }),
   ).toBeDisabled();
   await page.clock.fastForward(3000);
   await playback
@@ -1134,6 +1140,7 @@ test("each guide step plays, pauses and holds until the viewer advances", async 
     )
     .toBe(true);
   await expectFloatingPanels(playback);
+  await playback.locator(".lab-console > summary").click();
   await expect(tracks(page)).toBeVisible();
   expect(
     await tracks(page).evaluate(
@@ -1379,7 +1386,9 @@ test("the offer and the lab give every control an accessible name and a unique i
 test("a finding consistent with the records goes back to the investigation as a simulated suggestion, never as evidence", async ({
   page,
   request,
-}) => {
+}, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   const source = await incidentWith(request, ["intermittent", "unstable"]);
   const before = source.incident();
   await runFromInvestigation(page, before.id);
@@ -1402,6 +1411,52 @@ test("a finding consistent with the records goes back to the investigation as a 
     .getByRole("button", { name: "Return to investigation with this finding" })
     .click();
   await expect(page).toHaveURL(/\/investigation\?finding=unstable_delivery$/);
+  const discovery = page.getByRole("region", { name: "New experiment branch" });
+  await expect(discovery).toHaveAttribute("data-phase", "revealing");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  const revealed = page.locator(".stage-finding[data-discovery]");
+  await expect(revealed).toHaveCount(1);
+  await expect(revealed.locator(".flowchart-shape")).toHaveCSS(
+    "animation-name",
+    "experiment-result-arrive",
+  );
+  const connection = page.locator(
+    ".flowchart-edge-discovery .react-flow__edge-path",
+  );
+  await expect(connection).toHaveCount(1);
+  await expect(connection).toHaveAttribute("pathLength", "1");
+  await expect(connection).toHaveCSS("animation-name", "doe-connector-out");
+  await expect(discovery).toHaveAttribute("data-phase", "complete");
+  await expect(revealed).toBeInViewport();
+  await page.screenshot({
+    path: testInfo.outputPath("result-branch-desktop.png"),
+  });
+  await page.setViewportSize({ width: 375, height: 812 });
+  await expect
+    .poll(async () => {
+      const box = await revealed.boundingBox();
+      return (
+        !!box &&
+        box.x >= 0 &&
+        box.x + box.width <= 375 &&
+        box.y >= 300 &&
+        box.y + box.height <= 750
+      );
+    })
+    .toBe(true);
+  await expect(
+    discovery.getByRole("button", { name: "Review result" }),
+  ).toBeInViewport();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: testInfo.outputPath("result-branch-mobile.png"),
+  });
+  await discovery.getByRole("button", { name: "Review result" }).click();
+  await page.setViewportSize({ width: 1440, height: 1000 });
   const panel = page.getByRole("dialog", { name: "Unstable fluid delivery" });
   await expect(panel).toBeVisible();
   await expect(panel).toContainText("Simulated · not evidence");

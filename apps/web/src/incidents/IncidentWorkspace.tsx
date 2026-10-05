@@ -44,7 +44,7 @@ import { MechanismView } from "./MechanismView";
 import { MonitoringDashboard } from "./MonitoringDashboard";
 import { InvestigationPanel } from "./InvestigationPanel";
 import { InvestigationGraph } from "./InvestigationGraph";
-import { ReplayPipeline } from "./ReplayPipeline";
+import { ReplayDemo } from "./ReplayDemo";
 import { AccessPanel, AccessStatus, useIncidentAccess } from "./AccessPanel";
 import { RawArtifacts } from "./RawArtifacts";
 import { JobStatus, type AnalysisJobStatus } from "./JobStatus";
@@ -273,6 +273,14 @@ function IncidentWorkspaceContent({
       return [];
     }
   });
+  const [experimentReturnSequence, setExperimentReturnSequence] = useState(0);
+  function returnFromExperiment(findingId: string) {
+    if (!incident) return;
+    setExperimentReturnSequence((sequence) => sequence + 1);
+    navigate(
+      `${incidentPageUrl(incident.id, "investigation")}?finding=${encodeURIComponent(findingId)}`,
+    );
+  }
   const setLabPlanIds = (ids: string[]) => {
     setLabPlanState(ids);
     try {
@@ -598,7 +606,7 @@ function IncidentWorkspaceContent({
           </div>
         )}
         {replayRequest ? (
-          <ReplayPipeline
+          <ReplayDemo
             request={replayRequest}
             onOpen={openReplay}
             onBack={() => {
@@ -655,8 +663,9 @@ function IncidentWorkspaceContent({
                   to a useful next check.
                 </h2>
                 <p>
-                  Open a saved, partial evidence package. Compare three possible
-                  mechanisms and see how a check changes the investigation.
+                  Start with the monitoring dashboard. Trigger a demo incident,
+                  watch the parameters change, then follow the evidence into an
+                  investigation.
                 </p>
                 <button
                   className="primary"
@@ -1080,6 +1089,7 @@ function IncidentWorkspaceContent({
                           }
                           onRunExperiments={runExperiments}
                           focusFinding={route.experimentFinding}
+                          returnSequence={experimentReturnSequence}
                           onOpenLink={followLink}
                         />
                       )}
@@ -1240,11 +1250,8 @@ function IncidentWorkspaceContent({
                             incident.id,
                             "experiments",
                           )}
-                          onReturn={(hypothesisId) =>
-                            navigate(
-                              `${incidentPageUrl(incident.id, "investigation")}?finding=${encodeURIComponent(hypothesisId)}`,
-                            )
-                          }
+                          onReturn={returnFromExperiment}
+                          onRecorded={returnFromExperiment}
                           onOpenLink={followLink}
                         />
                       )}

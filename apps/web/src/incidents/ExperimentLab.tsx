@@ -10,6 +10,7 @@ import {
 } from "@phosphor-icons/react";
 import type { Incident } from "./api";
 import { GuidedPlayback } from "./GuidedPlayback";
+import { ExperimentNotebook } from "./ExperimentNotebook";
 import { assemblyGuide } from "./assemblyGuide";
 import { SignatureSpark } from "./SignatureSpark";
 import { StatusChip } from "./StatusChip";
@@ -141,8 +142,8 @@ function TrackFinding({
 
 /**
  * The suggested experiments as tracks that run together or one at a time,
- * beside a guided 3D playback of whichever finished one is open. Everything
- * shown is simulated; nothing becomes recorded evidence.
+ * beside a guided 3D playback of whichever finished one is open. Simulation
+ * outputs stay separate from technician readings recorded alongside the guide.
  */
 export function ExperimentLab({
   incident,
@@ -153,6 +154,7 @@ export function ExperimentLab({
   experimentsHref,
   onOpenLink,
   onReturn,
+  onRecorded,
   settings,
 }: {
   settings?: ReactNode;
@@ -165,6 +167,7 @@ export function ExperimentLab({
   onOpenLink: (event: MouseEvent<HTMLAnchorElement>) => void;
   /** Go back to the investigation with a returned finding. */
   onReturn: (hypothesisId: MechanismId) => void;
+  onRecorded: (observationId: string) => void;
 }) {
   const [returning, setReturning] = useState<MechanismId | null>(null);
   const [returnError, setReturnError] = useState("");
@@ -438,6 +441,25 @@ export function ExperimentLab({
             showingResult ? mechanismTitles[selected!] : "S932 assembly guide"
           }
           settings={settings}
+          stepRecord={
+            showingResult && selected && selectedPlan
+              ? (index, go) => (
+                  <ExperimentNotebook
+                    key={`${incident.id}:${selectedPlan.id}:${selected}`}
+                    incident={incident}
+                    planId={selectedPlan.id}
+                    hypothesisId={selected}
+                    steps={script.steps}
+                    index={index}
+                    onGo={go}
+                    onComplete={async (observationId) => {
+                      await onRefresh();
+                      onRecorded(observationId);
+                    }}
+                  />
+                )
+              : undefined
+          }
           viewTools={
             <div
               className="incident-view-toggle"
@@ -462,7 +484,7 @@ export function ExperimentLab({
             </div>
           }
         >
-          <details className="guided-panel lab-console" open>
+          <details className="guided-panel lab-console" open={!showingResult}>
             <summary>
               Experiments · {finished.length} of {mechanismIds.length} finished
             </summary>

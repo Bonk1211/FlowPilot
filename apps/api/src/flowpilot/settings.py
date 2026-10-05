@@ -74,6 +74,10 @@ class Settings(BaseSettings):
     incident_smtp_password: SecretStr | None = None
     incident_smtp_from: str | None = None
     incident_smtp_starttls: bool = True
+    outlook_client_id: str | None = None
+    outlook_client_secret: SecretStr | None = None
+    outlook_tenant: str = Field(default="common", pattern=r"^[A-Za-z0-9.-]+$")
+    outlook_redirect_uri: str = "http://localhost:5173/api/incident-outlook/callback"
 
     @property
     def jev_key(self) -> SecretStr | None:

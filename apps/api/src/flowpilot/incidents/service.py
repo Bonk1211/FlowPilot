@@ -13,6 +13,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from flowpilot.incidents import diagnostic
 from flowpilot.incidents.models import (
+    EXPERIMENT_STEP_TITLES,
     AssessmentSnapshot,
     CapturedKnowledge,
     Closure,
@@ -26,6 +27,7 @@ from flowpilot.incidents.models import (
     IncidentObservation,
     LearningCandidate,
     LearningReview,
+    RecordedExperiment,
 )
 from flowpilot.incidents.replay import replay_arrivals
 from flowpilot.persistence.database import Base, make_engine
@@ -407,6 +409,49 @@ def apply_action(incident: Incident, action: IncidentAction, actor: str | None =
         if incident.status == "closed":
             raise HTTPException(409, "Add new evidence before reopening this closed incident.")
         assess(incident)
+    elif action.action == "record_experiment":
+        from flowpilot.incidents.experiments import load_plan, simulation_titles
+        from flowpilot.incidents.graph import current_answers
+
+        if incident.status == "closed":
+            raise HTTPException(409, "Reopen the incident before recording experiment readings.")
+        plan = database_operation(
+            lambda session: load_plan(session, incident.id, action.readings.plan_id)
+        )
+        if (
+            plan.status != "completed"
+            or action.readings.hypothesis_id not in plan.proposal.hypothesis_ids
+        ):
+            raise HTTPException(422, "Choose a completed guide for this experiment.")
+        notes = []
+        for step in action.readings.steps:
+            parts = []
+            if step.value is not None:
+                value = str(step.value).removesuffix(".0")
+                parts.append(f"{step.quantity}: {value} {step.unit}")
+            if step.condition:
+                parts.append(f"Condition: {step.condition.replace('_', ' ')}")
+            if step.notes:
+                parts.append(step.notes)
+            notes.append(f"{EXPERIMENT_STEP_TITLES[step.step_id]} — {'; '.join(parts)}")
+        answers = current_answers(incident)
+        incident.observations.append(
+            IncidentObservation(
+                id=action.observation_id,
+                check_id=f"experiment_{action.readings.hypothesis_id}",
+                result=f"8 steps recorded: {simulation_titles[action.readings.hypothesis_id]}",
+                notes="\n".join(notes),
+                synthetic=action.synthetic,
+                recorded_at=now(),
+                author=actor,
+                experiment=RecordedExperiment(
+                    **action.readings.model_dump(),
+                    parent_answer_id=answers[-1].id if answers else None,
+                ),
+            )
+        )
+        invalidate_conclusion(incident)
+        detail = "Experiment readings and observations recorded for investigation review."
     elif action.action == "record_result":
         checks = {"delivery_review", "restriction_review", "material_review"}
         questions = {
@@ -605,7 +650,13 @@ def apply_action(incident: Incident, action: IncidentAction, actor: str | None =
 BACKGROUND_ACTOR = "system:incident-coordinator"
 BACKGROUND_EVENTS = {"background_analysis", "background_handoff"}
 # The intent of these actions does not depend on the assessment or draft a background job refreshed.
-REBASEABLE_ACTIONS = {"advance_replay", "analyze", "refresh_handoff", "capture_knowledge"}
+REBASEABLE_ACTIONS = {
+    "advance_replay",
+    "analyze",
+    "refresh_handoff",
+    "capture_knowledge",
+    "record_experiment",
+}
 
 
 def only_background_changes(incident: Incident, since_revision: int) -> bool:
@@ -623,6 +674,21 @@ def act(incident_id: str, action: IncidentAction, actor: str | None = None) -> I
     rebaseable = action.action in REBASEABLE_ACTIONS
     for attempt in range(3):
         incident = get_incident(incident_id)
+        if action.action == "record_experiment":
+            previous = next(
+                (item for item in incident.observations if item.id == action.observation_id), None
+            )
+            if previous:
+                if (
+                    not previous.experiment
+                    or previous.experiment.model_dump(exclude={"parent_answer_id"})
+                    != action.readings.model_dump()
+                    or previous.synthetic != action.synthetic
+                ):
+                    raise HTTPException(
+                        409, "This experiment record ID already has different data."
+                    )
+                return incident
         if action.action == "capture_knowledge":
             previous = next(
                 (item for item in incident.captured_knowledge if item.id == action.knowledge_id),

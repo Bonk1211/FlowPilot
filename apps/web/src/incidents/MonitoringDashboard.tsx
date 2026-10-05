@@ -242,10 +242,12 @@ export function MonitoringDashboard({
   incident,
   disabled,
   onAnalyze,
+  onCollectEvidence,
 }: {
   incident: Incident;
   disabled: boolean;
   onAnalyze: () => void;
+  onCollectEvidence?: () => void;
 }) {
   const [triggered, setTriggered] = useState(false);
   const [step, setStep] = useState(0);
@@ -267,10 +269,13 @@ export function MonitoringDashboard({
   }, [triggered, step]);
 
   useEffect(() => {
-    if (step !== 8) return;
-    const timer = setTimeout(() => setDialogOpen(true), 1200);
+    if (step !== 8 || disabled) return;
+    const timer = setTimeout(() => {
+      if (onCollectEvidence) onCollectEvidence();
+      else setDialogOpen(true);
+    }, 1200);
     return () => clearTimeout(timer);
-  }, [step]);
+  }, [step, disabled, onCollectEvidence]);
 
   useEffect(() => {
     const element = dialog.current;
@@ -312,6 +317,7 @@ export function MonitoringDashboard({
             <button
               type="button"
               className="monitor-trigger"
+              disabled={disabled}
               onClick={() => setTriggered(true)}
             >
               <Lightning aria-hidden="true" /> Demo critical incident
@@ -336,6 +342,11 @@ export function MonitoringDashboard({
               : "All parameters within demo limits"}
           </strong>
           {!!alarms.length && <p>{alarms.length} active alarms</p>}
+          {triggered && onCollectEvidence && (
+            <p>
+              Evidence collection will begin automatically in a few seconds.
+            </p>
+          )}
         </div>
         <span>{alarms.length ? "ALARM TRIGGERED" : "SYSTEM NORMAL"}</span>
       </div>
@@ -366,7 +377,7 @@ export function MonitoringDashboard({
               <BellRinging aria-hidden="true" /> Alarm activity{" "}
               <span>{alarms.length}</span>
             </h3>
-            {triggered && (
+            {triggered && !onCollectEvidence && (
               <button
                 ref={retrievalButton}
                 type="button"
@@ -413,7 +424,10 @@ export function MonitoringDashboard({
           disabled={disabled}
           onClick={onAnalyze}
         >
-          Analyze available evidence <ArrowRight aria-hidden="true" />
+          {onCollectEvidence
+            ? "Collect evidence now"
+            : "Analyze available evidence"}{" "}
+          <ArrowRight aria-hidden="true" />
         </button>
       </div>
       <dialog

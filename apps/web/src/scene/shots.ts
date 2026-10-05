@@ -42,6 +42,13 @@ export const groupIds = [
 ] as const;
 export type GroupId = (typeof groupIds)[number];
 
+export type ReadingTarget = {
+  part: GroupId;
+  text: string;
+  mesh: string;
+  point: Vec3;
+};
+
 /** Source map: docs/S932_3D_Model_Sources.md. Anchors are mesh-local points. */
 export const partAnnotations: Record<
   GroupId,

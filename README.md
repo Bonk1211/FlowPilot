@@ -2,6 +2,9 @@
 
 FlowPilot is an evidence-led investigation assistant for industrial fluid-dispensing defects. The main workspace now follows the latest S932 PRD: preserve an incident, compare competing causes, select a useful check, and prepare an engineer handoff before the cause is known.
 
+The handoff can also save a real draft into a connected Outlook mailbox.
+[Configure the Outlook connector](docs/OUTLOOK.md).
+
 The S932 / DJ-2200 / BFS workflow now runs as a complete mock demonstration: progressive evidence, parallel analysis and handoff, three competing causes, a 3D mechanism view, recorded synthetic model comparisons, mock experiments and communication, report export and reviewed learning. No real machine or provider key is required. [Run the incident demo](docs/S932_INCIDENT_WORKSPACE.md).
 
 Each incident has separate [feature pages](docs/S932_INCIDENT_WORKSPACE.md#feature-pages) for Investigation, Evidence, Simulation, Experiments, Handoff, Knowledge and Review, with shared incident context and bookmarkable URLs.

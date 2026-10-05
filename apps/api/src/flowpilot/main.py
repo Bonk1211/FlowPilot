@@ -17,6 +17,7 @@ from flowpilot.incidents.coordinator import status_router as incident_jobs_statu
 from flowpilot.incidents.experience import router as incident_experience_router
 from flowpilot.incidents.experiments import router as incident_experiments_router
 from flowpilot.incidents.knowledge import router as incident_knowledge_router
+from flowpilot.incidents.outlook import router as incident_outlook_router
 from flowpilot.incidents.rag import router as incident_rag_router
 from flowpilot.incidents.routes import router as incident_router
 from flowpilot.incidents.simulation import router as incident_simulation_router
@@ -84,7 +85,11 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def configured_access(request: Request, call_next):
         path = request.url.path
-        if not path.startswith("/api/") or path in {"/api/health", "/api/incident-access"}:
+        if not path.startswith("/api/") or path in {
+            "/api/health",
+            "/api/incident-access",
+            "/api/incident-outlook/callback",
+        }:
             return await call_next(request)
         actor = identify(request)
         if actor.mode == "demo":
@@ -122,6 +127,7 @@ def create_app() -> FastAPI:
     app.include_router(incident_knowledge_router)
     app.include_router(incident_rag_router)
     app.include_router(incident_communication_router)
+    app.include_router(incident_outlook_router)
     app.include_router(incident_coordinator_router)
     app.include_router(incident_jobs_status_router)
     app.include_router(incident_simulation_router)

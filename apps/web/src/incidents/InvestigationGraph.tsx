@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -32,6 +33,7 @@ import {
   useReactFlow,
   useNodesInitialized,
   useStore,
+  getViewportForBounds,
   type Edge,
   type EdgeProps,
   type Node,
@@ -60,6 +62,7 @@ import { signatureWords } from "./mechanismCopy";
 import { returnedFindings } from "./experimentFindings";
 import { useIncidentPlans } from "./experimentRuns";
 import { FindingPanel } from "./FindingPanel";
+import { ExperimentRecordPanel } from "./ExperimentRecordPanel";
 import { experimentQuery, incidentPageUrl } from "./navigation";
 import { ExperimentCandidatesCard } from "./ExperimentCandidatesCard";
 import type { InvestigationProgressMode } from "./InvestigationProgress";
@@ -73,6 +76,7 @@ import "@xyflow/react/dist/style.css";
 import "./InvestigationGraph.css";
 
 type Draft = { choice: string; text: string; notes: string; id: string };
+type Discovery = { id: string; phase: "pending" | "revealing" | "complete" };
 const stages = {
   start: { label: "Start", height: 64 },
   branch: { label: "Investigation branch", height: 116 },
@@ -82,6 +86,7 @@ const stages = {
   experiment: { label: "Mini experiment", height: 184 },
   doe: { label: "DOE preview", height: 220 },
   finding: { label: "Simulated finding", height: 150 },
+  measurement: { label: "Experiment record", height: 150 },
   statement: { label: "Response", height: 124 },
   clarify: { label: "Clarify", height: 132 },
   review: { label: "Review", height: 108 },
@@ -148,6 +153,8 @@ type ChartNode = Node<
     spotlight?: boolean;
     processing?: boolean;
     previewExpanded?: boolean;
+    discovery?: Discovery["phase"];
+    discoverySource?: boolean;
     prediction?: ExperimentPrediction;
     previewOrigin?: { x: number; y: number; index: number };
     questionType?: QuestionType;
@@ -199,9 +206,14 @@ function StageShape({ stage }: { stage: Stage }) {
           width="276"
           height={height - 4}
           rx={
-            ["check", "statement", "experiment", "doe", "finding"].includes(
-              stage,
-            )
+            [
+              "check",
+              "statement",
+              "experiment",
+              "doe",
+              "finding",
+              "measurement",
+            ].includes(stage)
               ? 5
               : height / 2
           }
@@ -219,6 +231,8 @@ function StageNode({ data }: NodeProps<ChartNode>) {
       className={`flowchart-node stage-${data.stage} is-${data.status}${data.inspected ? " is-inspected" : ""}${data.spotlight ? " is-spotlight" : ""}${data.processing ? " is-processing" : ""}`}
       data-spotlight={data.spotlight || undefined}
       data-question-type={data.questionType}
+      data-discovery={data.discovery}
+      data-discovery-source={data.discoverySource || undefined}
       style={
         data.previewOrigin
           ? ({
@@ -230,21 +244,23 @@ function StageNode({ data }: NodeProps<ChartNode>) {
       }
     >
       <span className="flowchart-node-status">
-        {data.processing
-          ? "Agent working…"
-          : data.spotlight
-            ? data.stage === "review"
-              ? "Review step"
-              : "Spotlight · answer here"
-            : start
-              ? "Incident opened"
-              : data.status === "active"
-                ? "Current step"
-                : data.status === "deferred"
-                  ? "Set aside"
-                  : data.stage === "statement"
-                    ? responseStatus(data.status)
-                    : data.status}
+        {data.discovery
+          ? "New from experiment"
+          : data.processing
+            ? "Agent working…"
+            : data.spotlight
+              ? data.stage === "review"
+                ? "Review step"
+                : "Spotlight · answer here"
+              : start
+                ? "Incident opened"
+                : data.status === "active"
+                  ? "Current step"
+                  : data.status === "deferred"
+                    ? "Set aside"
+                    : data.stage === "statement"
+                      ? responseStatus(data.status)
+                      : data.status}
       </span>
       {!start && (
         <Handle
@@ -304,6 +320,9 @@ function StageNode({ data }: NodeProps<ChartNode>) {
             </>
           )}
           {data.stage === "finding" && <small>Not evidence · open →</small>}
+          {data.stage === "measurement" && (
+            <small>Readings & observations · open →</small>
+          )}
         </span>
       </button>
       {data.stage !== "review" && data.stage !== "finding" && (
@@ -320,7 +339,7 @@ function StageNode({ data }: NodeProps<ChartNode>) {
 }
 const nodeTypes = { stage: StageNode };
 type RelationshipEdge = Edge<
-  { junctionY: number; preview?: boolean },
+  { junctionY: number; preview?: boolean; discovery?: boolean },
   "relationship"
 >;
 
@@ -343,7 +362,7 @@ function RelationshipConnector({
   return (
     <BaseEdge
       id={id}
-      pathLength={data?.preview ? 1 : undefined}
+      pathLength={data?.preview || data?.discovery ? 1 : undefined}
       markerEnd={markerEnd}
       style={style}
       label={label}
@@ -377,6 +396,8 @@ function GraphControls({
   current,
   selected,
   previewRoot,
+  discovery,
+  onDiscoveryReady,
   panelOpen,
   panelWidth,
   expanded,
@@ -385,12 +406,21 @@ function GraphControls({
   current: string | null;
   selected: string | null;
   previewRoot: string | null;
+  discovery: Discovery | null;
+  onDiscoveryReady: () => void;
   panelOpen: boolean;
   panelWidth: number;
   expanded: boolean;
   onFocus: () => void;
 }) {
-  const { fitView, getNodes, getEdges } = useReactFlow<ChartNode>();
+  const {
+    fitView,
+    getNodes,
+    getEdges,
+    getNodesBounds,
+    setViewport,
+    viewportInitialized,
+  } = useReactFlow<ChartNode>();
   const initialized = useNodesInitialized();
   const width = useStore((state) => state.width);
   const height = useStore((state) => state.height);
@@ -430,13 +460,21 @@ function GraphControls({
       screen.removeEventListener("change", resize);
     };
   }, []);
-  const focusId = previewRoot ?? selected ?? current;
+  const discoveryId = discovery ? `finding-${discovery.id}` : null;
+  const discoveryPending = discovery?.phase === "pending";
+  const focusId = discoveryId ?? previewRoot ?? selected ?? current;
   const visiblePanelWidth = panelWidthWithin(panelWidth, width);
-  const frame = `${focusId}:${previewRoot}:${panelOpen}:${visiblePanelWidth}:${expanded}:${narrow}:${width}:${height}:${conversationHeight}`;
+  const frame = `${focusId}:${discoveryId}:${previewRoot}:${panelOpen}:${visiblePanelWidth}:${expanded}:${narrow}:${width}:${height}:${conversationHeight}`;
   // Fit within the unobscured canvas, including the floating navigation and panel.
-  const padding = useMemo<FitViewOptions["padding"]>(
+  const padding = useMemo<NonNullable<FitViewOptions["padding"]>>(
     () => ({
-      top: narrow ? "190px" : "170px",
+      top: discoveryId
+        ? narrow
+          ? "260px"
+          : "210px"
+        : narrow
+          ? "190px"
+          : "170px",
       right: !narrow && panelOpen ? `${visiblePanelWidth + 40}px` : "32px",
       bottom: `${conversationHeight + (narrow && panelOpen ? Math.min(height * 0.3, 200) + 100 : 100)}px`,
       left: expanded ? (narrow ? "72px" : "112px") : "32px",
@@ -448,10 +486,17 @@ function GraphControls({
       visiblePanelWidth,
       conversationHeight,
       height,
+      discoveryId,
     ],
   );
   useEffect(() => {
-    if (!initialized || !focusId || lastFocused.current === frame) return;
+    if (
+      !viewportInitialized ||
+      !initialized ||
+      !focusId ||
+      (lastFocused.current === frame && !discoveryPending)
+    )
+      return;
     const node = getNodes().find((item) => item.id === focusId);
     if (!node) return;
     // Frame this question's family rather than unrelated branches at the same depth.
@@ -464,50 +509,84 @@ function GraphControls({
         .map((edge) => edge.target),
     );
     const neighbors = getNodes().filter((item) =>
-      previewRoot
-        ? item.id === previewRoot ||
-          connections.some(
-            (edge) => edge.source === previewRoot && edge.target === item.id,
-          )
-        : startingBranches
-          ? item.id === "flow-start" ||
-            item.data.stage === "branch" ||
+      discoveryId
+        ? item.id === discoveryId || item.id === parent
+        : previewRoot
+          ? item.id === previewRoot ||
             connections.some(
-              (edge) =>
-                edge.target === item.id && edge.source.startsWith("branch-"),
+              (edge) => edge.source === previewRoot && edge.target === item.id,
             )
-          : narrow
-            ? item.id === focusId
-            : item.id === focusId ||
-              (item.data.status !== "deferred" &&
-                (family.has(item.id) || item.id === parent)),
+          : startingBranches
+            ? item.id === "flow-start" ||
+              item.data.stage === "branch" ||
+              connections.some(
+                (edge) =>
+                  edge.target === item.id && edge.source.startsWith("branch-"),
+              )
+            : narrow
+              ? item.id === focusId
+              : item.id === focusId ||
+                (item.data.status !== "deferred" &&
+                  (family.has(item.id) || item.id === parent)),
     );
     if (previewRoot && !neighbors.some((item) => item.data.stage === "doe"))
       return;
-    void fitView({
-      nodes: neighbors,
-      padding,
-      minZoom: 0.2,
-      maxZoom: 1,
-      duration:
-        reduced || !lastFocused.current || lastPanelWidth.current !== panelWidth
-          ? 0
-          : 420,
+    let cancelled = false;
+    const duration =
+      discoveryPending ||
+      reduced ||
+      !lastFocused.current ||
+      lastPanelWidth.current !== panelWidth
+        ? 0
+        : 420;
+    // Frame measured bounds directly so a first-mount fit request cannot swallow the reveal.
+    const framed = discoveryId
+      ? setViewport(
+          getViewportForBounds(
+            getNodesBounds(neighbors),
+            width,
+            height,
+            0.2,
+            1,
+            padding,
+          ),
+          { duration },
+        )
+      : fitView({
+          nodes: neighbors,
+          padding,
+          minZoom: 0.2,
+          maxZoom: 1,
+          duration,
+        });
+    void framed.then(() => {
+      if (!cancelled && discoveryPending) onDiscoveryReady();
     });
     lastPanelWidth.current = panelWidth;
     lastFocused.current = frame;
+    return () => {
+      cancelled = true;
+    };
   }, [
     focusId,
     previewRoot,
     frame,
     initialized,
+    viewportInitialized,
     fitView,
     getNodes,
     getEdges,
+    getNodesBounds,
+    setViewport,
+    width,
+    height,
     reduced,
     narrow,
     padding,
     panelWidth,
+    discoveryId,
+    discoveryPending,
+    onDiscoveryReady,
   ]);
   return (
     <div ref={controlsRef} className="investigation-graph-controls">
@@ -568,6 +647,7 @@ export function InvestigationGraph({
   progressMode,
   progressError,
   focusFinding = null,
+  returnSequence = 0,
   onOpenLink,
 }: {
   incident: Incident;
@@ -585,8 +665,10 @@ export function InvestigationGraph({
   onUpdated: (incident: Incident) => void;
   progressMode: InvestigationProgressMode | null;
   progressError: string;
-  /** A mechanism whose simulated finding was just handed back: open it once. */
+  /** A simulated finding or technician record to focus. */
   focusFinding?: string | null;
+  /** Changes only on an experiment return; ordinary deep links open the details. */
+  returnSequence?: number;
   onOpenLink: (event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const graph = {
@@ -702,15 +784,63 @@ export function InvestigationGraph({
     incident.revision,
   );
   const findings = returnedFindings(plans);
+  const experimentRecords = (incident.observations ?? []).filter(
+    (item) => item.experiment,
+  );
+  const [openRecord, setOpenRecord] = useState<string | null>(null);
+  const recordOpen = experimentRecords.find((item) => item.id === openRecord);
   const [openFinding, setOpenFinding] = useState<string | null>(null);
   const [focused, setFocused] = useState<string | null>(null);
-  if (
-    focusFinding &&
-    focused !== focusFinding &&
-    findings.some((item) => item.finding.hypothesis_id === focusFinding)
-  ) {
-    setFocused(focusFinding);
-    setOpenFinding(focusFinding);
+  const [handledReturn, setHandledReturn] = useState(0);
+  const [discovery, setDiscovery] = useState<Discovery | null>(null);
+  const focusedRecord = experimentRecords.find(
+    (item) => item.id === focusFinding,
+  );
+  const focusedFinding = findings.find(
+    (item) => item.finding.hypothesis_id === focusFinding,
+  );
+  if (focusFinding && (focusedRecord || focusedFinding)) {
+    if (returnSequence !== handledReturn) {
+      setHandledReturn(returnSequence);
+      setFocused(focusFinding);
+      setDiscovery({ id: focusFinding, phase: "pending" });
+      setOpenRecord(null);
+      setOpenFinding(null);
+      setPreviewExperiment(null);
+      setDetailId(null);
+      setPanelOpen(false);
+      setTextView(false);
+    } else if (focused !== focusFinding) {
+      setFocused(focusFinding);
+      if (focusedRecord) setOpenRecord(focusFinding);
+      else setOpenFinding(focusFinding);
+    }
+  }
+  const onDiscoveryReady = useCallback(() => {
+    setDiscovery((current) =>
+      current?.phase === "pending"
+        ? {
+            ...current,
+            phase: matchMedia("(prefers-reduced-motion: reduce)").matches
+              ? "complete"
+              : "revealing",
+          }
+        : current,
+    );
+  }, []);
+  useEffect(() => {
+    if (discovery?.phase !== "revealing") return;
+    const timer = window.setTimeout(() => {
+      setDiscovery((current) =>
+        current ? { ...current, phase: "complete" } : null,
+      );
+    }, 1900);
+    return () => window.clearTimeout(timer);
+  }, [discovery]);
+  function openResult(id: string) {
+    setDiscovery(null);
+    if (experimentRecords.some((item) => item.id === id)) setOpenRecord(id);
+    else setOpenFinding(id);
   }
   const findingOpen = findings.find(
     (item) => item.finding.hypothesis_id === openFinding,
@@ -745,6 +875,7 @@ export function InvestigationGraph({
   }, [expanded, textView, panelOpen]);
 
   function inspect(node: InvestigationNode, showSources = false) {
+    setDiscovery(null);
     setPreviewExperiment(null);
     setWhyHowOpen(false);
     setDetailId(node.id);
@@ -1142,6 +1273,10 @@ export function InvestigationGraph({
     ];
   });
   const responseIds = new Set(responses.map((response) => response.id));
+  const recordParent = (parentAnswerId?: string | null) =>
+    parentAnswerId && responseIds.has(responseNodeId(parentAnswerId))
+      ? responseNodeId(parentAnswerId)
+      : "branch-hardware";
   const chartParent = (node: InvestigationNode) =>
     node.parent_answer_id &&
     responseIds.has(responseNodeId(node.parent_answer_id))
@@ -1199,6 +1334,13 @@ export function InvestigationGraph({
         parent_id: response.node.id,
         status: response.status,
         height: (stages.statement.height * 240) / 280 + 56,
+        gapAfter: 72,
+      })),
+      ...experimentRecords.map((item) => ({
+        id: `finding-${item.id}`,
+        parent_id: recordParent(item.experiment?.parent_answer_id),
+        status: "answered",
+        height: (stages.measurement.height * 240) / 280 + 56,
         gapAfter: 72,
       })),
       ...findings.map((item) => ({
@@ -1326,6 +1468,7 @@ export function InvestigationGraph({
         status: "suggested",
         previewExpanded: previewOpen,
         onInspect: () => {
+          setDiscovery(null);
           setPreviewExperiment(previewOpen ? null : experimentId);
           setPanelOpen(false);
         },
@@ -1363,6 +1506,27 @@ export function InvestigationGraph({
       focusable: false,
     });
   }
+  for (const item of experimentRecords) {
+    const id = `finding-${item.id}`;
+    nodes.push({
+      id,
+      type: "stage",
+      position: positions.get(id)!,
+      width: 240,
+      height: (stages.measurement.height * 240) / 280 + 56,
+      measured: dimensions[id],
+      data: {
+        stage: "measurement",
+        title: `${mechanismTitles[item.experiment!.hypothesis_id]}: ${item.experiment!.steps.length} steps recorded`,
+        prompt: item.result,
+        status: "answered",
+        onInspect: () => openResult(item.id),
+      },
+      draggable: false,
+      selectable: true,
+      focusable: false,
+    });
+  }
   for (const item of findings) {
     const id = `finding-${item.finding.hypothesis_id}`;
     nodes.push({
@@ -1377,7 +1541,7 @@ export function InvestigationGraph({
         title: `${mechanismTitles[item.finding.hypothesis_id as MechanismId]}: ${item.outdated ? "outdated" : "consistent with the records"}`,
         prompt: `Simulated finding, not evidence: ${item.finding.summary}`,
         status: item.outdated ? "outdated" : "simulated",
-        onInspect: () => setOpenFinding(item.finding.hypothesis_id),
+        onInspect: () => openResult(item.finding.hypothesis_id),
       },
       draggable: false,
       selectable: true,
@@ -1526,6 +1690,15 @@ export function InvestigationGraph({
             : "Saved",
       ),
     ),
+    ...experimentRecords.map((item) => ({
+      ...connect(
+        `finding-${item.id}`,
+        recordParent(item.experiment?.parent_answer_id),
+        true,
+        false,
+      ),
+      label: item.synthetic ? "Practice record" : "Technician observations",
+    })),
     ...findings.map((item) => ({
       ...connect(
         `finding-${item.finding.hypothesis_id}`,
@@ -1541,6 +1714,28 @@ export function InvestigationGraph({
     })),
   ];
   // Alternative connectors share the trunk; draw the followed path over them.
+  if (discovery) {
+    const target = `finding-${discovery.id}`;
+    const connection = edges.find((edge) => edge.target === target);
+    for (const node of nodes) {
+      if (node.id === target) node.data.discovery = discovery.phase;
+      if (node.id === connection?.source)
+        node.data.discoverySource = discovery.phase === "revealing";
+    }
+    if (connection) {
+      connection.className = `flowchart-edge-discovery is-${discovery.phase}`;
+      connection.data = {
+        ...connection.data!,
+        discovery: discovery.phase !== "complete",
+      };
+      connection.style = {
+        ...connection.style,
+        stroke: "var(--teal-700)",
+        strokeWidth: 2.5,
+        ...(discovery.phase !== "complete" ? { strokeDasharray: "1" } : {}),
+      };
+    }
+  }
   edges.sort(
     (a, b) =>
       Number(a.style?.strokeDasharray === undefined) -
@@ -1876,7 +2071,7 @@ export function InvestigationGraph({
 
   return (
     <section
-      className={`incident-card investigation-graph${textView ? "" : " is-chart has-live-timeline"}${expanded ? " is-expanded" : ""}${panelOpen ? " has-answer-panel" : ""}${previewOpen ? " has-doe-preview" : ""}`}
+      className={`incident-card investigation-graph${textView ? "" : " is-chart has-live-timeline"}${expanded ? " is-expanded" : ""}${panelOpen ? " has-answer-panel" : ""}${previewOpen ? " has-doe-preview" : ""}${discovery ? " has-result-discovery" : ""}`}
       style={{ "--answer-panel-width": `${panelWidth}px` } as CSSProperties}
       aria-label="Adaptive investigation"
       onKeyDown={(event) => {
@@ -1891,6 +2086,12 @@ export function InvestigationGraph({
         }
       }}
     >
+      {recordOpen && (
+        <ExperimentRecordPanel
+          observation={recordOpen}
+          onClose={() => setOpenRecord(null)}
+        />
+      )}
       {findingOpen && (
         <FindingPanel
           incident={incident}
@@ -1905,6 +2106,37 @@ export function InvestigationGraph({
         <p className="sr-only" role="status">
           {previewItems.length} DOE previews · select a branch to inspect
         </p>
+      )}
+      {discovery && (
+        <section
+          className="investigation-result-discovery"
+          aria-label="New experiment branch"
+          data-phase={discovery.phase}
+        >
+          <Flask aria-hidden="true" />
+          <div role="status" aria-live="polite" aria-atomic="true">
+            <strong>
+              {discovery.phase === "complete"
+                ? "New branch from your experiment"
+                : "Connecting your experiment to the investigation…"}
+            </strong>
+            <span>
+              {focusedRecord
+                ? `${focusedRecord.experiment!.steps.length} steps recorded · ${focusedRecord.synthetic ? "practice entries" : "technician observations"}`
+                : "Simulated finding · review before drawing conclusions"}
+            </span>
+          </div>
+          <button type="button" onClick={() => openResult(discovery.id)}>
+            Review result <CaretRight aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            aria-label="Dismiss experiment branch highlight"
+            onClick={() => setDiscovery(null)}
+          >
+            <X aria-hidden="true" />
+          </button>
+        </section>
       )}
       <div className="investigation-graph-heading">
         <div>
@@ -1981,6 +2213,7 @@ export function InvestigationGraph({
             onClick={() => {
               setPreviewExperiment(null);
               setTextView(!textView);
+              setDiscovery(null);
               onExpandedChange(textView);
             }}
           >
@@ -2019,6 +2252,7 @@ export function InvestigationGraph({
             "experiment",
             "clarify",
             ...(findings.length ? (["finding"] as const) : []),
+            ...(experimentRecords.length ? (["measurement"] as const) : []),
           ] as const
         ).map((stage) => (
           <span key={stage} className={`stage-${stage}`}>
@@ -2130,12 +2364,15 @@ export function InvestigationGraph({
           <GraphControls
             current={currentId}
             previewRoot={previewOpen ? experimentId : null}
+            discovery={discovery}
+            onDiscoveryReady={onDiscoveryReady}
             // A finding just handed back is framed until another node is chosen.
             selected={detailId ?? (focused ? `finding-${focused}` : null)}
             panelOpen={panelOpen}
             panelWidth={panelWidth}
             expanded={expanded}
             onFocus={() => {
+              setDiscovery(null);
               setPreviewExperiment(null);
               setDetailId(null);
               setWhyHowOpen(false);
