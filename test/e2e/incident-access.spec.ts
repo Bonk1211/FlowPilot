@@ -1,3 +1,4 @@
+import { openPartialReplay } from "./partialReplay";
 import { expect, test, type Page } from "@playwright/test";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
@@ -119,7 +120,7 @@ test("configured review uses the authenticated subject and separates closure fro
   await configuredAccess(page, ["view", "edit", "close"]);
   await page.goto("/incidents");
   await signIn(page);
-  await page.getByRole("button", { name: "Start S932 replay" }).click();
+  await openPartialReplay(page);
   await expect(page).toHaveURL(/\/incidents\/INC-/);
   await page
     .getByRole("navigation", { name: "Incident features" })
@@ -162,7 +163,7 @@ test("authenticated source upload preserves bytes, links evidence and survives c
   const requests = await configuredAccess(page, ["view", "edit"]);
   await page.goto("/incidents");
   await signIn(page);
-  await page.getByRole("button", { name: "Start S932 replay" }).click();
+  await openPartialReplay(page);
   await expect(page).toHaveURL(/\/incidents\/INC-/);
   await page
     .getByRole("navigation", { name: "Incident features" })

@@ -1,3 +1,4 @@
+import { openPartialReplay } from "./partialReplay";
 import { expect, test } from "@playwright/test";
 
 test("source owner registers exact secondary text and reviews it without granting operational authority", async ({
@@ -5,8 +6,7 @@ test("source owner registers exact secondary text and reviews it without grantin
   request,
 }) => {
   const name = `Source review ${Date.now()}`;
-  await page.goto("/incidents");
-  await page.getByRole("button", { name: "Start S932 replay" }).click();
+  await openPartialReplay(page);
   await expect(page).toHaveURL(/\/incidents\/INC-/);
   await page
     .getByRole("navigation", { name: "Incident features" })

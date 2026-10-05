@@ -1,3 +1,4 @@
+import { openPartialReplay } from "./partialReplay";
 import { expect, test, type Page } from "@playwright/test";
 import type { Incident, IncidentJob } from "@flowpilot/contracts";
 
@@ -62,8 +63,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 async function openInvestigation(page: Page, collectEvidence = false) {
-  await page.goto("/incidents");
-  await page.getByRole("button", { name: "Start S932 replay" }).click();
+  await openPartialReplay(page);
   if (collectEvidence) {
     await page.getByRole("link", { name: "Evidence", exact: true }).click();
     await page.getByRole("button", { name: "Collect next evidence" }).click();

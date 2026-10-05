@@ -1,3 +1,4 @@
+import { openPartialReplay } from "./partialReplay";
 import { expect, test } from "@playwright/test";
 import type { Incident, SourcePassage } from "@flowpilot/contracts";
 
@@ -5,8 +6,7 @@ test("conversation references open exact excerpts in the explanation sidebar", a
   page,
 }) => {
   await page.setViewportSize({ width: 1440, height: 1080 });
-  await page.goto("/incidents");
-  await page.getByRole("button", { name: "Start S932 replay" }).click();
+  await openPartialReplay(page);
   await page
     .getByRole("button", { name: "Analyze available evidence" })
     .click();

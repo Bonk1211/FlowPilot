@@ -44,6 +44,7 @@ import { MechanismView } from "./MechanismView";
 import { MonitoringDashboard } from "./MonitoringDashboard";
 import { InvestigationPanel } from "./InvestigationPanel";
 import { InvestigationGraph } from "./InvestigationGraph";
+import { ReplayPipeline } from "./ReplayPipeline";
 import { AccessPanel, AccessStatus, useIncidentAccess } from "./AccessPanel";
 import { RawArtifacts } from "./RawArtifacts";
 import { JobStatus, type AnalysisJobStatus } from "./JobStatus";
@@ -249,6 +250,13 @@ function IncidentWorkspaceContent({
   const [status, setStatus] = useState("");
   const [retry, setRetry] = useState(0);
   const [replayTrigger] = useState(() => `workspace-${crypto.randomUUID()}`);
+  const [replayRequest, setReplayRequest] = useState<Promise<Incident> | null>(
+    null,
+  );
+  const openReplay = useCallback(
+    (value: Incident) => navigate(incidentPageUrl(value.id, "investigation")),
+    [navigate],
+  );
   const [selectedEvent, setSelectedEvent] = useState<string | null>(null);
   const [selectedHypothesis, setSelectedHypothesis] = useState<string | null>(
     null,
@@ -589,7 +597,17 @@ function IncidentWorkspaceContent({
             </button>
           </div>
         )}
-        {loading ? (
+        {replayRequest ? (
+          <ReplayPipeline
+            request={replayRequest}
+            onOpen={openReplay}
+            onBack={() => {
+              setReplayRequest(null);
+              setRetry((value) => value + 1);
+            }}
+            onRetry={() => setReplayRequest(startReplay(replayTrigger))}
+          />
+        ) : loading ? (
           <WorkspaceLoading
             detail={
               route.incidentId
@@ -644,17 +662,15 @@ function IncidentWorkspaceContent({
                   className="primary"
                   disabled={busy || !canEdit}
                   onClick={() => {
-                    void start(() => startReplay(replayTrigger)).catch(
-                      () => undefined,
-                    );
+                    setReplayRequest(startReplay(replayTrigger));
                   }}
                 >
                   {busy ? "Opening incident…" : "Start S932 replay"}
                   <ArrowRight aria-hidden="true" />
                 </button>
                 <p className="incident-caption">
-                  Synthetic records and AI-generated images. No connection to
-                  machine controls.
+                  AI-generated images and the machine-log transcript from
+                  supplied photos. No connection to machine controls.
                 </p>
               </section>
               <section className="incident-card incident-manual">

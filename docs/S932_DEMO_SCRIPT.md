@@ -17,9 +17,9 @@ Open `http://127.0.0.1:5173/incidents` at 1440×900. The home page at `/` now in
 
 | Click | Say |
 |---|---|
-| **Start S932 replay** | "A coverage alarm opens an incident. It is saved before any AI runs." |
-| Feature rail → **Evidence** | "Evidence arrives progressively: 2 of 4 sources so far. The machine log is still pending and the PM record is unavailable, but none of that blocks us." |
-| Feature rail → **Handoff** | "The engineer handoff already exists: what we know, what is missing, no cause claimed. Diagnosis is still pending." |
+| **Start S932 replay** → image scan → log scan → evidence assembly → response flow | "The incident is saved first. We compare the replay images, scan the machine-log transcript from supplied photos, and assemble the evidence into a response flow." |
+| Feature rail → **Evidence** | "Three of five sources are collected. The photo transcript is historical context, not time-aligned with the illustrative images. The pressure and mass export is still pending and the PM record is unavailable." |
+| Feature rail → **Handoff** | "The engineer handoff already exists: what we know, what is missing, and the next questions. No cause is confirmed." |
 
 ## Segment 2 — 0:20–0:45 · Images and timeline (Person 3)
 

@@ -1,3 +1,4 @@
+import { openPartialReplay } from "./partialReplay";
 import { expect, test, type Locator } from "@playwright/test";
 import type { Incident } from "@flowpilot/contracts";
 import { randomUUID } from "node:crypto";
@@ -91,8 +92,7 @@ for (const manualChoice of [false, true]) {
   }, testInfo) => {
     await page.emulateMedia({ reducedMotion: "reduce" });
     await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.goto("/incidents");
-    await page.getByRole("button", { name: "Start S932 replay" }).click();
+    await openPartialReplay(page);
     await page
       .getByRole("button", { name: "Analyze available evidence" })
       .click();
@@ -219,8 +219,7 @@ test("side panel edge resizes both panels without losing drafts or covering the 
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/incidents");
-  await page.getByRole("button", { name: "Start S932 replay" }).click();
+  await openPartialReplay(page);
   await page
     .getByRole("button", { name: "Analyze available evidence" })
     .click();
@@ -299,8 +298,7 @@ test("question details group shared meanings and disclose full source records", 
   page,
 }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 1080 });
-  await page.goto("/incidents");
-  await page.getByRole("button", { name: "Start S932 replay" }).click();
+  await openPartialReplay(page);
   await page
     .getByRole("button", { name: "Analyze available evidence" })
     .click();
@@ -387,8 +385,7 @@ test("question colors distinguish 5W2H purpose from causal analysis and preserve
 }, testInfo) => {
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.goto("/incidents");
-  await page.getByRole("button", { name: "Start S932 replay" }).click();
+  await openPartialReplay(page);
   await page
     .getByRole("button", { name: "Analyze available evidence" })
     .click();
@@ -573,8 +570,7 @@ test("question colors distinguish 5W2H purpose from causal analysis and preserve
 test("saved graph answers, alternatives, drafts, correction and text interaction", async ({
   page,
 }, testInfo) => {
-  await page.goto("/incidents");
-  await page.getByRole("button", { name: "Start S932 replay" }).click();
+  await openPartialReplay(page);
   await page
     .getByRole("button", { name: "Analyze available evidence" })
     .click();
@@ -787,8 +783,7 @@ test("saved graph answers, alternatives, drafts, correction and text interaction
 test("ambiguous answers create a clarification shape and retain the original words", async ({
   page,
 }, testInfo) => {
-  await page.goto("/incidents");
-  await page.getByRole("button", { name: "Start S932 replay" }).click();
+  await openPartialReplay(page);
   await page
     .getByRole("button", { name: "Analyze available evidence" })
     .click();

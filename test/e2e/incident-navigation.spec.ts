@@ -264,6 +264,7 @@ test("a pending replay creation does not redirect after another incident is open
     .getByRole("button", { name: "Start S932 replay", exact: true })
     .click();
   await expect.poll(() => createdId).not.toBeNull();
+  await page.getByRole("button", { name: "Back to incidents" }).click();
   await page.locator(`a[href="/incidents/${existing.id}"]`).click();
   await expect(featureHeading(page, "Investigation")).toBeVisible();
   const completed = page.waitForResponse("**/api/incidents/replay");

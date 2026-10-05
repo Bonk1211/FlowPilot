@@ -1,0 +1,666 @@
+.replay-pipeline {
+  max-width: 1440px;
+  margin: 24px auto 0;
+}
+.replay-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 36px;
+}
+.replay-heading h1 {
+  margin: 10px 0 12px;
+  font-size: clamp(30px, 3.4vw, 48px);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  outline: none;
+}
+.replay-heading p:last-child {
+  color: var(--text-secondary);
+}
+.replay-heading button {
+  flex-shrink: 0;
+}
+.replay-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  list-style: none;
+  padding: 0;
+  margin: 0 0 28px;
+  gap: 24px;
+}
+.replay-steps li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  color: var(--text-muted);
+}
+.replay-step-number {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  font:
+    13px "IBM Plex Mono",
+    monospace;
+  transition:
+    background 200ms,
+    color 200ms;
+}
+.replay-steps strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 500;
+}
+.replay-steps li > div > span {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+}
+.replay-step-arrow {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.replay-steps [data-state="active"] {
+  color: var(--text-primary);
+}
+.replay-steps [data-state="active"] .replay-step-number {
+  color: var(--text-on-action);
+  background: var(--text-selection);
+  border-color: var(--text-selection);
+  box-shadow: 0 0 0 5px
+    color-mix(in srgb, var(--selection-active) 10%, transparent);
+}
+.replay-steps [data-state="complete"] .replay-step-number {
+  color: var(--state-verified);
+  background: var(--green-100);
+  border-color: transparent;
+}
+.replay-console {
+  overflow: hidden;
+  background: var(--surface-shell);
+  border: 1px solid var(--border-shell);
+  border-radius: 16px;
+  color: var(--text-on-instrument);
+  box-shadow: 0 20px 60px
+    color-mix(in srgb, var(--surface-shell) 10%, transparent);
+}
+.replay-console-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 26px;
+  border-bottom: 1px solid var(--border-shell);
+  color: var(--text-secondary-on-instrument);
+  font-size: 12px;
+}
+.replay-console-bar > span:first-child {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.replay-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--selection-active-on-instrument);
+  box-shadow: 0 0 12px
+    color-mix(in srgb, var(--selection-active-on-instrument) 45%, transparent);
+}
+.replay-console-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+}
+.replay-visual {
+  min-width: 0;
+  padding: 26px;
+  animation: replay-panel-enter 350ms ease-out both;
+  background-image: radial-gradient(
+    var(--border-shell) 0.6px,
+    transparent 0.6px
+  );
+  background-size: 24px 24px;
+}
+.replay-visual-label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 22px;
+  color: var(--selection-active-on-instrument);
+  font:
+    12px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.04em;
+}
+.replay-visual-label > span {
+  margin-left: auto;
+  color: var(--text-secondary-on-instrument);
+  font:
+    12px "IBM Plex Sans",
+    sans-serif;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+.replay-image-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  min-height: 312px;
+}
+.replay-image {
+  margin: 0;
+  min-width: 0;
+}
+.replay-image-frame {
+  position: relative;
+  height: 252px;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-shell);
+  border-radius: 8px;
+  background: var(--surface-instrument);
+  color: var(--text-secondary-on-instrument);
+}
+.replay-image img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.replay-image-tag {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  padding: 5px 8px;
+  border: 1px solid var(--border-shell);
+  border-radius: 3px;
+  background: var(--surface-shell);
+  font:
+    10px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.07em;
+}
+.replay-scan-line {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 70px;
+  border-bottom: 2px solid var(--selection-active-on-instrument);
+  background: linear-gradient(
+    transparent,
+    color-mix(in srgb, var(--selection-active-on-instrument) 22%, transparent)
+  );
+  animation: replay-image-scan 2.2s ease-in-out infinite;
+}
+.replay-image:nth-child(2) .replay-scan-line {
+  animation-delay: -0.35s;
+}
+.replay-image figcaption {
+  display: grid;
+  gap: 4px;
+  padding-top: 12px;
+}
+.replay-image figcaption strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.replay-image figcaption span,
+.replay-visual-note {
+  color: var(--text-secondary-on-instrument);
+  font-size: 12px;
+}
+.replay-visual-note {
+  margin: 20px 0 0;
+  line-height: 1.6;
+}
+.replay-context {
+  min-width: 0;
+  padding: 32px 26px;
+  border-left: 1px solid var(--border-shell);
+  background: var(--surface-instrument-panel);
+}
+.replay-stage-icon {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 24px;
+  border: 1px solid var(--border-shell);
+  border-radius: 12px;
+  color: var(--selection-active-on-instrument);
+  font-size: 24px;
+}
+.replay-kicker {
+  display: block;
+  font:
+    11px "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary-on-instrument);
+}
+.replay-context h2 {
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin: 12px 0;
+}
+.replay-context > p:not(.replay-kicker) {
+  color: var(--text-secondary-on-instrument);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.replay-context-caption {
+  padding-top: 24px;
+  margin-top: 24px;
+  border-top: 1px solid var(--border-shell);
+  color: var(--text-secondary-on-instrument);
+  font-size: 12px;
+}
+.replay-log {
+  height: 312px;
+  overflow: hidden;
+  border: 1px solid var(--border-shell);
+  background: var(--surface-instrument);
+  border-radius: 8px;
+  padding: 12px 0;
+}
+.replay-log-track {
+  transition: transform 220ms ease-out;
+}
+.replay-log-line {
+  display: flex;
+  gap: 16px;
+  min-height: 32px;
+  align-items: center;
+  padding: 0 14px;
+  white-space: pre;
+  font-size: 11px;
+}
+.replay-log-line > span {
+  color: var(--text-muted-on-instrument);
+  width: 25px;
+  flex-shrink: 0;
+  font-family: "IBM Plex Mono", monospace;
+}
+.replay-log-line code {
+  font: inherit;
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--text-secondary-on-instrument);
+}
+.replay-log-line mark {
+  color: var(--selection-active-on-instrument);
+  background: color-mix(
+    in srgb,
+    var(--selection-active-on-instrument) 14%,
+    transparent
+  );
+  padding: 3px 0;
+}
+.replay-log-line[data-current="true"] {
+  background: color-mix(
+    in srgb,
+    var(--selection-active-on-instrument) 7%,
+    transparent
+  );
+  box-shadow: inset 2px 0 var(--selection-active-on-instrument);
+}
+.replay-keywords {
+  margin-top: 24px;
+}
+.replay-keywords > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+  max-height: 156px;
+  overflow-y: auto;
+}
+.replay-keywords > div > span {
+  padding: 5px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border-shell);
+  color: var(--selection-active-on-instrument);
+  font:
+    11px "IBM Plex Mono",
+    monospace;
+  overflow-wrap: anywhere;
+  animation: replay-panel-enter 200ms ease-out both;
+}
+.replay-assembly {
+  display: flex;
+  align-items: center;
+  min-height: 312px;
+}
+.replay-source-stack {
+  flex: 1.3;
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+.replay-source-stack > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface-instrument-panel);
+  padding: 14px 12px;
+  border: 1px solid var(--border-shell);
+  border-radius: 7px;
+  font-size: 12px;
+  animation: replay-panel-enter 400ms ease-out both;
+  animation-delay: calc(var(--replay-order) * 100ms);
+}
+.replay-source-stack svg {
+  flex-shrink: 0;
+  color: var(--selection-active-on-instrument);
+}
+.replay-source-stack svg:last-child {
+  margin-left: auto;
+}
+.replay-package,
+.replay-flow {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  padding: 22px 10px;
+  border: 1px solid var(--border-shell);
+  background: var(--surface-instrument-panel);
+  border-radius: 10px;
+  min-width: 0;
+}
+.replay-package {
+  border-color: var(--selection-active-on-instrument);
+  box-shadow: 0 0 35px
+    color-mix(in srgb, var(--selection-active-on-instrument) 8%, transparent);
+}
+.replay-package svg,
+.replay-flow svg {
+  font-size: 28px;
+  color: var(--selection-active-on-instrument);
+}
+.replay-package strong,
+.replay-flow strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.replay-package span,
+.replay-flow span {
+  font-size: 11px;
+  color: var(--text-secondary-on-instrument);
+}
+.replay-connector {
+  width: 28px;
+  height: 1px;
+  flex-shrink: 0;
+  position: relative;
+  background: var(--border-shell);
+  overflow: visible;
+}
+.replay-connector span {
+  position: absolute;
+  width: 10px;
+  height: 3px;
+  top: -1px;
+  background: var(--selection-active-on-instrument);
+  animation: replay-data-travel 1.3s linear infinite;
+}
+.replay-evidence-summary {
+  display: grid;
+  gap: 12px;
+  margin-top: 28px;
+  font-size: 12px;
+  color: var(--text-secondary-on-instrument);
+}
+.replay-evidence-summary span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.replay-evidence-summary svg {
+  color: var(--selection-active-on-instrument);
+}
+.replay-empty {
+  display: flex;
+  grid-column: 1 / -1;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  color: var(--text-secondary-on-instrument);
+}
+.replay-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 18px 26px;
+  border-top: 1px solid var(--border-shell);
+}
+.replay-footer [role="status"] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-secondary-on-instrument);
+}
+.replay-footer [role="status"] svg {
+  color: var(--selection-active-on-instrument);
+  flex-shrink: 0;
+}
+.replay-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.replay-controls button {
+  background: transparent;
+  color: var(--text-on-instrument);
+  border-color: var(--border-shell);
+  font-size: 12px;
+}
+.replay-controls button:last-child {
+  background: var(--selection-active-on-instrument);
+  color: var(--text-on-action-instrument);
+  border-color: transparent;
+}
+.replay-controls button:disabled {
+  background: var(--surface-instrument-panel);
+  color: var(--text-muted-on-instrument);
+  opacity: 1;
+}
+.replay-controls button:hover:not(:disabled) {
+  border-color: var(--selection-active-on-instrument);
+}
+.replay-controls button:focus-visible {
+  outline: 2px solid var(--focus-ring-on-instrument);
+  outline-offset: 3px;
+}
+.replay-spinner {
+  animation: replay-spin 1.5s linear infinite;
+}
+.replay-provenance {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-top: 18px;
+  text-align: center;
+}
+.replay-error {
+  margin-top: 20px;
+}
+.replay-pipeline[data-paused="true"] *,
+.replay-pipeline[data-paused="true"] *::after {
+  animation-play-state: paused !important;
+}
+@keyframes replay-panel-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes replay-image-scan {
+  0% {
+    transform: translateY(-70px);
+  }
+  70%,
+  100% {
+    transform: translateY(252px);
+  }
+}
+@keyframes replay-data-travel {
+  from {
+    transform: translateX(0);
+    opacity: 0;
+  }
+  25%,
+  75% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+}
+@keyframes replay-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (max-width: 1100px) {
+  .replay-console-body {
+    grid-template-columns: minmax(0, 1fr) 250px;
+  }
+  .replay-visual,
+  .replay-context {
+    padding: 22px 18px;
+  }
+  .replay-assembly {
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .replay-source-stack {
+    flex-basis: 100%;
+  }
+  .replay-source-stack + .replay-connector {
+    display: none;
+  }
+}
+@media (max-width: 760px) {
+  .replay-pipeline {
+    margin-top: 12px;
+  }
+  .replay-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    margin-bottom: 28px;
+  }
+  .replay-steps {
+    gap: 12px;
+  }
+  .replay-steps li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .replay-steps strong {
+    font-size: 13px;
+  }
+  .replay-steps li > div > span,
+  .replay-step-arrow {
+    display: none;
+  }
+  .replay-console-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .replay-console-bar {
+    padding: 14px 18px;
+  }
+  .replay-console-bar > span:last-child {
+    display: none;
+  }
+  .replay-visual-label > span {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+  .replay-image-pair {
+    gap: 10px;
+    min-height: 230px;
+  }
+  .replay-image-frame {
+    height: 170px;
+  }
+  .replay-image-tag {
+    font-size: 9px;
+    left: 6px;
+    top: 6px;
+    padding: 4px;
+  }
+  .replay-image figcaption strong {
+    font-size: 12px;
+  }
+  .replay-context {
+    border-left: 0;
+    border-top: 1px solid var(--border-shell);
+  }
+  .replay-stage-icon,
+  .replay-context-caption {
+    display: none;
+  }
+  .replay-context h2 {
+    font-size: 22px;
+  }
+  .replay-context > p:not(.replay-kicker) {
+    font-size: 13px;
+  }
+  .replay-keywords,
+  .replay-evidence-summary {
+    margin-top: 18px;
+  }
+  .replay-footer {
+    padding: 18px;
+  }
+  .replay-controls {
+    width: 100%;
+  }
+  .replay-controls button {
+    flex: 1;
+    justify-content: center;
+    padding: 10px 8px;
+  }
+  .replay-log {
+    height: 280px;
+  }
+  .replay-assembly {
+    min-height: 280px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .replay-pipeline *,
+  .replay-pipeline *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .replay-scan-line {
+    display: none;
+  }
+  .replay-log-track {
+    transform: none !important;
+  }
+  .replay-log {
+    overflow: auto;
+  }
+}

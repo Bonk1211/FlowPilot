@@ -21,7 +21,7 @@ test("demo segments 2 and 3 follow the script and its claims hold", async ({
 }, testInfo) => {
   await page.goto("/incidents");
   await page.getByRole("button", { name: "Start S932 replay" }).click();
-  await expect(page).toHaveURL(/\/incidents\/INC-/);
+  await expect(page).toHaveURL(/\/incidents\/INC-/, { timeout: 15000 });
   const started = Date.now();
 
   // Segment 2: images and timeline.

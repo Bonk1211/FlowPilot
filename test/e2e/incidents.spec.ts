@@ -1,3 +1,4 @@
+import { openPartialReplay } from "./partialReplay";
 import { readFile } from "node:fs/promises";
 import { expect, test, type Page } from "@playwright/test";
 
@@ -14,8 +15,7 @@ async function goToFeature(page: Page, name: string) {
 }
 
 async function startReplay(page: Page) {
-  await page.goto("/incidents");
-  await page.getByRole("button", { name: "Start S932 replay" }).click();
+  await openPartialReplay(page);
   await expect(page).toHaveURL(/\/incidents\/INC-/);
   await expect(
     page.getByRole("heading", {

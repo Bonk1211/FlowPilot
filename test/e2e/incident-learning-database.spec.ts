@@ -1,3 +1,4 @@
+import { openPartialReplay } from "./partialReplay";
 import { expect, test, type Page } from "@playwright/test";
 
 async function reviewConclusion(page: Page) {
@@ -121,8 +122,7 @@ test("review unlocks saving an investigation finding to the overall graph with a
   );
   expect(previousSave.ok()).toBeTruthy();
   await page.setViewportSize({ width: 1512, height: 1100 });
-  await page.goto("/incidents");
-  await page.getByRole("button", { name: "Start S932 replay" }).click();
+  await openPartialReplay(page);
   await expect(page).toHaveURL(/\/incidents\/INC-/);
   const id = new URL(page.url()).pathname.split("/")[2];
   await page
