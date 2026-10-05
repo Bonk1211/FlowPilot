@@ -87,8 +87,66 @@
   font-size: var(--font-caption);
 }
 .experiment-brief-body {
-  padding: 0 var(--space-3) var(--space-3);
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-4) var(--space-5);
   font-size: var(--font-compact);
+}
+.experiment-dialog {
+  width: min(740px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-pane);
+  background: var(--surface-document);
+  color: var(--text-primary);
+  box-shadow: 0 24px 80px
+    color-mix(in srgb, var(--surface-shell) 24%, transparent);
+}
+.experiment-dialog[open] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+.experiment-dialog::backdrop {
+  background: color-mix(in srgb, var(--surface-shell) 60%, transparent);
+}
+.experiment-dialog-heading,
+.experiment-dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+}
+.experiment-dialog-heading {
+  border-bottom: 1px solid var(--border-default);
+}
+.experiment-dialog-heading .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-1);
+}
+.experiment-dialog h2 {
+  margin: 0;
+  font-size: var(--font-section);
+}
+.experiment-dialog p {
+  margin: 0;
+}
+.experiment-dialog button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.experiment-dialog :focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+.experiment-dialog-actions {
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border-default);
 }
 .experiment-brief-body dl {
   display: grid;
@@ -164,8 +222,17 @@
 .experiment-brief-run {
   display: inline-flex;
   align-items: center;
-  justify-self: start;
   gap: var(--space-2);
   min-height: 44px;
-  margin-top: var(--space-3);
+}
+@media (max-width: 650px) {
+  .experiment-dialog {
+    width: calc(100vw - 16px);
+    max-height: calc(100dvh - 16px);
+  }
+  .experiment-dialog-heading,
+  .experiment-dialog-actions,
+  .experiment-brief-body {
+    padding: var(--space-3);
+  }
 }

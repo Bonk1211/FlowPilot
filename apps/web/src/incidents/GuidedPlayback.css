@@ -48,9 +48,10 @@
 }
 .guided-legend {
   position: absolute;
-  left: 20px;
-  right: 12px;
+  left: var(--viewer-inset);
+  right: 20px;
   bottom: 20px;
+  pointer-events: none;
   display: flex;
   flex-wrap: wrap;
   gap: 8px 16px;
@@ -125,12 +126,16 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* The model owns the workspace; the guide floats above its right edge. */
+/* One uninterrupted canvas, with controls and inspectors above it. */
 .guided-viewport {
   position: relative;
-  height: max(660px, calc(100dvh - 110px));
+  height: calc(100dvh - var(--command-bar-height));
+  min-height: 520px;
+  --viewer-inset: 20px;
   min-width: 0;
   padding: 0;
+  border: 0;
+  border-radius: 0;
   overflow: hidden;
   isolation: isolate;
   background: radial-gradient(ellipse at 38% 42%, #203b43, #0b141a 74%);
@@ -138,13 +143,14 @@
 .guided-viewport:fullscreen {
   width: 100%;
   height: 100dvh;
+  min-height: 0;
   border: 0;
   border-radius: 0;
 }
 .guided-topbar {
   position: absolute;
   z-index: 3;
-  inset: 20px 20px auto;
+  inset: 20px 20px auto var(--viewer-inset);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -192,7 +198,7 @@
 }
 .guided-model-area {
   position: absolute;
-  inset: 88px 390px 0 0;
+  inset: 0;
 }
 .guided-frame {
   position: relative;
@@ -200,8 +206,8 @@
 }
 .guided-viewport .guided-model-area .assembly-canvas {
   position: absolute;
-  inset: 0 0 112px;
-  height: calc(100% - 112px);
+  inset: 0;
+  height: 100%;
   min-height: 0;
   aspect-ratio: auto;
   background: transparent;
@@ -209,16 +215,22 @@
 }
 .guided-model-area .assembly-camera-tools {
   position: absolute;
-  bottom: 54px;
-  left: 20px;
-  right: 12px;
+  bottom: 58px;
+  left: var(--viewer-inset);
+  width: fit-content;
+  max-width: calc(100% - var(--viewer-inset) - 20px);
+  padding: 6px;
+  border: 1px solid var(--border-on-instrument);
+  border-radius: 12px;
+  background: var(--surface-instrument);
+  box-shadow: 0 8px 24px #0004;
   z-index: 2;
   margin: 0;
 }
 .guided-model-area .guided-shot {
   position: absolute;
   z-index: 2;
-  inset: auto auto 108px 20px;
+  inset: auto auto 128px var(--viewer-inset);
   margin: 0;
   padding: 4px 10px;
   border-radius: 999px;
@@ -233,21 +245,36 @@
   z-index: 3;
   top: 96px;
   right: 20px;
-  bottom: 20px;
+  max-height: calc(100% - 116px);
   width: 350px;
   padding: 20px;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
   border: 1px solid var(--border-default);
   border-radius: 16px;
   background: var(--surface-document);
   color: var(--text-primary);
   box-shadow: 0 18px 50px #0005;
   --control-focus-ring: var(--focus-ring);
+}
+.guided-viewport .guided-console {
+  color: var(--text-primary);
+}
+.guided-console-body > * {
+  margin-top: 18px;
+}
+.guided-console > summary.guided-console-heading {
+  display: flex;
+  padding: 0;
+  min-height: 44px;
+  cursor: pointer;
+}
+.guided-console > summary::after {
+  content: "＋";
+}
+.guided-console[open] > summary::after {
+  content: "−";
 }
 .guided-console-heading {
   display: flex;
@@ -355,7 +382,6 @@
   margin-top: -18px;
 }
 .guided-source {
-  margin-top: auto;
   padding-top: 12px;
   border-top: 1px solid var(--border-default);
 }
@@ -373,61 +399,107 @@
   padding: 12px 20px;
 }
 .guided-model-area .prototype-diagram {
-  height: calc(100% - 100px);
+  height: 100%;
+  padding: 90px 20px 140px;
   overflow: auto;
 }
 .guided-model-area .prototype-diagram svg {
   max-height: 100%;
 }
+
+.guided-auxiliary {
+  position: absolute;
+  z-index: 3;
+  top: 96px;
+  left: var(--viewer-inset);
+  width: 310px;
+  max-height: calc(100% - 260px);
+  display: grid;
+  gap: 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  pointer-events: none;
+}
+.guided-viewport .guided-panel {
+  min-width: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 14px;
+  background: var(--surface-document);
+  color: var(--text-primary);
+  box-shadow: 0 12px 36px #0005;
+  pointer-events: auto;
+  --control-focus-ring: var(--focus-ring);
+}
+.guided-viewport .guided-panel a {
+  color: var(--text-selection);
+}
+.guided-panel > summary {
+  padding: 14px 16px;
+  min-height: 48px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.guided-panel > :not(summary) {
+  margin: 0;
+  padding: 0 16px 16px;
+}
+.guided-panel .incident-card {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+.guided-panel .incident-simulation {
+  margin: 0;
+}
+.guided-panel .incident-section-title {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.guided-panel .incident-simulation-table {
+  overflow-x: auto;
+}
+.guided-panel input,
+.guided-panel select {
+  max-width: 100%;
+}
+.guided-panel .incident-compare-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.guided-fallback {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  background: var(--surface-document);
+}
 @media (max-width: 1000px) {
-  .guided-viewport {
-    height: 960px;
-  }
   .guided-topbar {
     align-items: flex-start;
     flex-wrap: wrap;
-    inset: 16px 16px auto;
+    gap: 10px;
   }
   .guided-playback-head h3 {
     font-size: 18px;
   }
-  .guided-model-area {
-    inset: 128px 0 390px;
-  }
   .guided-console {
-    top: auto;
-    bottom: 16px;
-    left: 16px;
-    right: 16px;
-    width: auto;
-    max-height: 360px;
-    gap: 12px;
+    width: 310px;
     padding: 16px;
   }
-  .guided-console details + details {
-    margin-top: -12px;
-  }
-  .guided-console .guided-narration h4 {
-    font-size: 20px;
-  }
-  .guided-console .guided-source {
-    margin-top: 0;
-  }
-  .guided-viewport:fullscreen .guided-model-area {
-    bottom: 40dvh;
-  }
-  .guided-viewport:fullscreen .guided-console {
-    max-height: calc(40dvh - 24px);
+  .guided-auxiliary {
+    width: 270px;
   }
 }
-@media (max-width: 520px) {
+@media (max-width: 700px) {
   .guided-viewport {
-    height: 1000px;
+    --viewer-inset: 12px;
+    min-height: 520px;
     border-radius: 0;
   }
   .guided-topbar {
     inset: 12px 12px auto;
-    gap: 10px;
   }
   .guided-view-tools {
     width: 100%;
@@ -440,13 +512,35 @@
     padding-inline: 8px;
     font-size: 12px;
   }
-  .guided-model-area {
-    inset: 140px 0 390px;
+  .guided-auxiliary {
+    top: 124px;
+    width: min(290px, calc(100% - 24px));
+    max-height: 30%;
+  }
+  .guided-console {
+    top: auto;
+    left: 12px;
+    right: 12px;
+    bottom: 188px;
+    width: auto;
+    max-height: 34%;
+    padding: 12px 16px;
+  }
+  .guided-console-body > * {
+    margin-top: 12px;
+  }
+  .guided-console .guided-narration h4 {
+    font-size: 18px;
+  }
+  .guided-console .guided-narration p {
+    font-size: 13px;
   }
   .guided-model-area .assembly-camera-tools {
-    left: 12px;
-    bottom: 62px;
-    gap: 2px;
+    left: 64px;
+    bottom: 44px;
+    max-width: calc(100% - 76px);
+    gap: 4px;
+    padding: 4px;
   }
   .guided-model-area .assembly-camera-tools .assembly-tool-labelled {
     padding-inline: 8px;
@@ -455,26 +549,212 @@
     width: 36px;
   }
   .guided-model-area .guided-shot {
-    left: 12px;
-    bottom: 170px;
+    bottom: 160px;
     font-size: 11px;
   }
   .guided-legend {
-    left: 12px;
-    gap: 6px 12px;
-    font-size: 11px;
-  }
-  .guided-viewport .guided-model-area .assembly-canvas {
-    inset-block-end: 200px;
-    height: calc(100% - 200px);
+    bottom: 10px;
+    gap: 4px 10px;
+    font-size: 10px;
   }
   .assembly-label {
     font-size: 11px;
     padding-inline: 5px;
   }
-  .guided-console {
+}
+
+/* The reference tour keeps the explanation below the subject, like a film caption. */
+.guided-playback[data-reference="true"] .guided-viewport {
+  background: radial-gradient(ellipse at 48% 36%, #293d43, #10191e 76%);
+}
+.guided-playback[data-reference="true"] .assembly-label {
+  padding: 6px 10px;
+  border-left: 2px solid #9ce7c2;
+  background: #10191eeb;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+}
+.guided-playback[data-reference="true"] .assembly-label-lines line {
+  stroke: #9ce7c2;
+  stroke-opacity: 0.7;
+}
+.guided-playback[data-reference="true"] .guided-console {
+  top: auto;
+  bottom: 16px;
+  left: var(--viewer-inset);
+  right: 20px;
+  width: auto;
+  max-height: 44%;
+  padding: 12px 20px;
+  border-color: var(--border-on-instrument);
+  border-radius: 10px;
+  background: #10191ef5;
+  color: var(--text-on-instrument);
+  --control-focus-ring: var(--teal-400);
+}
+.guided-playback[data-reference="true"] .guided-console-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  grid-template-areas: "narration controls" "narration play" "steps source";
+  gap: 8px 32px;
+}
+.guided-playback[data-reference="true"] .guided-console-body > * {
+  margin: 0;
+}
+.guided-playback[data-reference="true"] .guided-console-heading {
+  justify-content: flex-start;
+  gap: 16px;
+}
+.guided-playback[data-reference="true"] .guided-console-heading::after {
+  margin-left: auto;
+}
+.guided-playback[data-reference="true"]
+  :is(.guided-counter, .guided-console .eyebrow, .guided-play-control p) {
+  color: var(--text-secondary-on-instrument);
+}
+.guided-playback[data-reference="true"] .guided-step-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+.guided-playback[data-reference="true"] .guided-narration {
+  grid-area: narration;
+  align-content: start;
+  max-width: 760px;
+}
+.guided-playback[data-reference="true"] .guided-narration h4 {
+  color: var(--text-on-instrument);
+  font-size: clamp(20px, 2vw, 28px);
+}
+.guided-playback[data-reference="true"] .guided-narration p {
+  color: var(--text-secondary-on-instrument);
+  line-height: 1.5;
+}
+.guided-playback[data-reference="true"] .guided-controls {
+  grid-area: controls;
+}
+.guided-playback[data-reference="true"] .guided-play-control {
+  grid-area: play;
+}
+.guided-playback[data-reference="true"] .guided-step-list {
+  grid-area: steps;
+}
+.guided-playback[data-reference="true"] .guided-source {
+  grid-area: source;
+  padding: 0;
+  border: 0;
+}
+.guided-playback[data-reference="true"] .guided-console details {
+  border: 0;
+  color: var(--text-secondary-on-instrument);
+}
+.guided-playback[data-reference="true"] .guided-console .secondary {
+  background: var(--surface-instrument);
+  color: var(--text-on-instrument);
+  border-color: var(--border-on-instrument);
+}
+.guided-playback[data-reference="true"]
+  .guided-model-area
+  .assembly-camera-tools {
+  bottom: 258px;
+}
+.guided-playback[data-reference="true"] .guided-model-area .guided-shot {
+  top: 90px;
+  bottom: auto;
+}
+.guided-playback[data-reference="true"] .guided-legend {
+  display: none;
+}
+.guided-playback[data-reference="true"] .guided-auxiliary {
+  left: auto;
+  right: 20px;
+  top: 88px;
+  width: min(340px, calc(100% - var(--viewer-inset) - 20px));
+  max-height: calc(100% - 346px);
+}
+.guided-playback[data-reference="true"] .guided-panel {
+  background: #10191ef2;
+  border-color: var(--border-on-instrument);
+  color: var(--text-on-instrument);
+}
+.guided-playback[data-reference="true"] .guided-panel > :not(summary) {
+  background: var(--surface-document);
+  color: var(--text-primary);
+}
+@media (max-width: 700px) {
+  .guided-playback[data-reference="true"] .guided-console {
     left: 12px;
     right: 12px;
     bottom: 12px;
+    max-height: 36%;
+    padding: 8px 12px;
+  }
+  .guided-playback[data-reference="true"] .guided-console-body {
+    grid-template-columns: 1fr;
+    grid-template-areas: "narration" "controls" "play" "steps" "source";
+    gap: 6px;
+  }
+  .guided-playback[data-reference="true"] .guided-narration h4 {
+    font-size: 19px;
+  }
+  .guided-playback[data-reference="true"]
+    .guided-model-area
+    .assembly-camera-tools {
+    bottom: calc(36% + 24px);
+    left: 12px;
+    right: 12px;
+    max-width: none;
+    width: auto;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  .guided-playback[data-reference="true"] .guided-model-area .guided-shot {
+    top: 114px;
+  }
+  .guided-playback[data-reference="true"] .guided-auxiliary {
+    display: grid;
+    align-items: start;
+    top: 142px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+    max-height: 30%;
+  }
+  .guided-playback[data-reference="true"] .assembly-label {
+    padding: 4px 6px;
+  }
+  .guided-playback[data-reference="true"] .guided-panel > summary {
+    padding: 10px;
+    font-size: 12px;
+  }
+  .guided-playback[data-reference="true"] .assembly-camera-tools button {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+}
+
+.guided-content-switch {
+  pointer-events: auto;
+  margin-top: 4px;
+}
+.guided-content-switch .incident-view-toggle {
+  margin: 0;
+}
+.guided-content-switch button {
+  background: var(--surface-instrument);
+  border-color: var(--border-on-instrument);
+  color: var(--text-on-instrument);
+}
+@media (max-width: 700px) {
+  .guided-content-switch button {
+    padding-inline: 10px;
+    font-size: 12px;
+  }
+  .guided-playback[data-content-switch="true"] .guided-model-area .guided-shot {
+    top: 138px;
+  }
+  .guided-playback[data-content-switch="true"] .guided-auxiliary {
+    top: 170px;
   }
 }

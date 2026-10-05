@@ -410,22 +410,29 @@ test("synthetic simulation follows the selected mechanism and preserves its save
   await scrubber.press("ArrowRight");
   const label = await page
     .locator(".incident-event.selected strong")
-    .textContent();
+    .innerText();
   await goToFeature(page, "Simulation");
-  await expect(page.locator(".incident-mechanism")).toContainText(
-    `Inspecting evidence: ${label}`,
-  );
-  await goToFeature(page, "Simulation");
+  await expect(
+    page.getByRole("heading", { name: "S932 assembly guide", exact: true }),
+  ).toBeVisible();
+  await page.locator(".guided-settings > summary").click();
   const simulation = page.locator(".incident-simulation");
   await simulation
     .getByText("Explore and save a simulated response", { exact: true })
     .click();
+  await simulation.getByText("Link contextual evidence · 1 selected").click();
+  await expect(
+    simulation.getByRole("checkbox", { name: label.trim(), exact: true }),
+  ).toBeChecked();
   await simulation
     .getByRole("combobox", { name: "Hypothetical mechanism", exact: true })
     .selectOption("material_condition");
-  await expect(page.locator(".incident-mechanism-text h3")).toHaveText(
-    "Material-condition change",
-  );
+  await expect(
+    simulation.getByRole("combobox", {
+      name: "Hypothetical mechanism",
+      exact: true,
+    }),
+  ).toHaveValue("material_condition");
   await goToFeature(page, "Simulation");
   await simulation
     .getByRole("slider", { name: "Illustrative fault severity", exact: true })
@@ -481,15 +488,22 @@ test("synthetic simulation follows the selected mechanism and preserves its save
     }),
   ).toBeVisible();
   await page.reload();
+  await page.locator(".guided-settings > summary").click();
   const history = page.getByRole("combobox", {
     name: "Saved simulation history",
     exact: true,
   });
   await expect(history.locator("option")).toHaveCount(2);
   await history.selectOption({ index: 0 });
-  await expect(page.locator(".incident-mechanism-text h3")).toHaveText(
-    "Material-condition change",
-  );
+  await simulation
+    .getByText("Explore and save a simulated response", { exact: true })
+    .click();
+  await expect(
+    simulation.getByRole("combobox", {
+      name: "Hypothetical mechanism",
+      exact: true,
+    }),
+  ).toHaveValue("material_condition");
   await goToFeature(page, "Simulation");
   await expect(
     page.locator(".incident-simulation").getByRole("heading", {

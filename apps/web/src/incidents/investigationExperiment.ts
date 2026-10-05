@@ -83,7 +83,6 @@ export function suggestInvestigationExperiments(incident: Incident) {
       );
       return check ? [{ hypothesis, check }] : [];
     });
-  if (items.length < 2) return null;
   return { answer: lead.answer, node: lead.node, lead: lead.check, items };
 }
 

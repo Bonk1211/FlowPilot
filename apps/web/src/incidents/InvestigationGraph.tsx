@@ -42,13 +42,21 @@ import type {
   Incident,
   InvestigationNode,
   InvestigationAnswer,
+  ExperimentPrediction,
 } from "@flowpilot/contracts";
 import type { IncidentCommand } from "./api";
 import { CausalReasoning } from "./CausalReasoning";
 import { InvestigationConversation } from "./InvestigationConversation";
 import { LiveTimeline } from "./LiveTimeline";
 import { TroubleshootingMap } from "./TroubleshootingMap";
-import { mechanismTitles, type MechanismId } from "./experimentDefaults";
+import {
+  defaultControls,
+  defaultLevels,
+  mechanismTitles,
+  type MechanismId,
+} from "./experimentDefaults";
+import { SignatureSpark } from "./SignatureSpark";
+import { signatureWords } from "./mechanismCopy";
 import { returnedFindings } from "./experimentFindings";
 import { useIncidentPlans } from "./experimentRuns";
 import { FindingPanel } from "./FindingPanel";
@@ -72,6 +80,7 @@ const stages = {
   decision: { label: "Decision", height: 200 },
   check: { label: "Check", height: 116 },
   experiment: { label: "Mini experiment", height: 184 },
+  doe: { label: "DOE preview", height: 220 },
   finding: { label: "Simulated finding", height: 150 },
   statement: { label: "Response", height: 124 },
   clarify: { label: "Clarify", height: 132 },
@@ -138,6 +147,9 @@ type ChartNode = Node<
     inspected?: boolean;
     spotlight?: boolean;
     processing?: boolean;
+    previewExpanded?: boolean;
+    prediction?: ExperimentPrediction;
+    previewOrigin?: { x: number; y: number; index: number };
     questionType?: QuestionType;
     onInspect?: () => void;
   },
@@ -187,7 +199,9 @@ function StageShape({ stage }: { stage: Stage }) {
           width="276"
           height={height - 4}
           rx={
-            ["check", "statement", "experiment", "finding"].includes(stage)
+            ["check", "statement", "experiment", "doe", "finding"].includes(
+              stage,
+            )
               ? 5
               : height / 2
           }
@@ -205,7 +219,15 @@ function StageNode({ data }: NodeProps<ChartNode>) {
       className={`flowchart-node stage-${data.stage} is-${data.status}${data.inspected ? " is-inspected" : ""}${data.spotlight ? " is-spotlight" : ""}${data.processing ? " is-processing" : ""}`}
       data-spotlight={data.spotlight || undefined}
       data-question-type={data.questionType}
-      style={questionStyle(data.questionType)}
+      style={
+        data.previewOrigin
+          ? ({
+              "--doe-origin-x": `${data.previewOrigin.x}px`,
+              "--doe-origin-y": `${data.previewOrigin.y}px`,
+              "--doe-delay": `${data.previewOrigin.index * 100}ms`,
+            } as CSSProperties)
+          : questionStyle(data.questionType)
+      }
     >
       <span className="flowchart-node-status">
         {data.processing
@@ -238,6 +260,8 @@ function StageNode({ data }: NodeProps<ChartNode>) {
         style={{ height }}
         aria-label={`${data.questionType ? `${questionTypes[data.questionType].label} · ` : ""}${stages[data.stage].label} · ${data.stage === "statement" ? responseStatus(data.status) : data.status === "deferred" ? "Set aside" : data.status}: ${data.prompt}`}
         aria-pressed={start ? undefined : data.inspected}
+        aria-expanded={data.previewExpanded}
+        aria-haspopup={data.stage === "doe" ? "dialog" : undefined}
         title={data.prompt}
         onClick={data.onInspect}
         disabled={start || (data.stage === "branch" && !data.onInspect)}
@@ -252,7 +276,33 @@ function StageNode({ data }: NodeProps<ChartNode>) {
             </span>
           )}
           <strong>{data.title}</strong>
-          {data.stage === "experiment" && <small>Open experiment →</small>}
+          {data.stage === "experiment" && (
+            <small>
+              {data.previewExpanded
+                ? "Hide DOE branches ↑"
+                : "Preview DOE branches ↓"}
+            </small>
+          )}
+          {data.stage === "doe" && (
+            <>
+              {data.prediction && (
+                <SignatureSpark prediction={data.prediction} />
+              )}
+              <small>
+                {data.prediction
+                  ? signatureWords[data.prediction.signature]
+                  : "Compare simulated responses"}
+              </small>
+              <small>
+                Severity{" "}
+                {defaultLevels.severity
+                  .map((level) => level.toFixed(2))
+                  .join(" / ")}{" "}
+                · control {defaultControls.severity.toFixed(2)}
+              </small>
+              <small>Open experiment →</small>
+            </>
+          )}
           {data.stage === "finding" && <small>Not evidence · open →</small>}
         </span>
       </button>
@@ -269,7 +319,10 @@ function StageNode({ data }: NodeProps<ChartNode>) {
   );
 }
 const nodeTypes = { stage: StageNode };
-type RelationshipEdge = Edge<{ junctionY: number }, "relationship">;
+type RelationshipEdge = Edge<
+  { junctionY: number; preview?: boolean },
+  "relationship"
+>;
 
 function RelationshipConnector({
   sourceX,
@@ -290,6 +343,7 @@ function RelationshipConnector({
   return (
     <BaseEdge
       id={id}
+      pathLength={data?.preview ? 1 : undefined}
       markerEnd={markerEnd}
       style={style}
       label={label}
@@ -322,6 +376,7 @@ function responseStatus(status: string) {
 function GraphControls({
   current,
   selected,
+  previewRoot,
   panelOpen,
   panelWidth,
   expanded,
@@ -329,6 +384,7 @@ function GraphControls({
 }: {
   current: string | null;
   selected: string | null;
+  previewRoot: string | null;
   panelOpen: boolean;
   panelWidth: number;
   expanded: boolean;
@@ -374,9 +430,9 @@ function GraphControls({
       screen.removeEventListener("change", resize);
     };
   }, []);
-  const focusId = selected ?? current;
+  const focusId = previewRoot ?? selected ?? current;
   const visiblePanelWidth = panelWidthWithin(panelWidth, width);
-  const frame = `${focusId}:${panelOpen}:${visiblePanelWidth}:${expanded}:${narrow}:${width}:${height}:${conversationHeight}`;
+  const frame = `${focusId}:${previewRoot}:${panelOpen}:${visiblePanelWidth}:${expanded}:${narrow}:${width}:${height}:${conversationHeight}`;
   // Fit within the unobscured canvas, including the floating navigation and panel.
   const padding = useMemo<FitViewOptions["padding"]>(
     () => ({
@@ -408,19 +464,26 @@ function GraphControls({
         .map((edge) => edge.target),
     );
     const neighbors = getNodes().filter((item) =>
-      startingBranches
-        ? item.id === "flow-start" ||
-          item.data.stage === "branch" ||
+      previewRoot
+        ? item.id === previewRoot ||
           connections.some(
-            (edge) =>
-              edge.target === item.id && edge.source.startsWith("branch-"),
+            (edge) => edge.source === previewRoot && edge.target === item.id,
           )
-        : narrow
-          ? item.id === focusId
-          : item.id === focusId ||
-            (item.data.status !== "deferred" &&
-              (family.has(item.id) || item.id === parent)),
+        : startingBranches
+          ? item.id === "flow-start" ||
+            item.data.stage === "branch" ||
+            connections.some(
+              (edge) =>
+                edge.target === item.id && edge.source.startsWith("branch-"),
+            )
+          : narrow
+            ? item.id === focusId
+            : item.id === focusId ||
+              (item.data.status !== "deferred" &&
+                (family.has(item.id) || item.id === parent)),
     );
+    if (previewRoot && !neighbors.some((item) => item.data.stage === "doe"))
+      return;
     void fitView({
       nodes: neighbors,
       padding,
@@ -435,6 +498,7 @@ function GraphControls({
     lastFocused.current = frame;
   }, [
     focusId,
+    previewRoot,
     frame,
     initialized,
     fitView,
@@ -540,11 +604,14 @@ export function InvestigationGraph({
     }
   });
   const [textView, setTextView] = useState(false);
-  // Asking the rail to show one experiment's explanation; `n` repeats a request.
+  // Open an experiment description; `n` allows reopening the same popup.
   const [briefRequest, setBriefRequest] = useState<{
     id: string;
     n: number;
   } | null>(null);
+  const [previewExperiment, setPreviewExperiment] = useState<string | null>(
+    null,
+  );
   const [whyHowOpen, setWhyHowOpen] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelWidth, setPanelWidth] = useState(368);
@@ -624,6 +691,11 @@ export function InvestigationGraph({
   const experimentId = experiment
     ? `experiment-${experiment.answer.id}-${experiment.check.id}`
     : null;
+  const previewOpen =
+    experimentId !== null && previewExperiment === experimentId;
+  const previewItems = previewOpen ? (experimentOffer?.items ?? []) : [];
+  const previewId = (hypothesisId: string) =>
+    `${experimentId}-doe-${hypothesisId}`;
   // Simulated findings the engineer brought back; shown, never used as evidence.
   const { plans, reload: reloadPlans } = useIncidentPlans(
     incident.id,
@@ -644,11 +716,10 @@ export function InvestigationGraph({
     (item) => item.finding.hypothesis_id === openFinding,
   );
   const lastResponse = graph.answers.at(-1);
-  /** Show an experiment's explanation in the rail, or run it if none is offered. */
+  /** Inspecting a node opens its description; running requires the popup action. */
   function openBrief(id: string) {
     if (experimentOffer?.items.some((item) => item.hypothesis.id === id))
       setBriefRequest((current) => ({ id, n: (current?.n ?? 0) + 1 }));
-    else onRunExperiments([id as MechanismId]);
   }
   const hypothesis =
     hypotheses.find((item) => item.id === selectedHypothesisId) ??
@@ -674,6 +745,7 @@ export function InvestigationGraph({
   }, [expanded, textView, panelOpen]);
 
   function inspect(node: InvestigationNode, showSources = false) {
+    setPreviewExperiment(null);
     setWhyHowOpen(false);
     setDetailId(node.id);
     setPanelOpen(true);
@@ -1109,6 +1181,13 @@ export function InvestigationGraph({
             },
           ]
         : []),
+      ...previewItems.map((item) => ({
+        id: previewId(item.hypothesis.id),
+        parent_id: experimentId,
+        status: "preview",
+        height: (stages.doe.height * 240) / 280 + 56,
+        gapAfter: 72,
+      })),
       ...visibleNodes.map((node) => ({
         ...node,
         parent_id: chartParent(node),
@@ -1124,7 +1203,11 @@ export function InvestigationGraph({
       })),
       ...findings.map((item) => ({
         id: `finding-${item.finding.hypothesis_id}`,
-        parent_id: findingParent,
+        parent_id: previewItems.some(
+          (preview) => preview.hypothesis.id === item.finding.hypothesis_id,
+        )
+          ? previewId(item.finding.hypothesis_id)
+          : findingParent,
         status: "simulated",
         height: (stages.finding.height * 240) / 280 + 56,
         gapAfter: 72,
@@ -1238,15 +1321,48 @@ export function InvestigationGraph({
       measured: dimensions[experimentId],
       data: {
         stage: "experiment",
-        title: `Explore ${hypotheses.find((item) => item.id === experiment.check.hypothesis_id)?.title.toLowerCase() ?? "possible causes"}`,
-        prompt: `Open mini experiment: ${experiment.check.title}`,
+        title: `Compare ${experimentOffer?.items.length ?? 1} possible DOE`,
+        prompt: `Preview ${experimentOffer?.items.length ?? 1} possible DOE branches`,
         status: "suggested",
-        onInspect: () => openBrief(experiment.check.hypothesis_id),
+        previewExpanded: previewOpen,
+        onInspect: () => {
+          setPreviewExperiment(previewOpen ? null : experimentId);
+          setPanelOpen(false);
+        },
       },
       draggable: false,
       selectable: true,
       focusable: false,
     });
+  for (const [index, item] of previewItems.entries()) {
+    const id = previewId(item.hypothesis.id);
+    const position = positions.get(id)!;
+    const parent = positions.get(experimentId!)!;
+    nodes.push({
+      id,
+      type: "stage",
+      position,
+      width: 240,
+      height: (stages.doe.height * 240) / 280 + 56,
+      measured: dimensions[id],
+      data: {
+        stage: "doe",
+        title: item.hypothesis.title,
+        prompt: `Open DOE preview: ${item.hypothesis.title}`,
+        status: "Preview · simulated",
+        prediction: item.check.brief?.prediction,
+        previewOrigin: {
+          x: parent.x - position.x,
+          y: parent.y - position.y,
+          index,
+        },
+        onInspect: () => openBrief(item.hypothesis.id),
+      },
+      draggable: false,
+      selectable: true,
+      focusable: false,
+    });
+  }
   for (const item of findings) {
     const id = `finding-${item.finding.hypothesis_id}`;
     nodes.push({
@@ -1354,6 +1470,31 @@ export function InvestigationGraph({
           },
         ]
       : []),
+    ...previewItems.map((item, index) => {
+      const edge = connect(
+        previewId(item.hypothesis.id),
+        experimentId!,
+        false,
+        false,
+      );
+      return {
+        ...edge,
+        label: undefined,
+        data: { ...edge.data!, preview: true },
+        className: "flowchart-edge-doe",
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          width: 18,
+          height: 18,
+          color: "var(--teal-700)",
+        },
+        style: {
+          stroke: "var(--teal-700)",
+          strokeWidth: 2,
+          "--doe-delay": `${index * 100}ms`,
+        } as CSSProperties,
+      };
+    }),
     ...visibleNodes.map((node) =>
       connect(
         node.id,
@@ -1388,7 +1529,11 @@ export function InvestigationGraph({
     ...findings.map((item) => ({
       ...connect(
         `finding-${item.finding.hypothesis_id}`,
-        findingParent,
+        previewItems.some(
+          (preview) => preview.hypothesis.id === item.finding.hypothesis_id,
+        )
+          ? previewId(item.finding.hypothesis_id)
+          : findingParent,
         false,
         false,
       ),
@@ -1731,11 +1876,15 @@ export function InvestigationGraph({
 
   return (
     <section
-      className={`incident-card investigation-graph${textView ? "" : " is-chart has-live-timeline"}${expanded ? " is-expanded" : ""}${panelOpen ? " has-answer-panel" : ""}`}
+      className={`incident-card investigation-graph${textView ? "" : " is-chart has-live-timeline"}${expanded ? " is-expanded" : ""}${panelOpen ? " has-answer-panel" : ""}${previewOpen ? " has-doe-preview" : ""}`}
       style={{ "--answer-panel-width": `${panelWidth}px` } as CSSProperties}
       aria-label="Adaptive investigation"
       onKeyDown={(event) => {
-        if (event.key === "Escape" && expanded) {
+        if (
+          event.key === "Escape" &&
+          expanded &&
+          !(event.target instanceof Element && event.target.closest("dialog"))
+        ) {
           event.stopPropagation();
           onExpandedChange(false);
           expandToggle.current?.focus();
@@ -1751,6 +1900,11 @@ export function InvestigationGraph({
           onClose={() => setOpenFinding(null)}
           onChanged={reloadPlans}
         />
+      )}
+      {previewOpen && (
+        <p className="sr-only" role="status">
+          {previewItems.length} DOE previews · select a branch to inspect
+        </p>
       )}
       <div className="investigation-graph-heading">
         <div>
@@ -1825,6 +1979,7 @@ export function InvestigationGraph({
             title={textView ? "Show chart" : "Ordered text view"}
             aria-pressed={textView}
             onClick={() => {
+              setPreviewExperiment(null);
               setTextView(!textView);
               onExpandedChange(textView);
             }}
@@ -1878,7 +2033,7 @@ export function InvestigationGraph({
           (node) => node.id === (detailId ?? currentId),
         )}
         answerControls={
-          !textView && detail ? (
+          !textView && detail && !previewOpen ? (
             <>
               <nav
                 className="investigation-branch-navigation"
@@ -1923,6 +2078,7 @@ export function InvestigationGraph({
         }}
         onSelectEvidence={onSelectEvidence}
         onSpotlight={(id) => {
+          setPreviewExperiment(null);
           setDetailId(id);
           setWhyHowOpen(false);
           const node = graph.nodes.find((item) => item.id === id);
@@ -1973,12 +2129,14 @@ export function InvestigationGraph({
         <ReactFlowProvider>
           <GraphControls
             current={currentId}
+            previewRoot={previewOpen ? experimentId : null}
             // A finding just handed back is framed until another node is chosen.
             selected={detailId ?? (focused ? `finding-${focused}` : null)}
             panelOpen={panelOpen}
             panelWidth={panelWidth}
             expanded={expanded}
             onFocus={() => {
+              setPreviewExperiment(null);
               setDetailId(null);
               setWhyHowOpen(false);
             }}

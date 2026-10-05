@@ -1,5 +1,12 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { CaretDown, CaretUp, Flask, Play } from "@phosphor-icons/react";
+import {
+  ArrowSquareOut,
+  CaretDown,
+  CaretUp,
+  Flask,
+  Play,
+  X,
+} from "@phosphor-icons/react";
 import type { MechanismId } from "./experimentDefaults";
 import type { InvestigationExperiments } from "./investigationExperiment";
 import { signatureWords } from "./mechanismCopy";
@@ -13,56 +20,77 @@ function ExperimentBrief({
   item,
   disabled,
   onRun,
-  focus,
+  onClose,
 }: {
   item: Item;
   disabled: boolean;
   onRun: () => void;
-  /** A request (from the graph) to show this experiment; each new `n` repeats it. */
-  focus: number | null;
+  onClose: () => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const [seen, setSeen] = useState<number | null>(null);
-  const toggle = useRef<HTMLButtonElement>(null);
+  const dialog = useRef<HTMLDialogElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
   const id = useId();
-  if (focus !== null && focus !== seen) {
-    setSeen(focus);
-    setOpen(true);
-  }
   useEffect(() => {
-    if (focus === null) return;
-    toggle.current?.scrollIntoView({ block: "nearest" });
-    toggle.current?.focus({ preventScroll: true });
-  }, [focus]);
+    const modal = dialog.current;
+    const trigger = document.activeElement;
+    modal?.showModal();
+    heading.current?.focus({ preventScroll: true });
+    return () => {
+      modal?.close();
+      if (trigger instanceof HTMLElement)
+        trigger.focus({ preventScroll: true });
+    };
+  }, []);
   const { hypothesis, check } = item;
   const brief = check.brief;
-  const prediction = brief?.prediction;
   return (
-    <li className="experiment-brief" data-open={open}>
-      <button
-        ref={toggle}
-        type="button"
-        className="experiment-brief-toggle"
-        aria-expanded={open}
-        aria-controls={id}
-        onClick={() => setOpen(!open)}
-      >
-        <span className="experiment-brief-heading">
-          <strong>{hypothesis.title}</strong>
-          <span>
-            {prediction
-              ? `Tests whether it would give ${signatureWords[prediction.signature]}`
-              : (check.mini_experiment?.factor ?? check.title)}
-          </span>
-        </span>
-        {prediction && <SignatureSpark prediction={prediction} />}
-        {open ? (
-          <CaretUp aria-hidden="true" />
-        ) : (
-          <CaretDown aria-hidden="true" />
-        )}
-      </button>
-      <div id={id} className="experiment-brief-body" hidden={!open}>
+    <dialog
+      ref={dialog}
+      className="experiment-dialog"
+      aria-labelledby={id}
+      onCancel={(event) => {
+        event.preventDefault();
+        onClose();
+      }}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+      onKeyDown={(event) => {
+        if (event.key !== "Tab") return;
+        const controls = event.currentTarget.querySelectorAll<HTMLElement>(
+          'button:not(:disabled), a[href], [tabindex="0"]',
+        );
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (
+          event.shiftKey
+            ? document.activeElement === first ||
+              document.activeElement === heading.current
+            : document.activeElement === last
+        ) {
+          event.preventDefault();
+          (event.shiftKey ? last : first)?.focus();
+        }
+      }}
+    >
+      <header className="experiment-dialog-heading">
+        <div>
+          <p className="eyebrow">
+            <Flask aria-hidden="true" /> Experiment
+          </p>
+          <h2 id={id} ref={heading} tabIndex={-1}>
+            {hypothesis.title}
+          </h2>
+        </div>
+        <button
+          type="button"
+          aria-label="Close experiment description"
+          onClick={onClose}
+        >
+          <X aria-hidden="true" />
+        </button>
+      </header>
+      <div className="experiment-brief-body">
         {brief ? (
           <dl>
             <div>
@@ -136,18 +164,24 @@ function ExperimentBrief({
         ) : (
           <p>{check.purpose}</p>
         )}
+      </div>
+      <footer className="experiment-dialog-actions">
+        <StatusChip kind="simulated" detail="no machine test" />
         <button
           type="button"
-          className="experiment-brief-run"
+          className="primary experiment-brief-run"
           disabled={disabled}
           aria-label={`Run this experiment: ${hypothesis.title}`}
-          onClick={onRun}
+          onClick={() => {
+            onClose();
+            onRun();
+          }}
         >
           <Play aria-hidden="true" />
           Run this experiment
         </button>
-      </div>
-    </li>
+      </footer>
+    </dialog>
   );
 }
 
@@ -169,66 +203,98 @@ export function ExperimentCandidatesCard({
 }) {
   const [open, setOpen] = useState(true);
   const [seen, setSeen] = useState<number | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
   if (focus && focus.n !== seen) {
     setSeen(focus.n);
-    setOpen(true);
+    setSelected(focus.id);
   }
+  const selectedItem = offer.items.find(
+    (item) => item.hypothesis.id === selected,
+  );
   const count = offer.items.length;
   return (
-    <aside
-      className="experiment-offer"
-      aria-label="Suggested experiments"
-      data-open={open}
-    >
-      <button
-        className="experiment-offer-toggle"
-        aria-expanded={open}
-        aria-controls="experiment-offer-body"
-        onClick={() => setOpen(!open)}
+    <>
+      <aside
+        className="experiment-offer"
+        aria-label="Suggested experiments"
+        data-open={open}
       >
-        <span>
-          <Flask aria-hidden="true" />
-          {count} experiments ready
-        </span>
-        {open ? (
-          <CaretDown aria-hidden="true" />
-        ) : (
-          <CaretUp aria-hidden="true" />
-        )}
-      </button>
-      <div id="experiment-offer-body" hidden={!open}>
-        <p className="experiment-offer-lead">
-          Your answers leave {count} explanations open. Each experiment
-          simulates one of them, so you can compare the shape it predicts with
-          what was recorded. Open one to see why.
-        </p>
-        <ol className="experiment-offer-list">
-          {offer.items.map((item) => (
-            <ExperimentBrief
-              key={item.hypothesis.id}
-              item={item}
-              disabled={disabled}
-              onRun={() => onRun([item.hypothesis.id as MechanismId])}
-              focus={focus?.id === item.hypothesis.id ? focus.n : null}
-            />
-          ))}
-        </ol>
-        <StatusChip kind="simulated" detail="no machine test" />
         <button
-          className="primary experiment-offer-run"
-          disabled={disabled}
-          onClick={() => onRun()}
+          className="experiment-offer-toggle"
+          aria-expanded={open}
+          aria-controls="experiment-offer-body"
+          onClick={() => setOpen(!open)}
         >
-          <Play aria-hidden="true" weight="fill" />
-          {count === 2
-            ? "Run both experiments"
-            : `Run all ${count === 3 ? "three" : count} experiments`}
+          <span>
+            <Flask aria-hidden="true" />
+            {count} {count === 1 ? "experiment" : "experiments"} ready
+          </span>
+          {open ? (
+            <CaretDown aria-hidden="true" />
+          ) : (
+            <CaretUp aria-hidden="true" />
+          )}
         </button>
-        <p className="experiment-offer-note">
-          Runs as the demo engineer. Results are simulated and are not recorded
-          as evidence.
-        </p>
-      </div>
-    </aside>
+        <div id="experiment-offer-body" hidden={!open}>
+          <p className="experiment-offer-lead">
+            Compare{" "}
+            {count === 1
+              ? "this explanation"
+              : `${count} possible explanations`}{" "}
+            with the recorded pattern.
+          </p>
+          <ol className="experiment-offer-list">
+            {offer.items.map(({ hypothesis, check }) => (
+              <li key={hypothesis.id} className="experiment-brief">
+                <button
+                  type="button"
+                  className="experiment-brief-toggle"
+                  aria-haspopup="dialog"
+                  onClick={() => setSelected(hypothesis.id)}
+                >
+                  <span className="experiment-brief-heading">
+                    <strong>{hypothesis.title}</strong>
+                    <span>
+                      {check.brief
+                        ? `Tests ${signatureWords[check.brief.prediction.signature]}`
+                        : (check.mini_experiment?.factor ?? check.title)}
+                    </span>
+                  </span>
+                  {check.brief && (
+                    <SignatureSpark prediction={check.brief.prediction} />
+                  )}
+                  <ArrowSquareOut aria-hidden="true" />
+                </button>
+              </li>
+            ))}
+          </ol>
+          <StatusChip kind="simulated" detail="no machine test" />
+          <button
+            className="primary experiment-offer-run"
+            disabled={disabled}
+            onClick={() => onRun()}
+          >
+            <Play aria-hidden="true" weight="fill" />
+            {count === 1
+              ? "Run this experiment"
+              : count === 2
+                ? "Run both experiments"
+                : `Run all ${count === 3 ? "three" : count} experiments`}
+          </button>
+          <p className="experiment-offer-note">
+            Simulated results · demo engineer · not recorded evidence.
+          </p>
+        </div>
+      </aside>
+      {selectedItem && (
+        <ExperimentBrief
+          key={selectedItem.hypothesis.id}
+          item={selectedItem}
+          disabled={disabled}
+          onClose={() => setSelected(null)}
+          onRun={() => onRun([selectedItem.hypothesis.id as MechanismId])}
+        />
+      )}
+    </>
   );
 }

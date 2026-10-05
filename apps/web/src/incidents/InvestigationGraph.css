@@ -304,6 +304,59 @@
   color: var(--teal-700);
   font-weight: 600;
 }
+.flowchart-node.stage-doe {
+  --shape-fill: var(--surface-measurement);
+  --shape-stroke: var(--teal-700);
+  animation: none;
+}
+/* Keep connector handles fixed while the card travels out from its parent. */
+.stage-doe .flowchart-shape {
+  animation: doe-branch-out 560ms cubic-bezier(0.16, 1, 0.3, 1) var(--doe-delay)
+    both;
+}
+.stage-doe .flowchart-node-status {
+  animation: flowchart-arrive 560ms ease-out var(--doe-delay) both;
+}
+.stage-doe .flowchart-shape > svg rect {
+  stroke-dasharray: 6 4;
+}
+.stage-doe .flowchart-shape-text {
+  width: 88%;
+  gap: 5px;
+}
+.stage-doe .flowchart-shape-text small {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+.stage-doe .flowchart-shape-text small:last-child {
+  color: var(--teal-700);
+  font-weight: 600;
+}
+.flowchart-edge-doe .react-flow__edge-path {
+  stroke-dasharray: 1;
+  animation: doe-connector-out 620ms ease-out var(--doe-delay) both;
+}
+@keyframes doe-branch-out {
+  from {
+    opacity: 0;
+    transform: translate(var(--doe-origin-x), var(--doe-origin-y)) scale(0.75);
+  }
+  to {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+@keyframes doe-connector-out {
+  from {
+    stroke-dashoffset: 1;
+    opacity: 0;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
 /* A simulated finding is a suggestion, never evidence: dashed, never filled solid. */
 .flowchart-node.stage-finding,
 .investigation-shape-legend .stage-finding {
@@ -1100,6 +1153,9 @@
   }
 }
 @media (max-width: 850px) {
+  .has-doe-preview .investigation-live-timeline .experiment-offer {
+    display: none;
+  }
   .has-live-timeline .investigation-canvas {
     width: 100%;
   }

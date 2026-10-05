@@ -8,15 +8,54 @@ import {
   groupIds,
   fitCameraFov,
   partAnnotations,
+  coreAnnotations,
   sampleCamera,
   settle,
   smootherstep,
 } from "../apps/web/src/scene/shots.ts";
 import { experimentShots } from "../apps/web/src/scene/experimentShots.ts";
 import { assemblyGuide } from "../apps/web/src/incidents/assemblyGuide.ts";
+import { placeLabel } from "../apps/web/src/scene/labelLayout.ts";
 
 const close = (a, b, epsilon = 1e-9) =>
   a.every((value, index) => Math.abs(value - b[index]) < epsilon);
+
+test("labels follow parts across the midpoint and adapt locally to obstacles", () => {
+  const bounds = { left: 8, right: 792, top: 80, bottom: 560 };
+  const size = { width: 120, height: 30 };
+  let anchor = { x: 398, y: 300 };
+  let label = placeLabel(anchor, size, bounds, []);
+  const offset = { x: label.x - anchor.x, y: label.y - anchor.y };
+  for (const x of [399, 400, 401, 420, 401, 400, 399, 398]) {
+    anchor = { x, y: 300 };
+    label = placeLabel(anchor, size, bounds, [], label);
+    assert.equal(label.x - x, offset.x, "no side flip at the screen midpoint");
+    assert.equal(label.y - anchor.y, offset.y);
+  }
+
+  // A nearby panel should nudge the text along its edge, not send it to the
+  // opposite side of the model. Moving the camera back must not flip it again.
+  const panel = {
+    left: 8,
+    right: label.x - size.width / 2 - 3,
+    top: 80,
+    bottom: 560,
+  };
+  const before = label;
+  label = placeLabel(anchor, size, bounds, [panel], label);
+  assert.equal(label.x, before.x + 1);
+  assert.equal(label.y, before.y);
+  assert.deepEqual(placeLabel(anchor, size, bounds, [panel], label), label);
+
+  // A phone-sized viewport can use the space above or below a part.
+  const phone = { left: 8, right: 312, top: 100, bottom: 420 };
+  const blocker = { left: 8, right: 312, top: 100, bottom: 220 };
+  const small = placeLabel({ x: 160, y: 280 }, size, phone, [blocker]);
+  assert.ok(small.x - size.width / 2 >= phone.left);
+  assert.ok(small.x + size.width / 2 <= phone.right);
+  assert.ok(small.y - size.height / 2 >= blocker.bottom + 4);
+  assert.equal(placeLabel(anchor, size, bounds, [bounds]), undefined);
+});
 
 const components = {
   restriction: ["pickup_tube", "feed_tube", "fluid_qd", "nozzle"],
@@ -253,8 +292,11 @@ test("the reference guide covers the full assembly independently of simulated ex
     steps.map((step) => step.id),
     [
       "establish",
+      "reveal",
       "follow",
+      "head",
       "apart",
+      "core",
       "valve",
       "nozzle",
       "motion",
@@ -281,7 +323,16 @@ test("the reference guide covers the full assembly independently of simulated ex
     "machine_enclosure",
   ])
     assert.ok(labeled.has(id), `${id}: introduced in the assembly guide`);
-  assert.ok(steps[0].shot.explode.length > 0);
+  assert.deepEqual(
+    steps[0].shot.explode,
+    [],
+    "start with the completed assembly",
+  );
+  assert.deepEqual(
+    steps[0].shot.ghost,
+    [],
+    "the whole machine is visible first",
+  );
   assert.deepEqual(steps.at(-1).shot.explode, []);
   for (const step of steps) {
     assert.equal(step.shot.marker, null, `${step.id}: no hypothetical defect`);
@@ -293,6 +344,41 @@ test("the reference guide covers the full assembly independently of simulated ex
       ...step.shot.xray,
     ])
       assert.ok(groupIds.includes(id), `${step.id}: ${id} is a model group`);
+  }
+});
+
+test("the guide approaches the subject before separating it and labels actual core meshes", () => {
+  const { steps } = assemblyGuide();
+  const reveal = steps.find((step) => step.id === "reveal").shot;
+  assert.deepEqual(reveal.explode, ["machine_enclosure"]);
+  assert.equal(explodeAmounts(reveal, 0.2).machine_enclosure, 0);
+  assert.ok(explodeAmounts(reveal, 0.5).machine_enclosure > 0);
+  const apart = steps.find((step) => step.id === "apart").shot;
+  const core = steps.find((step) => step.id === "core").shot;
+  assert.deepEqual(
+    core.explode,
+    apart.explode,
+    "stay open while moving into the core",
+  );
+  assert.deepEqual(core.spotlight, ["needle_assembly"]);
+  assert.deepEqual(
+    new Set(core.coreLabels),
+    new Set(Object.keys(coreAnnotations)),
+  );
+  const needle = descendants(
+    model.nodes.find((node) => node.name === "needle_assembly"),
+  );
+  for (const { mesh, point } of Object.values(coreAnnotations)) {
+    const anchor = needle.find((node) => node.name === mesh);
+    assert.ok(anchor?.mesh !== undefined, `${mesh}: physical internal mesh`);
+    const primitive = model.meshes[anchor.mesh].primitives[0];
+    const bounds = model.accessors[primitive.attributes.POSITION];
+    point.forEach((value, axis) =>
+      assert.ok(
+        value >= bounds.min[axis] - 0.001 && value <= bounds.max[axis] + 0.001,
+        `${mesh}: label anchor is within the mesh`,
+      ),
+    );
   }
 });
 
@@ -348,4 +434,8 @@ test("portrait framing preserves horizontal space for the labeled parts", () => 
     Math.tan((fitCameraFov(38, aspect) * Math.PI) / 360) * aspect;
   assert.ok(fitCameraFov(38, 0.6) > 38);
   assert.ok(Math.abs(horizontalSpan(0.6) - horizontalSpan(0.9)) < 1e-9);
+  assert.ok(
+    fitCameraFov(38, 1.7, 0.6) > fitCameraFov(38, 1.7),
+    "short viewers reserve space for the caption",
+  );
 });

@@ -17,6 +17,7 @@ import type { ProcedureStep } from "@flowpilot/contracts";
 import { cameraPresets, modelNodes } from "../prototype/model";
 import {
   partAnnotations,
+  coreAnnotations,
   fitCameraFov,
   sampleCamera,
   type CameraFrame,
@@ -54,6 +55,7 @@ type Material = THREE.MeshStandardMaterial | THREE.MeshPhysicalMaterial;
 type Runtime = {
   camera: THREE.PerspectiveCamera;
   framingFov: number;
+  framingSpace: number;
   controls: OrbitControls;
   parts: THREE.Group;
   goal: THREE.Vector3;
@@ -137,13 +139,17 @@ function dispose(root: THREE.Object3D) {
 }
 
 function startShot(state: Runtime, direction: SceneDirection) {
+  const replayFrom =
+    state.director?.direction.key === direction.key
+      ? state.director.from
+      : null;
   state.stage?.direct(direction);
   state.needsRender = true;
   const settled = state.playbackPaused || state.reduced;
   state.director = {
     direction,
     start: performance.now(),
-    from: {
+    from: replayFrom ?? {
       position: state.camera.position.toArray() as [number, number, number],
       target: state.controls.target.toArray() as [number, number, number],
       fov: state.framingFov,
@@ -163,7 +169,11 @@ function startShot(state: Runtime, direction: SceneDirection) {
     state.camera.position.set(...frame.position);
     state.controls.target.set(...frame.target);
     state.framingFov = frame.fov;
-    state.camera.fov = fitCameraFov(frame.fov, state.camera.aspect);
+    state.camera.fov = fitCameraFov(
+      frame.fov,
+      state.camera.aspect,
+      state.framingSpace,
+    );
     state.camera.updateProjectionMatrix();
     state.controls.update();
   }
@@ -199,8 +209,10 @@ export default function AssemblyScene({
   const callbacks = useRef({ onFailure, onInteract, onShotProgress });
   const [isolated, setIsolated] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const detail =
-    typeof window !== "undefined" && window.innerWidth < 1024 ? "low" : "high";
+  // Resizing adjusts the camera; retain the scene and its active tour step.
+  const [detail] = useState<"low" | "high">(() =>
+    typeof window !== "undefined" && window.innerWidth < 1024 ? "low" : "high",
+  );
 
   useEffect(() => {
     callbacks.current = { onFailure, onInteract, onShotProgress };
@@ -282,6 +294,7 @@ export default function AssemblyScene({
     const state: Runtime = {
       camera,
       framingFov: camera.fov,
+      framingSpace: 1,
       controls,
       parts: empty,
       goal: camera.position.clone(),
@@ -368,12 +381,29 @@ export default function AssemblyScene({
       const height = container.clientHeight;
       if (!width || !height) return;
       camera.aspect = width / height;
-      camera.fov = fitCameraFov(state.framingFov, camera.aspect);
+      if (container.closest('[data-reference="true"]')) {
+        const reserved = width < 700 ? height * 0.36 + 300 : 345;
+        state.framingSpace = Math.min(1, (height - reserved) / (height * 0.72));
+        camera.setViewOffset(width, height, 0, height * 0.1, width, height);
+      } else {
+        state.framingSpace = 1;
+        camera.clearViewOffset();
+      }
+      camera.fov = fitCameraFov(
+        state.framingFov,
+        camera.aspect,
+        state.framingSpace,
+      );
       camera.updateProjectionMatrix();
       renderer.setSize(width, height, false);
       state.needsRender = true;
     });
     resize.observe(container);
+    if (container.closest('[data-reference="true"]'))
+      container
+        .closest(".guided-viewport")
+        ?.querySelectorAll(".guided-console, .guided-auxiliary")
+        .forEach((panel) => resize.observe(panel));
 
     let frame = 0;
     let lastRender = 0;
@@ -401,7 +431,7 @@ export default function AssemblyScene({
           camera.position.set(...shot.position);
           controls.target.set(...shot.target);
           state.framingFov = shot.fov;
-          const fov = fitCameraFov(shot.fov, camera.aspect);
+          const fov = fitCameraFov(shot.fov, camera.aspect, state.framingSpace);
           if (Math.abs(camera.fov - fov) > 0.01) {
             camera.fov = fov;
             camera.updateProjectionMatrix();
@@ -646,7 +676,7 @@ export default function AssemblyScene({
             )
             .filter(Boolean)
             .join(", ") || "unknown"
-        }.${partStatesKey ? " Glow and spray levels are simulated and illustrative, not measured." : ""}`}
+        }.${direction?.shot.coreLabels?.length ? ` Internal parts: ${direction.shot.coreLabels.map((id) => coreAnnotations[id].text).join(", ")}.` : ""}${partStatesKey ? " Glow and spray levels are simulated and illustrative, not measured." : ""}`}
         data-node-id={step.model_node_id}
         data-highlight-ids={highlightKey}
         data-part-states={partStatesKey}

@@ -25,6 +25,8 @@ export type PlaybackStep = {
   title: string;
   /** What is on screen and what it means. Numbers come from the saved run. */
   narration: string;
+  /** Optional reasoning kept out of the short step description. */
+  details?: string[];
   /** Why the step is not evidence. */
   caution: string;
   shot: Shot;
@@ -59,7 +61,7 @@ export type MechanismText = {
 };
 
 const SIMULATED =
-  "Simulated response from an illustrative model. It is not a measurement and does not confirm a cause.";
+  "Illustrative simulation, not a measurement or confirmed cause.";
 
 const clamp = (value: number) => Math.min(1, Math.max(0, value));
 const fixed = (value: number) => value.toFixed(2);
@@ -109,12 +111,6 @@ function levels(point: FluidPoint) {
     "spray-cone": clamp(point.sprayWidth),
     substrate_tray: clamp(point.coverage),
   };
-}
-
-function direction(value: number, baseline: number) {
-  const change = value - baseline;
-  if (Math.abs(change) < 0.005) return "level with the control condition";
-  return `${fixed(Math.abs(change))} ${change < 0 ? "below" : "above"} the control condition`;
 }
 
 /** What one mechanism's saved simulation shows, for a short card summary. */
@@ -170,14 +166,14 @@ function atTheMechanism(
 ) {
   const at = `At severity ${fixed(severity)}`;
   if (!end.channels)
-    return `${at} feed flow falls to ${fixed(end.feedFlow)}. This run was saved before the model's illustrative channels existed, so the view shows mass and coverage only.`;
+    return `${at}, feed flow is ${fixed(end.feedFlow)}. Saved before the model's illustrative channels existed; only mass and coverage are available.`;
   if (mechanism === "restriction")
-    return `${at} the model narrows the open path to ${fixed(end.pathOpen)} of its reference by the end of the sequence. Downstream of the marked example location the liquid thins and feed flow falls to ${fixed(end.feedFlow)}. The location is hypothetical: the model does not place a restriction.`;
+    return `${at}, the model narrows the open path to ${fixed(end.pathOpen)}; feed flow falls to ${fixed(end.feedFlow)}. The marked location is hypothetical.`;
   if (mechanism === "unstable_delivery") {
     const pressures = tested.map((point) => point.supplyPressure);
-    return `${at} the model's supply pressure swings between ${fixed(Math.min(...pressures))} and ${fixed(Math.max(...pressures))} of its reference. The reservoir air pulses and the liquid in the pickup and feed tube arrives in surges with gaps between them.`;
+    return `${at}, supply pressure varies from ${fixed(Math.min(...pressures))} to ${fixed(Math.max(...pressures))}. Liquid arrives in pulses with gaps.`;
   }
-  return `${at} the model raises flow resistance to ${fixed(end.flowResistance)} times its reference by the end of the sequence. The liquid is drawn darker and moves more slowly, and feed flow falls to ${fixed(end.feedFlow)}. No viscosity is measured; the darker colour is illustrative.`;
+  return `${at}, flow resistance reaches ${fixed(end.flowResistance)}× reference; feed flow falls to ${fixed(end.feedFlow)}. Darker liquid illustrates slower flow, not measured viscosity.`;
 }
 
 function depositShape(mechanism: Mechanism) {
@@ -260,15 +256,20 @@ export function experimentPlaybackSteps(
     step(
       "establish",
       "The machine and the question",
-      `${copy.mechanism} Inspect the labeled parts in the exploded view, then choose Next step. Simulated mass starts at ${fixed(tested[0].mass)} of its reference. The tested condition (severity ${fixed(severity)}) is compared with the control condition (severity ${fixed(controlSeverity)}).`,
+      `${copy.mechanism} Compare severity ${fixed(severity)} with control ${fixed(controlSeverity)}.`,
       [tested[0]],
       "start",
-      { highlightIds: [] },
+      {
+        highlightIds: [],
+        details: [
+          `Starting simulated mass: ${fixed(tested[0].mass)} of reference.`,
+        ],
+      },
     ),
     step(
       "follow",
       "Following the liquid",
-      "Trace the liquid from the BFS bottle through the pickup tube, clear feed tube and fluid quick-disconnect (QD) into the DJ-2200 valve. Teal is the liquid. BFS reservoir air (purple), valve-actuation air (amber) and coaxial atomizing air (blue) are separate lines that carry no liquid.",
+      "Follow the teal liquid: BFS bottle → pickup tube → feed tube → fluid QD → DJ-2200 valve. Air supplies follow separate paths.",
       [tested[0]],
       "start",
       { highlightIds: [] },
@@ -276,9 +277,15 @@ export function experimentPlaybackSteps(
     step(
       "apart",
       "Taking it apart",
-      `Inspect the separated parts: ${parts}. Labels stay attached as you rotate the view. Separation illustrates the assembly; it is not a maintenance sequence. ${copy.assumption}`,
+      `Inspect ${parts}. Rotate the exploded view for a closer look.`,
       [tested[0]],
       "start",
+      {
+        details: [
+          copy.assumption,
+          "Illustrative separation, not a maintenance sequence.",
+        ],
+      },
     ),
     step(
       "mechanism",
@@ -290,42 +297,52 @@ export function experimentPlaybackSteps(
     step(
       "valve",
       "Inside the valve",
-      `The valve meters the liquid down its centre: feed flow here is ${fixed(end.feedFlow)} against ${fixed(controlEnd.feedFlow)} in the control condition. Valve-actuation air (amber) switches the valve and atomizing air (blue) runs to the air cap. Valve actuation is not modelled; it is shown at a constant rate.`,
+      `Feed flow: ${fixed(end.feedFlow)} against ${fixed(controlEnd.feedFlow)} control. Amber air actuates the valve; blue air feeds the air cap.`,
       [end],
       "tested",
+      {
+        details: [
+          "Valve actuation is shown at a constant rate; it is not modelled.",
+        ],
+      },
     ),
     step(
       "nozzle",
       "At the nozzle",
-      `The spray width follows the simulated coverage: ${fixed(end.sprayWidth)} against ${fixed(controlEnd.sprayWidth)} in the control condition. Droplet density follows feed flow, ${fixed(end.feedFlow)}.`,
+      `Spray width: ${fixed(end.sprayWidth)} against ${fixed(controlEnd.sprayWidth)} control. Droplet density follows feed flow (${fixed(end.feedFlow)}).`,
       [end],
       "tested",
     ),
     step(
       "substrate",
       "The deposit, position by position",
-      `The deposit builds one stripe per sequence position, left to right; a denser stripe means more simulated coverage. At severity ${fixed(severity)} coverage goes from ${fixed(tested[0].coverage)} to ${fixed(end.coverage)}, against ${fixed(controlEnd.coverage)} at the end of the control condition (${direction(end.coverage, controlEnd.coverage)}). ${depositShape(mechanism)} Positions are normalized steps, not elapsed time.`,
+      `Coverage changes from ${fixed(tested[0].coverage)} to ${fixed(end.coverage)} (${fixed(controlEnd.coverage)} control). ${depositShape(mechanism)}`,
       tested,
       "tested",
-      { position: end.position },
+      {
+        position: end.position,
+        details: [
+          "The deposit builds one stripe per sequence position, left to right. Denser stripes mean more coverage. Positions are normalized steps, not elapsed time.",
+        ],
+      },
     ),
     step(
       "readout",
       "What this simulation shows",
-      [
-        prediction ? `Predicted before the run: ${prediction}` : "",
-        `Simulated: the mass ends at ${fixed(end.mass)} against ${fixed(controlEnd.mass)} in the control condition.`,
-        effect
-          ? `Raising ${effect.factor.replaceAll("_", " ")} from ${effect.low_level} to ${effect.high_level} changed the mean simulated response by ${fixed(effect.main_effect)}.`
-          : "",
-        finding ? `Against the records: ${finding}` : "",
-        "Synthetic responses do not confirm a physical cause. No machine test or measurement was performed.",
-      ]
-        .filter(Boolean)
-        .join(" "),
+      `Simulated mass ends at ${fixed(end.mass)} against ${fixed(controlEnd.mass)} control. These results do not confirm a physical cause.`,
       tested,
       "tested",
-      { position: end.position },
+      {
+        position: end.position,
+        details: [
+          prediction ? `Predicted before the run: ${prediction}` : "",
+          effect
+            ? `Raising ${effect.factor.replaceAll("_", " ")} from ${effect.low_level} to ${effect.high_level} changed the mean simulated response by ${fixed(effect.main_effect)}.`
+            : "",
+          finding ? `Against the records: ${finding}` : "",
+          "No machine test or measurement was performed.",
+        ].filter(Boolean),
+      },
     ),
   ];
   return { ok: true, run, baseline: base, steps };

@@ -1,4 +1,12 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import type { ProcedureStep, SimulationRun } from "@flowpilot/contracts";
 import {
   ArrowClockwise,
@@ -33,9 +41,15 @@ const legend = [
 export function GuidedPlayback({
   script,
   title,
+  children,
+  settings,
+  viewTools,
 }: {
   script: { steps: PlaybackStep[]; run?: SimulationRun };
   title: string;
+  children?: ReactNode;
+  settings?: ReactNode;
+  viewTools?: ReactNode;
 }) {
   const { steps } = script;
   const last = steps.length - 1;
@@ -49,11 +63,26 @@ export function GuidedPlayback({
   const [replay, setReplay] = useState(0);
   const [progress, setProgress] = useState(1);
   const [fullScreen, setFullScreen] = useState(false);
+  const [initialGuideOpen] = useState(
+    () => !script.run || !matchMedia("(max-width: 700px)").matches,
+  );
   const [fullScreenError, setFullScreenError] = useState("");
   const [reduced, setReduced] = useState(
     () => matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
-  const step = steps[index];
+  const identity = `${title}:${script.run?.id ?? "reference"}`;
+  const [playbackIdentity, setPlaybackIdentity] = useState(identity);
+  const changed = playbackIdentity !== identity;
+  // Reset the walkthrough without remounting the floating settings console.
+  if (changed) {
+    setPlaybackIdentity(identity);
+    setIndex(0);
+    setPlaying(false);
+    setStarted(false);
+    setHeld(false);
+    setProgress(1);
+  }
+  const step = steps[changed ? 0 : index];
 
   useEffect(() => {
     const query = matchMedia("(prefers-reduced-motion: reduce)");
@@ -97,14 +126,14 @@ export function GuidedPlayback({
   );
   const direction = useMemo<SceneDirection>(
     () => ({
-      key: `${title}:${step.id}`,
+      key: `${identity}:${step.id}`,
       shot: step.shot,
       fluid: step.fluid,
       control: step.control,
       condition: step.condition,
       mechanism: step.mechanism,
     }),
-    [step, title],
+    [step, identity],
   );
   const highlightIds = step.highlightIds.length ? step.highlightIds : undefined;
   const go = (next: number) => {
@@ -137,6 +166,8 @@ export function GuidedPlayback({
     <section
       className="guided-playback"
       aria-label="Guided simulation playback"
+      data-reference={!script.run}
+      data-content-switch={!!viewTools}
     >
       <div
         ref={viewport}
@@ -159,7 +190,10 @@ export function GuidedPlayback({
         <div className="guided-topbar">
           <div className="guided-playback-head">
             <p className="eyebrow">ASYMTEK S932 · 3D simulation</p>
-            <h3>{title}</h3>
+            <h3 className={viewTools ? "sr-only" : undefined}>{title}</h3>
+            {viewTools && (
+              <div className="guided-content-switch">{viewTools}</div>
+            )}
           </div>
           <div className="guided-view-tools">
             <div className="incident-view-toggle">
@@ -258,8 +292,12 @@ export function GuidedPlayback({
             </div>
           )}
           <p className="guided-shot">
-            {step.shot.explode.length ? "Exploded view" : "Assembly view"} ·{" "}
-            {step.shot.name}
+            {step.shot.coreLabels?.length
+              ? "Core detail"
+              : step.shot.explode.length
+                ? "Exploded view"
+                : "Assembly view"}{" "}
+            · {step.shot.name}
           </p>
           <ul className="guided-legend" aria-label="Colours in the 3D view">
             {legend.map(([kind, label]) => (
@@ -269,138 +307,176 @@ export function GuidedPlayback({
             ))}
           </ul>
         </div>
-        <aside className="guided-console" aria-label="Step-by-step guide">
-          <div className="guided-console-heading">
-            <p className="eyebrow">Step-by-step guide</p>
+        <div className="guided-auxiliary">
+          {children}
+          {settings && (
+            <details className="guided-panel guided-settings">
+              <summary>Simulation settings</summary>
+              {settings}
+            </details>
+          )}
+        </div>
+        <details
+          className="guided-console"
+          aria-label="Step-by-step guide"
+          open={initialGuideOpen}
+        >
+          <summary className="guided-console-heading">
+            <span className="eyebrow">Step-by-step guide</span>
             <span className="guided-counter" role="status">
               Step {index + 1} of {steps.length}
             </span>
-          </div>
-          <div className="guided-step-progress" aria-hidden="true">
-            {steps.map((item, position) => (
-              <span key={item.id} data-active={position <= index} />
-            ))}
-          </div>
-          <div
-            className="guided-narration"
-            aria-live="polite"
-            aria-atomic="true"
-          >
-            <h4>{step.title}</h4>
-            <p>{step.narration}</p>
-          </div>
-          <div className="guided-controls">
-            <button
-              className="secondary"
-              aria-label="Previous step"
-              disabled={index === 0}
-              onClick={() => go(index - 1)}
-            >
-              <ArrowLeft aria-hidden="true" /> Previous
-            </button>
-            <button
-              className="primary"
-              aria-label="Next step"
-              disabled={index === last}
-              onClick={() => go(index + 1)}
-            >
-              Next step <ArrowRight aria-hidden="true" />
-            </button>
-          </div>
-          <div className="guided-play-control">
-            <button
-              className="secondary"
-              disabled={reduced || twoD || failed}
-              aria-pressed={playing}
-              onClick={() => {
-                if (playing) setPlaying(false);
-                else {
-                  if (!started || progress >= 1 || held) {
-                    setProgress(0);
-                    setReplay((value) => value + 1);
-                  }
-                  setStarted(true);
-                  setHeld(false);
-                  setPlaying(true);
-                }
-              }}
-            >
-              {playing ? (
-                <Pause aria-hidden="true" />
-              ) : started && (progress >= 1 || held) ? (
-                <ArrowClockwise aria-hidden="true" />
-              ) : (
-                <Play aria-hidden="true" />
-              )}
-              {playbackLabel}
-            </button>
-            <p>
-              {reduced
-                ? "Reduced motion · inspect each step."
-                : "Plays once. Choose Next step to continue."}
-            </p>
-          </div>
-          <details className="guided-step-list">
-            <summary>All {steps.length} steps</summary>
-            <ol className="guided-steps" aria-label="Playback steps">
+          </summary>
+          <div className="guided-console-body">
+            <div className="guided-step-progress" aria-hidden="true">
               {steps.map((item, position) => (
-                <li key={item.id}>
-                  <button
-                    aria-current={position === index ? "step" : undefined}
-                    onClick={() => go(position)}
-                  >
-                    <span className="guided-step-number" aria-hidden="true">
-                      {position + 1}
-                    </span>
-                    <span className="guided-step-text">{item.title}</span>
-                  </button>
-                </li>
+                <span key={item.id} data-active={position <= index} />
               ))}
-            </ol>
-          </details>
-          {script.run && (
-            <details className="guided-response">
-              <summary>Simulated response</summary>
-              <ResponsePlot
-                run={script.run}
-                marker={marker}
-                showTable={false}
-              />
-            </details>
-          )}
-          <div className="guided-source">
-            <StatusChip kind="simulated" detail="not measured" />
-            <p>
-              Based on the S932 reference (§2, 4, 8–9) and Nordson DJ-2200
-              documentation. Geometry and placement are illustrative.
-            </p>
-            <details>
-              <summary>Model references</summary>
+            </div>
+            <div
+              className="guided-narration"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              <h4>{step.title}</h4>
+              <p>{step.narration}</p>
+            </div>
+            <div className="guided-controls">
+              <button
+                className="secondary"
+                aria-label="Previous step"
+                disabled={index === 0}
+                onClick={() => go(index - 1)}
+              >
+                <ArrowLeft aria-hidden="true" /> Previous
+              </button>
+              <button
+                className="primary"
+                aria-label="Next step"
+                disabled={index === last}
+                onClick={() => go(index + 1)}
+              >
+                Next step <ArrowRight aria-hidden="true" />
+              </button>
+            </div>
+            <div className="guided-play-control">
+              <button
+                className="secondary"
+                disabled={reduced || twoD || failed}
+                aria-pressed={playing}
+                onClick={() => {
+                  if (playing) setPlaying(false);
+                  else {
+                    if (!started || progress >= 1 || held) {
+                      setProgress(0);
+                      setReplay((value) => value + 1);
+                    }
+                    setStarted(true);
+                    setHeld(false);
+                    setPlaying(true);
+                  }
+                }}
+              >
+                {playing ? (
+                  <Pause aria-hidden="true" />
+                ) : started && (progress >= 1 || held) ? (
+                  <ArrowClockwise aria-hidden="true" />
+                ) : (
+                  <Play aria-hidden="true" />
+                )}
+                {playbackLabel}
+              </button>
               <p>
-                Valve appearance follows the{" "}
-                <a
-                  href="https://nc-p-001.sitecorecontenthub.cloud/api/public/content/347a9db638b24881971204d5e660d19f?v=51d7862b"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Nordson datasheet
-                </a>
-                . Internal component names follow the{" "}
-                <a
-                  href="https://nc-p-001.sitecorecontenthub.cloud/api/public/content/31bd3f7e505044a0a6a86cb500602659"
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  DJ-2200 parts list
-                </a>
-                . The S932 reference supplies the BFS, motion, conveyor and
-                service assemblies. Original S932 drawings and measured
-                dimensions were not available.
+                {reduced
+                  ? "Reduced motion · inspect each step."
+                  : "Plays once. Choose Next step to continue."}
               </p>
+            </div>
+            {!!step.details?.length && (
+              <details key={step.id} className="guided-response">
+                <summary>Step details</summary>
+                {step.details.map((detail) => (
+                  <p key={detail}>{detail}</p>
+                ))}
+              </details>
+            )}
+            <details className="guided-step-list">
+              <summary>All {steps.length} steps</summary>
+              <ol className="guided-steps" aria-label="Playback steps">
+                {steps.map((item, position) => (
+                  <li key={item.id}>
+                    <button
+                      aria-current={position === index ? "step" : undefined}
+                      onClick={(event) => {
+                        go(position);
+                        if (!script.run)
+                          event.currentTarget
+                            .closest("details")
+                            ?.removeAttribute("open");
+                      }}
+                    >
+                      <span className="guided-step-number" aria-hidden="true">
+                        {position + 1}
+                      </span>
+                      <span className="guided-step-text">{item.title}</span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
             </details>
+            {script.run && (
+              <details className="guided-response">
+                <summary>Simulated response</summary>
+                <ResponsePlot
+                  run={script.run}
+                  marker={marker}
+                  showTable={false}
+                />
+              </details>
+            )}
+            <div className="guided-source">
+              {script.run && (
+                <StatusChip kind="simulated" detail="not measured" />
+              )}
+              {script.run && (
+                <p>Illustrative geometry · S932 / DJ-2200 references.</p>
+              )}
+              <details>
+                <summary>
+                  {script.run
+                    ? "Model references"
+                    : "Illustrative model · references"}
+                </summary>
+                <p>
+                  Valve appearance follows the{" "}
+                  <a
+                    href="https://nc-p-001.sitecorecontenthub.cloud/api/public/content/347a9db638b24881971204d5e660d19f?v=51d7862b"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Nordson datasheet
+                  </a>
+                  . Internal component names follow the{" "}
+                  <a
+                    href="https://nc-p-001.sitecorecontenthub.cloud/api/public/content/31bd3f7e505044a0a6a86cb500602659"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    DJ-2200 parts list
+                  </a>
+                  . The S932 reference supplies the BFS, motion, conveyor and
+                  service assemblies. Original S932 drawings and measured
+                  dimensions were not available.
+                </p>
+              </details>
+            </div>
           </div>
-          {fullScreenError && <p role="status">{fullScreenError}</p>}
-        </aside>
+        </details>
+        {fullScreenError && (
+          <p className="guided-fallback" role="status">
+            {fullScreenError}
+          </p>
+        )}
       </div>
     </section>
   );

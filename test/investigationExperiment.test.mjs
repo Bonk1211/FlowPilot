@@ -111,9 +111,14 @@ test("one experiment per explanation is offered under the same conditions as a s
   assert.equal(suggestInvestigationExperiments(value), null);
 });
 
-test("ineligible checks and closed or escalated incidents offer no experiments", () => {
+test("a single eligible experiment remains inspectable; unavailable or closed incidents offer none", () => {
   const value = incident();
   value.assessment.checks[0].eligible = false;
+  assert.deepEqual(
+    suggestInvestigationExperiments(value).items.map((item) => item.check.id),
+    ["restriction-check"],
+  );
+  value.assessment.checks[1].eligible = false;
   assert.equal(suggestInvestigationExperiments(value), null);
   for (const change of [{ status: "closed" }, { escalated: true }]) {
     assert.equal(

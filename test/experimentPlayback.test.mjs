@@ -126,7 +126,10 @@ test("eight directed shots read every number from the saved runs", () => {
   assert.match(substrate.narration, /fade steadily/);
   assert.ok(Math.abs(substrate.partStates["visible-fluid-core"] - 0.48) < 1e-9);
   const readout = script.steps.at(-1);
-  assert.match(readout.narration, /^Predicted before the run: Mass falls/);
+  assert.match(
+    readout.details.join(" "),
+    /^Predicted before the run: Mass falls/,
+  );
   assert.match(readout.narration, /mass ends at 0\.48 against 1\.00/);
 });
 
@@ -146,7 +149,7 @@ test("runs saved before the illustrative channels fall back to mass and coverage
   assert.doesNotMatch(close.narration, /open path/);
   assert.match(
     close.narration,
-    /saved before the model's illustrative channels/,
+    /saved before the model's illustrative channels/i,
   );
 });
 
@@ -176,7 +179,7 @@ test("the teardown names this explanation's parts and the narration never claims
     /do not confirm a physical cause/,
   );
   assert.match(
-    script.steps.at(-1).narration,
+    script.steps.at(-1).details.join(" "),
     /Raising severity from 0\.2 to 0\.8/,
   );
 });

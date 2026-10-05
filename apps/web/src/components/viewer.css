@@ -23,7 +23,9 @@
 }
 .assembly-canvas canvas {
   display: block;
-  max-width: 100%;
+  /* CSS size must match the labels, even when browser zoom makes DPR < 1. */
+  width: 100%;
+  height: 100%;
 }
 .assembly-tools {
   display: flex;

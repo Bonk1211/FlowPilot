@@ -1,4 +1,12 @@
-import { lazy, Suspense, useEffect, useId, useMemo, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import type { ProcedureStep } from "@flowpilot/contracts";
 import { Columns, Cube, Path } from "@phosphor-icons/react";
 import { StatusChip } from "./StatusChip";
@@ -26,7 +34,9 @@ export function MechanismView({
   compact = false,
   immersive = false,
   hypotheses = [],
+  settings,
 }: {
+  settings?: ReactNode;
   hypothesisId: string | null;
   /** Components of the selected hypothesis, as supplied by the assessment. */
   componentIds: string[];
@@ -97,6 +107,30 @@ export function MechanismView({
     }),
     [hypothesisId, mechanism, node],
   );
+  if (guide)
+    return (
+      <GuidedPlayback
+        script={guide}
+        title="S932 assembly guide"
+        settings={settings}
+      >
+        {hypotheses.length > 1 && (
+          <details
+            className="guided-panel"
+            open={comparing}
+            onToggle={(event) => setComparing(event.currentTarget.open)}
+          >
+            <summary>Compare mechanisms</summary>
+            {comparing && (
+              <MechanismCompare
+                hypotheses={hypotheses}
+                initialId={hypothesisId}
+              />
+            )}
+          </details>
+        )}
+      </GuidedPlayback>
+    );
   return (
     <section
       className="incident-card incident-mechanism"
@@ -105,9 +139,7 @@ export function MechanismView({
     >
       <div className="incident-section-title">
         <div>
-          <p className="eyebrow">
-            {immersive ? "Explore the equipment" : "Understand the explanation"}
-          </p>
+          <p className="eyebrow">Understand the explanation</p>
           <h2 id={headingId}>Mechanism explorer</h2>
         </div>
         <div className="incident-mechanism-actions">
@@ -125,25 +157,12 @@ export function MechanismView({
         </div>
       </div>
       <p className="incident-caption">
-        {immersive ? (
-          "Reference guide to the S932 fluid path and its separate air supplies. Each step stays in view until you choose Next step."
-        ) : (
-          <>
-            Assessment revision {revision}
-            {eventLabel ? ` · Inspecting evidence: ${eventLabel}` : ""}.
-            Component highlights show a possible mechanism, not a sensor
-            reading.
-          </>
-        )}
+        Assessment revision {revision}
+        {eventLabel ? ` · Inspecting evidence: ${eventLabel}` : ""}. Component
+        highlights show a possible mechanism, not a sensor reading.
       </p>
       {comparing && hypotheses.length > 1 ? (
         <MechanismCompare hypotheses={hypotheses} initialId={hypothesisId} />
-      ) : guide ? (
-        <GuidedPlayback
-          key={componentKey}
-          script={guide}
-          title="S932 assembly guide"
-        />
       ) : (
         <div className="incident-mechanism-layout">
           <div className="incident-scene procedure-viewer">

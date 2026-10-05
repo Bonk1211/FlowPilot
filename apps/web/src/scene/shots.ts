@@ -177,6 +177,26 @@ export const partAnnotations: Record<
   },
 };
 
+/** Individual meshes exposed when the needle assembly is lifted out. */
+export const coreAnnotations = {
+  piston: { text: "Air piston", mesh: "air-piston", point: [0, 0, 0.21] },
+  spring: {
+    text: "Return spring",
+    mesh: "return-spring",
+    point: [0.17, 1.595, 0],
+  },
+  needle: {
+    text: "Metering needle",
+    mesh: "needle-shaft",
+    point: [0, 0, 0.07],
+  },
+  seat: { text: "Needle seat", mesh: "needle-seat", point: [0, 0, 0.19] },
+} as const satisfies Record<
+  string,
+  { text: string; mesh: string; point: Vec3 }
+>;
+export type CoreId = keyof typeof coreAnnotations;
+
 /**
  * Where each part moves when the machine is taken apart, at full separation.
  * The valve is the anchor; the liquid path parts move up and out along the
@@ -211,7 +231,7 @@ export const explodeOffsets: Record<GroupId, Vec3> = {
   weigh_station: [0.3, 0.35, 0.4],
   purge_station: [0.15, 0.5, 0.5],
   waste_bottle: [0.85, 0, 0.5],
-  machine_enclosure: [0, 0, -0.6],
+  machine_enclosure: [0, 0.8, -2.4],
 };
 
 export type Shot = {
@@ -231,6 +251,12 @@ export type Shot = {
   xray: GroupId[];
   /** Parts named on screen with a leader line. */
   labels: GroupId[];
+  /** Mesh-level names for the exposed valve internals. */
+  coreLabels?: CoreId[];
+  /** A fine outline identifies the subject of a reference-guide shot. */
+  spotlight?: GroupId[];
+  /** Let the camera approach before beginning the separation. */
+  separationStart?: number;
   /** A marked, hypothetical location where the mechanism could act. */
   marker: "narrowing" | null;
   /** How the deposit on the substrate is shown. */
@@ -244,8 +270,12 @@ export type CameraFrame = {
 };
 
 /** Keep the same horizontal subject space when the viewer becomes portrait. */
-export function fitCameraFov(fov: number, aspect: number) {
-  const scale = Math.max(1, 0.9 / Math.max(0.1, aspect));
+export function fitCameraFov(fov: number, aspect: number, availableHeight = 1) {
+  const scale = Math.max(
+    1,
+    0.9 / Math.max(0.1, aspect),
+    1 / Math.max(0.1, availableHeight),
+  );
   return (Math.atan(Math.tan((fov * Math.PI) / 360) * scale) * 360) / Math.PI;
 }
 
@@ -322,6 +352,8 @@ export function explodeAmounts(
   progress: number,
   from: Partial<Record<GroupId, number>> = {},
 ): Partial<Record<GroupId, number>> {
+  const delay = shot.separationStart ?? 0;
+  progress = clamp((progress - delay) / (1 - delay));
   const count = shot.explode.length;
   return Object.fromEntries([
     ...Object.entries(from).map(([id, amount]) => [

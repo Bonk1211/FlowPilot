@@ -1,34 +1,25 @@
 .experiment-lab {
-  display: grid;
-  gap: var(--space-4);
+  min-width: 0;
 }
-.lab-layout {
+.lab-console-content {
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-5);
-  align-items: start;
+  gap: 14px;
+}
+.lab-console-content .incident-section-title h2 {
+  font-size: 18px;
+}
+.lab-console-content .incident-section-title .eyebrow {
+  display: none;
+}
+.lab-console-content .lab-heading-actions {
+  justify-content: flex-start;
 }
 .lab-stage {
   min-width: 0;
 }
-.lab-placeholder {
-  display: grid;
-  place-items: center;
-  min-height: 280px;
-  padding: var(--space-5);
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--radius-pane);
-  background: var(--surface-muted);
-  color: var(--text-secondary);
-  text-align: center;
-}
-.lab-placeholder p {
-  margin: 0;
-  max-width: 36ch;
-}
 .lab-agents {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-3);
   margin: 0;
   padding: 0;
@@ -55,16 +46,23 @@
   margin: 0;
 }
 .lab-agent-head {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: var(--space-2);
+}
+.lab-agent-head > .signature-spark {
+  grid-row: 2;
 }
 .lab-agent button {
   justify-self: start;
   min-height: var(--control-height);
 }
 .lab-state {
+  grid-column: 2;
+  grid-row: 2;
+  justify-self: end;
+  white-space: nowrap;
   gap: 6px;
 }
 .lab-state svg {
@@ -93,8 +91,10 @@
   min-height: var(--control-height);
 }
 .lab-agent-head strong {
-  flex: 1;
+  grid-column: 1 / -1;
+  grid-row: 1;
   min-width: 0;
+  overflow-wrap: normal;
 }
 .lab-track-bar {
   position: relative;
@@ -196,14 +196,6 @@
     transform: rotate(360deg);
   }
 }
-@media (max-width: 1100px) {
-  .lab-layout {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .lab-agents {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
 @media (prefers-reduced-motion: reduce) {
   .lab-agent,
   .lab-spin,
@@ -268,21 +260,8 @@
   border: 0;
   background: transparent;
 }
-.incident-simulation-page .experiment-lab > .incident-section-title {
+.incident-app.incident-simulation-page.incident-workspace .incident-main {
   padding: 0;
-  border: 0;
-}
-.incident-simulation-page .experiment-lab > .incident-section-title h2 {
-  font-size: 18px;
-}
-.incident-simulation-page .experiment-lab > .incident-section-title .eyebrow {
-  display: none;
-}
-.incident-simulation-page .experiment-lab > .incident-caption {
-  margin: 0;
-}
-.incident-simulation-page.incident-workspace .incident-main {
-  padding: 16px 20px 40px 84px;
 }
 .incident-simulation-page .incident-overview {
   position: fixed;
@@ -295,8 +274,26 @@
   background: var(--surface-document);
   box-shadow: 0 16px 60px #0003;
 }
+
+.incident-simulation-page .guided-viewport {
+  --viewer-inset: 84px;
+}
+.incident-simulation-page .guided-viewport:fullscreen {
+  --viewer-inset: 20px;
+}
 @media (max-width: 700px) {
-  .incident-simulation-page.incident-workspace .incident-main {
-    padding: 16px 12px 90px;
+  .incident-simulation-page .incident-command-bar {
+    min-height: var(--command-bar-height);
+    height: var(--command-bar-height);
+    flex-wrap: nowrap;
+    position: sticky;
+  }
+  .incident-simulation-page .incident-command-bar nav,
+  .incident-simulation-page .incident-command-bar .demo-badge {
+    display: none;
+  }
+  .incident-simulation-page .guided-viewport,
+  .incident-simulation-page .guided-viewport:fullscreen {
+    --viewer-inset: 12px;
   }
 }

@@ -2,12 +2,19 @@ import * as THREE from "three";
 import type { FluidPoint } from "../incidents/experimentPlayback";
 import type { Mechanism } from "./experimentShots";
 import {
+  placeLabel,
+  type LabelBounds,
+  type LabelPosition,
+} from "./labelLayout";
+import {
   explodeAmounts,
   explodeOffsets,
+  coreAnnotations,
   groupIds,
   partAnnotations,
   settle,
   type GroupId,
+  type CoreId,
   type Shot,
 } from "./shots";
 
@@ -86,6 +93,9 @@ type Core = {
   length: number;
 };
 type Shell = { material: THREE.Material & { opacity: number }; base: number };
+const annotations = { ...partAnnotations, ...coreAnnotations };
+type LabelId = GroupId | CoreId;
+const annotationIds = Object.keys(annotations) as LabelId[];
 
 function hash(index: number) {
   const value = Math.sin(index * 127.1 + 311.7) * 43758.5453;
@@ -100,7 +110,8 @@ function hash(index: number) {
 export class Stage {
   private groups = new Map<GroupId, THREE.Object3D>();
   private home = new Map<GroupId, THREE.Vector3>();
-  private anchors = new Map<GroupId, THREE.Object3D>();
+  private anchors = new Map<LabelId, THREE.Object3D>();
+  private spotlights = new Map<GroupId, THREE.Box3Helper>();
   private shells = new Map<GroupId, Shell[]>();
   private cores: Core[] = [];
   private exploded: Partial<Record<GroupId, number>> = {};
@@ -123,8 +134,13 @@ export class Stage {
   private labelLayer: HTMLDivElement;
   private lines: SVGSVGElement;
   private labels = new Map<
-    GroupId,
-    { box: HTMLDivElement; line: SVGLineElement; dot: SVGCircleElement }
+    LabelId,
+    {
+      box: HTMLDivElement;
+      line: SVGLineElement;
+      dot: SVGCircleElement;
+      position?: LabelPosition;
+    }
   >();
   private markerLabel: HTMLDivElement;
   private matrix = new THREE.Matrix4();
@@ -143,6 +159,12 @@ export class Stage {
       this.home.set(id, group.position.clone());
       const anchor = group.getObjectByName(partAnnotations[id].mesh);
       if (anchor) this.anchors.set(id, anchor);
+    }
+    for (const [id, annotation] of Object.entries(coreAnnotations)) {
+      const anchor = this.groups
+        .get("needle_assembly")
+        ?.getObjectByName(annotation.mesh);
+      if (anchor) this.anchors.set(id as CoreId, anchor);
     }
     const liquidOrder = [
       "fluid-core-pickup",
@@ -310,12 +332,15 @@ export class Stage {
 
   /** Start a new step: transitions leave from wherever the parts are now. */
   direct(direction: SceneDirection | null) {
-    this.from = {
-      exploded: { ...this.exploded },
-      faded: { ...this.faded },
-      seeThrough: { ...this.seeThrough },
-    };
+    // Replaying the same step restores its original transition, including parts.
+    if (direction?.key !== this.direction?.key)
+      this.from = {
+        exploded: { ...this.exploded },
+        faded: { ...this.faded },
+        seeThrough: { ...this.seeThrough },
+      };
     this.direction = direction;
+    for (const label of this.labels.values()) label.position = undefined;
     this.depositDrawn = "";
   }
 
@@ -389,7 +414,7 @@ export class Stage {
       group.position
         .copy(this.home.get(id)!)
         .add(this.scratch.set(...offset).multiplyScalar(amount));
-      const fade = 1 - 0.86 * (this.faded[id] ?? 0);
+      const fade = 1 - (shot.spotlight ? 0.97 : 0.86) * (this.faded[id] ?? 0);
       const clear = 1 - 0.7 * (this.seeThrough[id] ?? 0);
       for (const shell of this.shells.get(id) ?? []) {
         const opacity = shell.base * fade * clear;
@@ -424,7 +449,8 @@ export class Stage {
     for (const core of this.cores) {
       const uniforms = core.material.uniforms;
       uniforms.uTime.value = time;
-      uniforms.uOpacity.value = 1 - 0.8 * (this.faded[core.group] ?? 0);
+      uniforms.uOpacity.value =
+        1 - (shot.spotlight ? 0.97 : 0.8) * (this.faded[core.group] ?? 0);
       if (core.kind === "liquid") {
         uniforms.uSpeed.value =
           (0.65 * Math.max(0.15, point.feedFlow)) / resistance ** 1.6;
@@ -517,6 +543,26 @@ export class Stage {
       material.opacity = 0.65 + 0.35 * Math.sin(time * 3) ** 2;
     }
     this.root.updateMatrixWorld(true);
+    for (const [id, helper] of this.spotlights)
+      helper.visible = shot.spotlight?.includes(id) ?? false;
+    for (const id of shot.spotlight ?? []) {
+      const group = this.groups.get(id);
+      if (!group) continue;
+      let helper = this.spotlights.get(id);
+      if (!helper) {
+        helper = new THREE.Box3Helper(new THREE.Box3(), 0x9ce7c2);
+        const material = helper.material as THREE.LineBasicMaterial;
+        material.transparent = true;
+        material.opacity = 0.65;
+        material.depthTest = false;
+        helper.renderOrder = 5;
+        this.root.add(helper);
+        this.spotlights.set(id, helper);
+      }
+      // World coordinates, with a little space around the highlighted part.
+      helper.box.setFromObject(group).expandByScalar(0.055);
+      helper.visible = progress > 0.25;
+    }
     this.place(camera, width, height, progress);
   }
 
@@ -547,8 +593,7 @@ export class Stage {
 
   /**
    * Project each named part and place its label with a leader line. A label
-   * shows while its part is near the middle of the frame, so callouts arrive
-   * and leave as the camera passes, and labels on one side never overlap.
+   * follows its part with a stable offset, adapting to nearby labels and panels.
    */
   private place(
     camera: THREE.PerspectiveCamera,
@@ -557,24 +602,28 @@ export class Stage {
     progress: number,
   ) {
     const shot = this.direction!.shot;
-    const wanted = new Set(shot.labels);
+    const wanted = new Set<LabelId>([
+      ...shot.labels,
+      ...(shot.coreLabels ?? []),
+    ]);
     const settled = progress > 0.2;
-    const top = 52;
+    const reference =
+      this.labelLayer.closest('[data-reference="true"]') !== null;
+    const top = reference ? (width < 700 ? 200 : 110) : 52;
+    const bottom = reference ? (width < 700 ? height * 0.36 + 90 : 235) : 20;
     this.lines.setAttribute("viewBox", `0 0 ${width} ${height}`);
     const placed: {
-      id: GroupId;
+      id: LabelId;
       x: number;
       y: number;
-      left: boolean;
-      labelY: number;
     }[] = [];
-    for (const id of groupIds) {
+    for (const id of annotationIds) {
       const anchor = this.anchors.get(id);
       if (!wanted.has(id) || !settled || !anchor) continue;
       // Follow the actual mesh, including explosion and any parent transforms.
       // A hose's bounding-box centre can be empty space, so use a point on it.
       const screen = anchor
-        .localToWorld(this.scratch.set(...partAnnotations[id].point))
+        .localToWorld(this.scratch.fromArray(annotations[id].point))
         .project(camera);
       const x = (screen.x * 0.5 + 0.5) * width;
       const y = (-screen.y * 0.5 + 0.5) * height;
@@ -584,12 +633,12 @@ export class Stage {
         x > 12 &&
         x < width - 12 &&
         y > top &&
-        y < height - 20;
+        y < height - bottom;
       if (!central) continue;
-      placed.push({ id, x, y, left: x < width / 2, labelY: y - 24 });
+      placed.push({ id, x, y });
     }
     const shown = new Set(placed.map((item) => item.id));
-    for (const id of groupIds) {
+    for (const id of annotationIds) {
       const label = this.labels.get(id);
       if (label && !shown.has(id)) {
         label.box.dataset.shown = "false";
@@ -597,20 +646,32 @@ export class Stage {
         label.dot.style.opacity = "0";
       }
     }
-    const occupied: {
-      left: number;
-      right: number;
-      top: number;
-      bottom: number;
-    }[] = [];
-    for (const item of placed.sort((a, b) => a.y - b.y)) {
+    const occupied: LabelBounds[] = [];
+    if (reference) {
+      const origin = this.labelLayer.getBoundingClientRect();
+      for (const panel of this.labelLayer
+        .closest(".guided-viewport")!
+        .querySelectorAll(
+          ".guided-console, .guided-auxiliary, .assembly-camera-tools",
+        )) {
+        const rect = panel.getBoundingClientRect();
+        occupied.push({
+          left: rect.left - origin.left,
+          right: rect.right - origin.left,
+          top: rect.top - origin.top,
+          bottom: rect.bottom - origin.top,
+        });
+      }
+    }
+    // Keep priority stable as parts cross on screen during zoom or rotation.
+    for (const item of placed) {
       let label = this.labels.get(item.id);
       if (!label) {
         const box = document.createElement("div");
         box.className = "assembly-label";
-        box.textContent = partAnnotations[item.id].text;
+        box.textContent = annotations[item.id].text;
         box.dataset.partId = item.id;
-        box.dataset.anchorMesh = partAnnotations[item.id].mesh;
+        box.dataset.anchorMesh = annotations[item.id].mesh;
         const line = document.createElementNS(
           "http://www.w3.org/2000/svg",
           "line",
@@ -627,59 +688,47 @@ export class Stage {
         label = { box, line, dot };
         this.labels.set(item.id, label);
       }
-      // A label that would leave the frame on its side flips to the other side.
       const size = label.box.offsetWidth;
-      const left = item.left
-        ? item.x - 32 - size >= 8
-        : item.x + 32 + size > width - 8;
-      const labelX = left
-        ? Math.max(size + 8, item.x - 32)
-        : Math.min(width - size - 8, item.x + 32);
-      // Resolve collisions after flipping/clamping, across both sides of the model.
       const halfHeight = label.box.offsetHeight / 2;
-      const minimum = top + halfHeight;
-      const maximum = height - 12 - halfHeight;
-      const labelLeft = left ? labelX - size : labelX;
-      const labelRight = labelLeft + size;
-      const candidates = [
-        Math.max(minimum, Math.min(maximum, item.labelY)),
-        minimum,
-        maximum,
-        ...occupied.flatMap((rect) => [
-          rect.top - 4 - halfHeight,
-          rect.bottom + 4 + halfHeight,
-        ]),
-      ];
-      const labelY = candidates
-        .filter((y) => y >= minimum && y <= maximum)
-        .sort((a, b) => Math.abs(a - item.labelY) - Math.abs(b - item.labelY))
-        .find((y) =>
-          occupied.every(
-            (rect) =>
-              labelRight + 4 <= rect.left ||
-              labelLeft >= rect.right + 4 ||
-              y + halfHeight + 4 <= rect.top ||
-              y - halfHeight >= rect.bottom + 4,
-          ),
-        );
-      if (labelY === undefined) {
+      const position = placeLabel(
+        item,
+        { width: size, height: halfHeight * 2 },
+        { left: 8, right: width - 8, top, bottom: height - bottom },
+        occupied,
+        label.position,
+      );
+      if (!position) {
         label.box.dataset.shown = "false";
         label.line.style.opacity = "0";
         label.dot.style.opacity = "0";
         continue;
       }
+      label.position = position;
+      const labelLeft = position.x - size / 2;
+      const labelRight = position.x + size / 2;
       occupied.push({
         left: labelLeft,
         right: labelRight,
-        top: labelY - halfHeight,
-        bottom: labelY + halfHeight,
+        top: position.y - halfHeight,
+        bottom: position.y + halfHeight,
       });
       label.box.dataset.shown = "true";
-      label.box.style.transform = `translate(${labelX}px, ${labelY}px) translate(${left ? "-100%" : "0"}, -50%)`;
+      label.box.style.transform = `translate(${position.x}px, ${position.y}px) translate(-50%, -50%)`;
       label.line.setAttribute("x1", String(item.x));
       label.line.setAttribute("y1", String(item.y));
-      label.line.setAttribute("x2", String(labelX));
-      label.line.setAttribute("y2", String(labelY));
+      label.line.setAttribute(
+        "x2",
+        String(Math.max(labelLeft, Math.min(labelRight, item.x))),
+      );
+      label.line.setAttribute(
+        "y2",
+        String(
+          Math.max(
+            position.y - halfHeight,
+            Math.min(position.y + halfHeight, item.y),
+          ),
+        ),
+      );
       label.line.style.opacity = "1";
       label.dot.setAttribute("cx", String(item.x));
       label.dot.setAttribute("cy", String(item.y));
@@ -698,6 +747,11 @@ export class Stage {
   }
 
   dispose() {
+    for (const helper of this.spotlights.values()) {
+      helper.geometry.dispose();
+      (helper.material as THREE.LineBasicMaterial).dispose();
+      helper.removeFromParent();
+    }
     for (const core of this.cores) core.material.dispose();
     this.droplets.geometry.dispose();
     (this.droplets.material as THREE.Material).dispose();

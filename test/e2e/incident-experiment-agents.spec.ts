@@ -7,6 +7,8 @@ import {
   type Page,
 } from "@playwright/test";
 import type { Incident, IncidentExperiment } from "@flowpilot/contracts";
+import type { Group, PerspectiveCamera, WebGLRenderer } from "three";
+import { partAnnotations } from "../../apps/web/src/scene/shots";
 
 type Act = (command: Record<string, unknown>) => Promise<void>;
 
@@ -56,6 +58,15 @@ const progress = (page: Page, title: string) =>
   });
 const offer = (page: Page) =>
   page.getByRole("complementary", { name: "Suggested experiments" });
+
+async function captureModel(scene: Locator, path?: string) {
+  // The canvas fills the stage, so hide floating controls only for model comparisons.
+  return scene.screenshot({
+    path,
+    style:
+      ".guided-topbar, .guided-auxiliary, .guided-console, .assembly-camera-tools, .guided-shot, .guided-legend, .incident-feature-sidebar { visibility: hidden !important; }",
+  });
+}
 
 async function frameDifference(page: Page, before: Buffer, after: Buffer) {
   return page.evaluate(
@@ -112,6 +123,38 @@ async function chooseStep(playback: Locator, index: number) {
   await steps.getByRole("button").nth(index).click();
 }
 
+async function expectFloatingPanels(playback: Locator) {
+  const viewport = playback.locator(".guided-viewport");
+  // The renderer must retain the whole stage behind every console.
+  await expect
+    .poll(async () => {
+      const stage = await viewport.boundingBox();
+      const canvas = await viewport.locator("canvas").boundingBox();
+      if (!stage || !canvas) return Infinity;
+      return Math.max(
+        ...(["x", "y", "width", "height"] as const).map((key) =>
+          Math.abs(stage[key] - canvas[key]),
+        ),
+      );
+    })
+    .toBeLessThanOrEqual(1);
+  const stage = (await viewport.boundingBox())!;
+  for (const panel of await playback
+    .locator(".guided-console, .guided-auxiliary")
+    .all()) {
+    const box = (await panel.boundingBox())!;
+    expect(box.x).toBeGreaterThanOrEqual(stage.x - 1);
+    expect(box.y).toBeGreaterThanOrEqual(stage.y - 1);
+    expect(box.x + box.width).toBeLessThanOrEqual(stage.x + stage.width + 1);
+    expect(box.y + box.height).toBeLessThanOrEqual(stage.y + stage.height + 1);
+  }
+  expect(
+    await viewport.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth,
+    ),
+  ).toBe(true);
+}
+
 test("the three experiments are offered only when the answers leave explanations open", async ({
   page,
   request,
@@ -133,7 +176,7 @@ test("the three experiments are offered only when the answers leave explanations
   ])
     await expect(items.filter({ hasText: title })).toHaveCount(1);
   await expect(offer(page)).toContainText("Simulated · no machine test");
-  await expect(offer(page)).toContainText("not recorded as evidence");
+  await expect(offer(page)).toContainText("not recorded evidence");
 
   await ready.act({
     action: "escalate",
@@ -153,13 +196,11 @@ test("each suggested experiment explains why it runs, what it tests, what the mo
   const row = offer(page).getByRole("button", {
     name: /Fluid-path restriction.*steady, straight decline/,
   });
-  await expect(row).toHaveAttribute("aria-expanded", "false");
+  await expect(row).toHaveAttribute("aria-haspopup", "dialog");
   await row.focus();
   await page.keyboard.press("Enter");
-  await expect(row).toHaveAttribute("aria-expanded", "true");
-  const body = offer(page).locator(
-    `#${await row.getAttribute("aria-controls")}`,
-  );
+  const body = page.getByRole("dialog", { name: "Fluid-path restriction" });
+  await expect(body).toBeVisible();
   for (const heading of [
     "Why run it",
     "What it tests",
@@ -188,14 +229,75 @@ test("each suggested experiment explains why it runs, what it tests, what the mo
     "A simulation cannot confirm a cause or say which explanation is most likely.",
   );
   await expect(body).not.toContainText(/root cause is|confirmed cause/i);
+  // Native modal focus stays inside the popup and returns to the entry on Escape.
+  await body
+    .getByRole("button", {
+      name: "Run this experiment: Fluid-path restriction",
+    })
+    .focus();
+  await page.keyboard.press("Tab");
+  await expect(
+    body.getByRole("button", { name: "Close experiment description" }),
+  ).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect(
+    body.getByRole("button", {
+      name: "Run this experiment: Fluid-path restriction",
+    }),
+  ).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(body).toHaveCount(0);
+  await expect(row).toBeFocused();
 
   const material = offer(page).getByRole("button", {
     name: /Material-condition change/,
   });
   await material.click();
   await expect(
-    offer(page).getByText(/Mass falls quickly at first and then more slowly/),
+    page
+      .getByRole("dialog", { name: "Material-condition change" })
+      .getByText(/Mass falls quickly at first and then more slowly/),
   ).toBeVisible();
+});
+
+test("the experiment popup fits a phone, keeps Run visible and closes from the backdrop", async ({
+  page,
+  request,
+}, testInfo) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const source = await incidentWith(request, ["intermittent", "unstable"]);
+  await page.goto(`/incidents/${source.incident().id}/investigation`);
+  const trigger = offer(page).getByRole("button", {
+    name: /^Unstable fluid delivery/,
+  });
+  await trigger.click();
+  const popup = page.getByRole("dialog", { name: "Unstable fluid delivery" });
+  await expect(popup).toBeVisible();
+  const bounds = (await popup.boundingBox())!;
+  expect(bounds.x).toBeGreaterThanOrEqual(8);
+  expect(bounds.y).toBeGreaterThanOrEqual(8);
+  expect(bounds.x + bounds.width).toBeLessThanOrEqual(382);
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(836);
+  expect(
+    await popup.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth,
+    ),
+  ).toBe(true);
+  const run = popup.getByRole("button", {
+    name: "Run this experiment: Unstable fluid delivery",
+  });
+  await expect(run).toBeInViewport();
+  await popup.locator(".experiment-brief-body").evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  await expect(run).toBeInViewport();
+  await popup.screenshot({
+    path: testInfo.outputPath("experiment-popup-mobile.png"),
+  });
+  await page.mouse.click(2, 2);
+  await expect(popup).toHaveCount(0);
+  await expect(trigger).toBeFocused();
+  expect(await plans(request, source.incident().id)).toHaveLength(0);
 });
 
 test("one press runs the three experiments at once, each as its own approved plan, and changes nothing recorded", async ({
@@ -220,14 +322,13 @@ test("one press runs the three experiments at once, each as its own approved pla
       { timeout: 10000 },
     );
   await expect(lab(page).getByRole("status").first()).toContainText(
-    "3 running, 0 of 3 finished",
+    "3 running · 0 of 3 finished",
   );
-  await expect(lab(page)).toContainText("Each condition takes milliseconds");
   for (const item of await tracks(page).locator(":scope > li").all())
     await expect(item).toContainText(/Simulating/);
   await expect(
     page.getByText(
-      "The 3D playback opens here when the first experiment finishes.",
+      "Experiment playback becomes available when the first experiment finishes.",
     ),
   ).toBeVisible();
   await lab(page).screenshot({
@@ -243,7 +344,7 @@ test("one press runs the three experiments at once, each as its own approved pla
       tracks(page).locator(":scope > li").filter({ hasText: title }),
     ).toContainText("Approved by demo:engineer");
   await expect(lab(page)).toContainText(
-    "Simulated responses cannot say which cause is most likely",
+    "Simulated results cannot rank causes or become evidence",
   );
   await expect(
     lab(page).locator('.incident-status[data-status="observed"]'),
@@ -294,7 +395,8 @@ test("experiments can also run one at a time, from the investigation or the lab"
   await offer(page)
     .getByRole("button", { name: /Fluid-path restriction/ })
     .click();
-  await offer(page)
+  await page
+    .getByRole("dialog", { name: "Fluid-path restriction" })
     .getByRole("button", {
       name: "Run this experiment: Fluid-path restriction",
     })
@@ -337,8 +439,32 @@ test("reloading or asking again never runs a second plan", async ({
   const id = source.incident().id;
   await runFromInvestigation(page, id);
   await finished(page);
+  const playback = page.getByRole("region", {
+    name: "Guided simulation playback",
+    exact: true,
+  });
+  await expect(playback.locator(".guided-counter")).toHaveText("Step 1 of 12");
+  await page
+    .getByRole("button", { name: "Experiment playback", exact: true })
+    .click();
+  await expect(playback.locator(".guided-counter")).toHaveText("Step 1 of 8");
   await page.reload();
   await finished(page);
+  // Saved plan links always open the shared tour, including incidents created before it.
+  await expect(playback).toHaveAttribute("data-reference", "true");
+  await expect(playback.locator(".guided-counter")).toHaveText("Step 1 of 12");
+  await chooseStep(playback, 5);
+  await expect(
+    playback.locator('.assembly-label[data-part-id="piston"]'),
+  ).toHaveAttribute("data-shown", "true");
+  await page
+    .getByRole("button", { name: "Experiment playback", exact: true })
+    .click();
+  await expect(playback.locator(".guided-counter")).toHaveText("Step 1 of 8");
+  await page
+    .getByRole("button", { name: "Assembly tour", exact: true })
+    .click();
+  await expect(playback.locator(".guided-counter")).toHaveText("Step 1 of 12");
   expect(await plans(request, id)).toHaveLength(3);
   // Asking for the same runs again finds the same plans, not new ones.
   await page.goto(`/incidents/${id}/simulation?run=all`);
@@ -352,6 +478,8 @@ test("reloading or asking again never runs a second plan", async ({
     .click();
   await expect(lab(page)).toBeVisible();
   await finished(page);
+  await expect(playback).toHaveAttribute("data-reference", "true");
+  await expect(playback.locator(".guided-counter")).toHaveText("Step 1 of 12");
   expect(await plans(request, id)).toHaveLength(3);
 });
 
@@ -372,33 +500,64 @@ test("the assembly guide opens directly without running an experiment", async ({
   const viewport = playback.locator(".guided-viewport");
   const counter = playback.locator(".guided-counter");
   await expect(scene).toHaveAttribute("data-model-loaded", "true");
-  await expect(counter).toHaveText("Step 1 of 9");
+  await expect(counter).toHaveText("Step 1 of 12");
+  const settings = playback.locator(".guided-settings");
+  await settings.locator(":scope > summary").click();
+  const simulationControls = settings.locator(".incident-simulation-controls");
+  await simulationControls.locator(":scope > summary").click();
+  const severity = settings.getByRole("slider", {
+    name: "Illustrative fault severity",
+    exact: true,
+  });
+  await severity.press("Home");
+  for (let increment = 0; increment < 45; increment++)
+    await severity.press("ArrowRight");
+  await expect(severity).toHaveValue("0.45");
+  await settings
+    .getByRole("combobox", { name: "Hypothetical mechanism", exact: true })
+    .selectOption("unstable_delivery");
+  await expect(settings).toHaveAttribute("open", "");
+  await expect(simulationControls).toHaveAttribute("open", "");
+  await expect(severity).toHaveValue("0.45");
+  await settings.locator(":scope > summary").click();
   await expect(playback).toContainText("Explore the S932 assembly");
   await expect(
-    playback.locator("summary").filter({ hasText: "Simulated response" }),
+    playback
+      .locator(".guided-console summary")
+      .filter({ hasText: "Simulated response" }),
   ).toHaveCount(0);
-  const qdLabel = scene.locator('.assembly-label[data-part-id="fluid_qd"]');
-  await expect(qdLabel).toHaveText("Valve fluid QD");
+  const qdLabel = scene.locator('.assembly-label[data-part-id="bfs_bottle"]');
+  await expect(qdLabel).toHaveText("BFS flux bottle");
   await expect(qdLabel).toHaveAttribute("data-shown", "true");
-  await expect(qdLabel).toHaveAttribute(
-    "data-anchor-mesh",
-    /quick-disconnect-(body|collar)/,
-  );
+  await expect(qdLabel).toHaveAttribute("data-anchor-mesh", /pressure-vessel/);
   const desktopScene = await scene.boundingBox();
-  const desktopArea = await playback
-    .locator(".guided-model-area")
-    .boundingBox();
   expect(desktopScene!.height).toBeGreaterThan(500);
-  expect(desktopScene!.height / desktopArea!.height).toBeGreaterThan(0.7);
+  await expectFloatingPanels(playback);
   await viewport.screenshot({
     path: testInfo.outputPath("assembly-guide-desktop.png"),
   });
 
+  const guide = playback.locator(".guided-console");
+  const expandedGuide = (await guide.boundingBox())!;
+  await guide.locator(":scope > summary").click();
+  await expect(
+    playback.getByRole("button", { name: "Next step" }),
+  ).toBeHidden();
+  expect((await guide.boundingBox())!.height).toBeLessThan(
+    expandedGuide.height,
+  );
+  await expectFloatingPanels(playback);
+  await guide.locator(":scope > summary").click();
+  await expect(
+    playback.getByRole("button", { name: "Next step" }),
+  ).toBeVisible();
+  await expect(counter).toHaveText("Step 1 of 12");
+
   await playback.getByRole("button", { name: "Next step" }).click();
-  await expect(counter).toHaveText("Step 2 of 9");
-  await expect(playback).toContainText("Trace the flux path");
+  await expect(counter).toHaveText("Step 2 of 12");
+  await expect(playback).toContainText("Reveal the dispensing assembly");
   await playback.getByRole("button", { name: "Previous step" }).click();
-  await expect(counter).toHaveText("Step 1 of 9");
+  await expect(counter).toHaveText("Step 1 of 12");
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(qdLabel).toHaveAttribute("data-shown", "true");
@@ -418,6 +577,7 @@ test("the assembly guide opens directly without running an experiment", async ({
   const mobileScene = await scene.boundingBox();
   expect(mobileScene!.width).toBeGreaterThan(300);
   expect(mobileScene!.height).toBeGreaterThan(250);
+  await expectFloatingPanels(playback);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
@@ -428,6 +588,110 @@ test("the assembly guide opens directly without running an experiment", async ({
   });
   expect(await plans(request, id)).toHaveLength(0);
 });
+
+for (const deviceScaleFactor of [0.67, 1, 2]) {
+  test.describe(`labels at pixel ratio ${deviceScaleFactor}`, () => {
+    test.use({ deviceScaleFactor });
+
+    test("connector dots match the rendered meshes while zooming and resizing", async ({
+      page,
+      request,
+    }, testInfo) => {
+      const errors: string[] = [];
+      page.on("pageerror", (error) => errors.push(error.message));
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      await page.setViewportSize({ width: 1280, height: 900 });
+      const source = await incidentWith(request, ["intermittent", "unstable"]);
+      await page.goto(`/incidents/${source.incident().id}/simulation`);
+      const playback = page.getByRole("region", {
+        name: "Guided simulation playback",
+        exact: true,
+      });
+      const scene = playback.locator(".assembly-canvas");
+      await expect(scene).toHaveAttribute("data-model-loaded", "true");
+      await expect(
+        scene.locator('.assembly-label[data-part-id="bfs_bottle"]'),
+      ).toHaveAttribute("data-shown", "true");
+      for (const action of [
+        "start",
+        "Zoom in",
+        "Zoom out",
+        "Orbit left",
+        "resize",
+        "scale",
+        "Enter full screen",
+      ]) {
+        if (action === "resize")
+          await page.setViewportSize({ width: 980, height: 820 });
+        else if (action === "scale")
+          await page.evaluate(() => {
+            document.body.style.zoom = "0.75";
+          });
+        else if (action !== "start")
+          await playback
+            .getByRole("button", { name: action, exact: true })
+            .click();
+        await expect
+          .poll(async () =>
+            scene.evaluate((element, annotations) => {
+              const { state, renderer } = (
+                window as unknown as {
+                  __flowpilotScene: {
+                    state: { parts: Group; camera: PerspectiveCamera };
+                    renderer: WebGLRenderer;
+                  };
+                }
+              ).__flowpilotScene;
+              const canvas = renderer.domElement;
+              const rect = canvas.getBoundingClientRect();
+              const gl = renderer.getContext();
+              const viewport = gl.getParameter(gl.VIEWPORT) as Int32Array;
+              const distances = [
+                ...element.querySelectorAll<SVGCircleElement>(
+                  "circle[data-part-id]",
+                ),
+              ]
+                .filter((dot) => dot.style.opacity === "1")
+                .map((dot) => {
+                  const annotation =
+                    annotations[dot.dataset.partId as keyof typeof annotations];
+                  const mesh = state.parts.getObjectByName(annotation.mesh)!;
+                  const projected = mesh
+                    .localToWorld(
+                      mesh.position.clone().fromArray(annotation.point),
+                    )
+                    .project(state.camera);
+                  const expectedX =
+                    rect.left +
+                    ((viewport[0] + (projected.x * 0.5 + 0.5) * viewport[2]) /
+                      canvas.width) *
+                      rect.width;
+                  const expectedY =
+                    rect.top +
+                    (1 -
+                      (viewport[1] + (projected.y * 0.5 + 0.5) * viewport[3]) /
+                        canvas.height) *
+                      rect.height;
+                  const actual = new DOMPoint(
+                    Number(dot.getAttribute("cx")),
+                    Number(dot.getAttribute("cy")),
+                  ).matrixTransform(dot.getScreenCTM()!);
+                  return Math.hypot(actual.x - expectedX, actual.y - expectedY);
+                });
+              return distances.length ? Math.max(...distances) : Infinity;
+            }, partAnnotations),
+          )
+          .toBeLessThan(2);
+      }
+      expect(errors).toEqual([]);
+      await scene.screenshot({
+        path: testInfo.outputPath(
+          `labels-pixel-ratio-${deviceScaleFactor}.png`,
+        ),
+      });
+    });
+  });
+}
 
 test("the assembly guide labels the supply, valve, transport, inspection and service components", async ({
   page,
@@ -444,9 +708,12 @@ test("the assembly guide labels the supply, valve, transport, inspection and ser
   const scene = playback.locator(".assembly-canvas");
   await expect(scene).toHaveAttribute("data-model-loaded", "true");
   const views = [
-    { id: "establish", parts: ["fluid_qd"] },
+    { id: "establish", parts: ["bfs_bottle", "dj2200_valve"] },
+    { id: "reveal", parts: ["bfs_bottle", "dj2200_valve"] },
     { id: "follow", parts: ["bfs_lid", "bfs_sensors"] },
+    { id: "head", parts: ["dj2200_valve", "valve_heater"] },
     { id: "apart", parts: ["needle_assembly", "valve_heater"] },
+    { id: "core", parts: ["spring", "piston", "needle", "seat"] },
     { id: "valve", parts: ["bfs_air", "valve_air", "coaxial_air"] },
     { id: "nozzle", parts: ["air_cap", "nozzle_nut", "nozzle"] },
     { id: "motion", parts: ["motion_gantry", "conveyor", "carrier_sensors"] },
@@ -466,7 +733,7 @@ test("the assembly guide labels the supply, valve, transport, inspection and ser
     if (index > 0)
       await playback.getByRole("button", { name: "Next step" }).click();
     await expect(playback.locator(".guided-counter")).toHaveText(
-      `Step ${index + 1} of 9`,
+      `Step ${index + 1} of 12`,
     );
     await expect(scene).toHaveAttribute("data-shot", view.id);
     for (const id of view.parts) {
@@ -477,11 +744,126 @@ test("the assembly guide labels the supply, valve, transport, inspection and ser
         "opacity",
         "1",
       );
+      const labelBox = (await label.boundingBox())!;
+      const caption = (await playback
+        .locator(".guided-console")
+        .boundingBox())!;
+      expect(labelBox.y + labelBox.height).toBeLessThanOrEqual(caption.y);
     }
-    if (["apart", "motion", "vision", "service"].includes(view.id))
+    if (
+      [
+        "establish",
+        "reveal",
+        "head",
+        "apart",
+        "core",
+        "nozzle",
+        "motion",
+        "vision",
+        "service",
+      ].includes(view.id)
+    )
       await scene.screenshot({
         path: testInfo.outputPath(`assembly-${view.id}.png`),
       });
+    if (view.id === "core") {
+      const positions = () =>
+        scene.evaluate((element) => {
+          const origin = element.getBoundingClientRect();
+          return [
+            ...element.querySelectorAll<HTMLElement>(
+              '.assembly-label[data-shown="true"][data-part-id]',
+            ),
+          ].map((label) => {
+            const rect = label.getBoundingClientRect();
+            const line = element.querySelector(
+              `line[data-part-id="${label.dataset.partId}"]`,
+            )!;
+            return {
+              id: label.dataset.partId,
+              x: rect.x - origin.x + rect.width / 2,
+              y: rect.y - origin.y + rect.height / 2,
+              width: rect.width,
+              height: rect.height,
+              anchorX: Number(line.getAttribute("x1")),
+              anchorY: Number(line.getAttribute("y1")),
+              endX: Number(line.getAttribute("x2")),
+              endY: Number(line.getAttribute("y2")),
+            };
+          });
+        });
+      let previous = await positions();
+      for (const action of [
+        "Zoom in",
+        "Zoom in",
+        "Zoom out",
+        "Zoom out",
+        "Orbit left",
+        "Orbit right",
+      ]) {
+        await playback
+          .getByRole("button", { name: action, exact: true })
+          .click();
+        await expect
+          .poll(async () => (await positions())[0]?.anchorX)
+          .not.toBe(previous[0].anchorX);
+        const current = await positions();
+        // Parts outside the visible frame lose their label as the camera closes in.
+        expect(current.length).toBeGreaterThan(0);
+        for (const label of current) {
+          const before = previous.find((item) => item.id === label.id);
+          if (before) {
+            const movement = Math.hypot(label.x - before.x, label.y - before.y);
+            const anchorMovement = Math.hypot(
+              label.anchorX - before.anchorX,
+              label.anchorY - before.anchorY,
+            );
+            expect(movement).toBeLessThan(anchorMovement + 24);
+            expect(label.width).toBeCloseTo(before.width);
+          }
+          // The leader must end on the text box even when placement changes.
+          expect(Math.abs(label.endX - label.x)).toBeLessThanOrEqual(
+            label.width / 2 + 1,
+          );
+          expect(Math.abs(label.endY - label.y)).toBeLessThanOrEqual(
+            label.height / 2 + 1,
+          );
+          for (const other of current.filter((item) => item.id !== label.id)) {
+            expect(
+              Math.abs(label.x - other.x) >=
+                (label.width + other.width) / 2 - 1 ||
+                Math.abs(label.y - other.y) >=
+                  (label.height + other.height) / 2 - 1,
+            ).toBe(true);
+          }
+        }
+        previous = current;
+      }
+      await scene.screenshot({
+        path: testInfo.outputPath("assembly-labels-after-zoom.png"),
+      });
+      await playback.getByRole("button", { name: "Previous step" }).click();
+      await playback.getByRole("button", { name: "Next step" }).click();
+      for (const size of [
+        { width: 1280, height: 720 },
+        { width: 390, height: 844 },
+      ]) {
+        await page.setViewportSize(size);
+        for (const id of view.parts) {
+          const label = scene.locator(`.assembly-label[data-part-id="${id}"]`);
+          await expect(label).toHaveAttribute("data-shown", "true");
+          const labelBox = (await label.boundingBox())!;
+          const caption = (await playback
+            .locator(".guided-console")
+            .boundingBox())!;
+          expect(labelBox.y + labelBox.height).toBeLessThanOrEqual(caption.y);
+        }
+        await scene.screenshot({
+          path: testInfo.outputPath(`assembly-core-${size.width}.png`),
+        });
+      }
+      await page.setViewportSize({ width: 1440, height: 1000 });
+    }
   }
   await expect(
     playback.getByRole("button", { name: "Next step" }),
@@ -499,6 +881,9 @@ test("the playback follows the simulated values and changes what the model shows
   const incident = source.incident();
   await runFromInvestigation(page, incident.id);
   await finished(page);
+  await page
+    .getByRole("button", { name: "Experiment playback", exact: true })
+    .click();
   const playback = page.getByRole("region", {
     name: "Guided simulation playback",
     exact: true,
@@ -541,28 +926,31 @@ test("the playback follows the simulated values and changes what the model shows
     ),
   ).toBe(true);
   const early = await states();
-  const earlyShot = await scene.screenshot({
-    path: testInfo.outputPath("playback-early.png"),
-  });
+  const earlyShot = await captureModel(
+    scene,
+    testInfo.outputPath("playback-early.png"),
+  );
   expect(early["visible-fluid-core"]).toBeCloseTo(1, 5);
   await step(6);
   await expect(scene).toHaveAttribute("data-shot", "substrate");
   await expect(scene).toHaveAttribute("data-condition", "tested");
   const late = await states();
-  const lateShot = await scene.screenshot();
+  const lateShot = await captureModel(
+    scene,
+    testInfo.outputPath("playback-late.png"),
+  );
   expect(late["visible-fluid-core"]).toBeLessThan(early["visible-fluid-core"]);
   expect(late["spray-cone"]).toBeLessThan(early["spray-cone"]);
   expect(Buffer.compare(earlyShot, lateShot)).not.toBe(0);
-  await scene.screenshot({ path: testInfo.outputPath("playback-late.png") });
   // The same step draws the same picture, so the difference above is the data.
   await step(2);
   expect(
-    await frameDifference(page, earlyShot, await scene.screenshot()),
+    await frameDifference(page, earlyShot, await captureModel(scene)),
   ).toBeLessThanOrEqual(1);
 
   // The response curves keep the simulation page's styling, not browser defaults.
   await playback
-    .locator("summary")
+    .locator(".guided-console summary")
     .filter({ hasText: "Simulated response" })
     .click();
   await expect(playback.locator("polyline.fixture-mass")).toHaveCSS(
@@ -583,10 +971,21 @@ test("the playback follows the simulated values and changes what the model shows
   await step(6);
   await expect(playback.locator(".simulation-marker")).toHaveCount(1);
   await expect(playback.locator(".guided-narration")).toContainText(
-    "one stripe per sequence position",
+    "Coverage changes from",
   );
+  await playback.getByText("Step details", { exact: true }).click();
+  await expect(
+    playback.getByText(/one stripe per sequence position/),
+  ).toBeVisible();
   await step(7);
   await expect(playback).toContainText("do not confirm a physical cause");
+  await expect(
+    playback.getByText(/No machine test or measurement/),
+  ).not.toBeVisible();
+  await playback.getByText("Step details", { exact: true }).click();
+  await expect(
+    playback.getByText(/No machine test or measurement/),
+  ).toBeVisible();
   await expect(playback).toContainText("No machine test or measurement");
 
   // Another experiment opens its own playback and parts.
@@ -616,6 +1015,9 @@ test("each guide step plays, pauses and holds until the viewer advances", async 
   const source = await incidentWith(request, ["intermittent", "unstable"]);
   await runFromInvestigation(page, source.incident().id);
   await finished(page);
+  await page
+    .getByRole("button", { name: "Experiment playback", exact: true })
+    .click();
   const playback = page.getByRole("region", {
     name: "Guided simulation playback",
     exact: true,
@@ -648,12 +1050,12 @@ test("each guide step plays, pauses and holds until the viewer advances", async 
   await expect(
     playback.getByRole("button", { name: "Resume step", exact: true }),
   ).toBeVisible();
-  const paused = await scene.screenshot();
+  const paused = await captureModel(scene);
   await page.clock.fastForward(12000);
   await expect(counter).toHaveText("Step 1 of 8");
   // Native WebGL screenshots can round a handful of channels by 1/255.
   expect(
-    await frameDifference(page, paused, await scene.screenshot()),
+    await frameDifference(page, paused, await captureModel(scene)),
   ).toBeLessThanOrEqual(1);
   await playback
     .getByRole("button", { name: "Resume step", exact: true })
@@ -662,32 +1064,32 @@ test("each guide step plays, pauses and holds until the viewer advances", async 
   await expect(
     playback.getByRole("button", { name: "Replay step", exact: true }),
   ).toBeVisible();
-  const completed = await scene.screenshot();
+  const completed = await captureModel(scene);
   await page.clock.fastForward(12000);
   await expect(counter).toHaveText("Step 1 of 8");
   expect(
-    await frameDifference(page, completed, await scene.screenshot()),
+    await frameDifference(page, completed, await captureModel(scene)),
   ).toBeLessThanOrEqual(1);
 
   // Next moves smoothly through an intermediate frame, then holds without advancing.
-  const beforeNext = await scene.screenshot();
+  const beforeNext = await captureModel(scene);
   await playback.getByRole("button", { name: "Next step" }).click();
   await expect(counter).toHaveText("Step 2 of 8");
   await expect(
     playback.getByRole("button", { name: "Pause step", exact: true }),
   ).toBeVisible();
   await page.clock.fastForward(600);
-  const duringNext = await scene.screenshot();
+  const duringNext = await captureModel(scene);
   expect(await frameDifference(page, beforeNext, duringNext)).toBeGreaterThan(
     1,
   );
   await page.clock.fastForward(3000);
-  const afterNext = await scene.screenshot();
+  const afterNext = await captureModel(scene);
   expect(await frameDifference(page, duringNext, afterNext)).toBeGreaterThan(1);
   await page.clock.fastForward(12000);
   await expect(counter).toHaveText("Step 2 of 8");
   expect(
-    await frameDifference(page, afterNext, await scene.screenshot()),
+    await frameDifference(page, afterNext, await captureModel(scene)),
   ).toBeLessThanOrEqual(1);
   // Moving the camera still stops playback.
   await playback
@@ -731,6 +1133,23 @@ test("each guide step plays, pauses and holds until the viewer advances", async 
       ),
     )
     .toBe(true);
+  await expectFloatingPanels(playback);
+  await expect(tracks(page)).toBeVisible();
+  expect(
+    await tracks(page).evaluate(
+      (element) => document.fullscreenElement?.contains(element) ?? false,
+    ),
+  ).toBe(true);
+  await tracks(page)
+    .getByRole("button", { name: "Open playback of Unstable fluid delivery" })
+    .click();
+  await expect(counter).toHaveText("Step 1 of 8");
+  await expect(scene).toHaveAttribute("data-shot", "establish");
+  expect(
+    await scene.evaluate(
+      (element) => document.fullscreenElement?.contains(element) ?? false,
+    ),
+  ).toBe(true);
   await playback.getByRole("button", { name: "Exit full screen" }).click();
   await expect
     .poll(() => page.evaluate(() => document.fullscreenElement === null))
@@ -783,6 +1202,9 @@ test("without WebGL the schematic, steps and numbers still work", async ({
     )!.component_ids;
   await runFromInvestigation(page, source.incident().id);
   await finished(page);
+  await page
+    .getByRole("button", { name: "Experiment playback", exact: true })
+    .click();
   const playback = page.getByRole("region", {
     name: "Guided simulation playback",
     exact: true,
@@ -796,7 +1218,7 @@ test("without WebGL the schematic, steps and numbers still work", async ({
   ).toHaveCount(components.length);
   await expect(playback).toContainText("Where fluid-path restriction acts");
   await playback
-    .locator("summary")
+    .locator(".guided-console summary")
     .filter({ hasText: "Simulated response" })
     .click();
   await expect(playback.locator("svg.incident-simulation-chart")).toBeVisible();
@@ -846,25 +1268,72 @@ test("failures are explained and can be retried, and an unknown plan is reported
   );
 });
 
-test("the lab is usable at phone width with the model before experiment tracks", async ({
+test("the experiment sidebar keeps names readable at desktop and phone widths", async ({
   page,
   request,
 }, testInfo) => {
-  await page.setViewportSize({ width: 390, height: 844 });
   const source = await incidentWith(request, ["intermittent", "unstable"]);
-  await runFromInvestigation(page, source.incident().id);
-  await finished(page);
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth,
-    ),
-  ).toBeTruthy();
-  const track = await tracks(page).boundingBox();
-  const playback = await page
-    .getByRole("region", { name: "Guided simulation playback", exact: true })
-    .boundingBox();
-  expect(playback!.y).toBeLessThan(track!.y);
-  await lab(page).screenshot({ path: testInfo.outputPath("lab-mobile.png") });
+  await page.goto(
+    `/incidents/${source.incident().id}/simulation?run=unstable_delivery`,
+  );
+  await finished(page, ["Unstable fluid delivery"]);
+  const playback = page.getByRole("region", {
+    name: "Guided simulation playback",
+    exact: true,
+  });
+  await expect(playback.locator(".assembly-canvas")).toHaveAttribute(
+    "data-model-loaded",
+    "true",
+  );
+  for (const size of [
+    { width: 1440, height: 1000 },
+    { width: 1024, height: 768 },
+    { width: 390, height: 844 },
+    { width: 320, height: 844 },
+  ]) {
+    await page.setViewportSize(size);
+    await expectFloatingPanels(playback);
+    await expect(tracks(page)).toBeVisible();
+    await expect(playback.locator(".lab-console > summary")).toContainText(
+      "1 of 3 finished",
+    );
+    const sidebar = playback.locator(".guided-auxiliary");
+    const sidebarBox = (await sidebar.boundingBox())!;
+    const captionBox = (await playback
+      .locator(".guided-console")
+      .boundingBox())!;
+    expect(sidebarBox.y + sidebarBox.height).toBeLessThan(captionBox.y);
+    for (const heading of await tracks(page)
+      .locator(".lab-agent-head strong")
+      .all()) {
+      const dimensions = await heading.evaluate((element) => ({
+        width: element.getBoundingClientRect().width,
+        lines:
+          element.getBoundingClientRect().height /
+          parseFloat(getComputedStyle(element).lineHeight),
+        fits: element.scrollWidth <= element.clientWidth,
+      }));
+      expect(dimensions.width).toBeGreaterThan(180);
+      expect(dimensions.lines).toBeLessThanOrEqual(3);
+      expect(dimensions.fits).toBe(true);
+    }
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    ).toBe(true);
+    if (size.width <= 700) {
+      await sidebar.evaluate((element) => {
+        const card = element.querySelector(".lab-agent")!;
+        element.scrollTop +=
+          card.getBoundingClientRect().top -
+          element.getBoundingClientRect().top;
+      });
+    }
+    await lab(page).screenshot({
+      path: testInfo.outputPath(`lab-sidebar-${size.width}.png`),
+    });
+  }
 });
 
 test("the offer and the lab give every control an accessible name and a unique id", async ({

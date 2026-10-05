@@ -22,6 +22,8 @@ type GuideView = {
   position: Shot["position"][number];
   target: Shot["target"][number];
   labels: GroupId[];
+  coreLabels?: Shot["coreLabels"];
+  spotlight?: GroupId[];
   explode?: GroupId[];
   xray?: GroupId[];
   /** Additional context left opaque around the labeled components. */
@@ -34,29 +36,24 @@ const views: GuideView[] = [
     id: "establish",
     title: "Explore the S932 assembly",
     narration:
-      "Explore the BFS supply, DJ2200 spray head and machine around them. Labels attach to individual parts. Rotate to inspect this separated view, then choose Next step for a closer look at each assembly.",
+      "Start with the completed machine. Follow the labels from the BFS supply to the DJ2200 spray head, then peel back each assembly to see what is inside.",
     position: [8.1, 5.6, 13.2],
     target: [-0.7, 0.6, 0.1],
     fov: 42,
-    labels: [
-      "bfs_bottle",
-      "pickup_tube",
-      "fluid_qd",
-      "dj2200_valve",
-      "air_cap",
-      "nozzle",
-    ],
-    explode: [
-      "bfs_bottle",
-      "bfs_lid",
-      "bfs_sensors",
-      "pickup_tube",
-      "feed_tube",
-      "fluid_qd",
-      "air_cap",
-      "nozzle_nut",
-      "nozzle",
-    ],
+    labels: ["bfs_bottle", "dj2200_valve", "conveyor", "machine_enclosure"],
+    context: [...groupIds],
+  },
+  {
+    id: "reveal",
+    title: "Reveal the dispensing assembly",
+    narration:
+      "The enclosure moves back to expose the working assembly. The highlighted BFS bottle supplies the spray head; the carrier sits below the nozzle.",
+    position: [6.5, 4.1, 11.3],
+    target: [-0.8, 0.35, 0.1],
+    fov: 40,
+    labels: ["bfs_bottle", "dj2200_valve", "substrate_tray"],
+    spotlight: ["bfs_bottle", "dj2200_valve"],
+    explode: ["machine_enclosure"],
     context: [
       "motion_gantry",
       "conveyor",
@@ -75,7 +72,7 @@ const views: GuideView[] = [
     id: "follow",
     title: "Trace the flux path",
     narration:
-      "The BFS holder carries the flux bottle, level sensors and a sealed lid with three knobs. Flux travels up the pickup tube, through the lid fitting and tubing, and into the valve fluid quick-disconnect. The separated lid reveals the bottle opening and seal.",
+      "The lid lifts first, then the pickup tube and fittings separate. Follow the labeled path from the flux bottle to the valve quick-disconnect.",
     position: [-0.6, 4.3, 9.1],
     target: [-2.8, 1.5, 0.3],
     labels: [
@@ -87,38 +84,85 @@ const views: GuideView[] = [
       "fluid_qd",
     ],
     explode: [
-      "bfs_bottle",
+      "machine_enclosure",
       "bfs_lid",
+      "bfs_bottle",
       "bfs_sensors",
       "pickup_tube",
       "feed_tube",
       "fluid_qd",
     ],
     xray: ["bfs_bottle"],
+    spotlight: ["bfs_bottle"],
     context: ["bfs_air"],
+  },
+  {
+    id: "head",
+    title: "Move in to the spray head",
+    narration:
+      "The camera follows the fluid connection to the assembled DJ2200. Locate the valve body, heater and air cap before opening the head.",
+    position: [3.4, 2.4, 7.8],
+    target: [0, 0.35, 0.2],
+    fov: 35,
+    labels: ["dj2200_valve", "fluid_qd", "valve_heater", "air_cap"],
+    spotlight: ["dj2200_valve"],
+    explode: ["machine_enclosure"],
+    context: [
+      "needle_assembly",
+      "nozzle",
+      "nozzle_nut",
+      "valve_air",
+      "coaxial_air",
+    ],
   },
   {
     id: "apart",
     title: "Look inside the DJ2200",
     narration:
-      "The manufacturer’s parts list identifies a piston, compression spring, micrometer, needle and seat. This exploded illustration separates the needle assembly and heater from the machined valve body so their relationship is visible. Internal shapes and spacing are approximate.",
+      "The fluid fitting and heater move aside, then the needle assembly lifts out of the valve body. Watch each part separate before moving into the core.",
     position: [4.1, 3, 8.1],
     target: [0.1, 0.65, 0.6],
     fov: 36,
     labels: ["dj2200_valve", "needle_assembly", "valve_heater", "fluid_qd"],
-    explode: ["fluid_qd", "needle_assembly", "valve_heater"],
+    explode: [
+      "machine_enclosure",
+      "fluid_qd",
+      "valve_heater",
+      "needle_assembly",
+    ],
+    spotlight: ["needle_assembly"],
     xray: ["dj2200_valve"],
     context: ["nozzle", "nozzle_nut", "air_cap"],
+  },
+  {
+    id: "core",
+    title: "Inside the needle assembly",
+    narration:
+      "Follow the labels down the exposed core: return spring, air piston, metering needle and seat. These parts control the liquid outlet inside the valve.",
+    position: [3.3, 2.35, 7.5],
+    target: [1.35, 1.15, 1.15],
+    fov: 35,
+    labels: [],
+    coreLabels: ["spring", "piston", "needle", "seat"],
+    spotlight: ["needle_assembly"],
+    explode: [
+      "machine_enclosure",
+      "fluid_qd",
+      "valve_heater",
+      "needle_assembly",
+    ],
+    xray: ["dj2200_valve"],
   },
   {
     id: "valve",
     title: "Identify the three air supplies",
     narration:
-      "BFS pressure drives flux from the bottle. Valve-actuation air operates the DJ2200 piston. Coaxial air reaches the air cap and assists atomization. Their regulators, fittings and hoses are modeled separately; the colors identify each circuit.",
+      "Reservoir air drives flux, valve air actuates the piston, and coaxial air atomizes the spray. Colors identify the three circuits.",
     position: [5.1, 4, 11.1],
     target: [-0.35, 1, 0.5],
     fov: 40,
     labels: ["bfs_air", "valve_air", "coaxial_air", "dj2200_valve"],
+    spotlight: ["valve_air"],
     explode: ["valve_air", "coaxial_air"],
     context: [
       "bfs_bottle",
@@ -134,11 +178,12 @@ const views: GuideView[] = [
     id: "nozzle",
     title: "Inspect the air cap and nozzle",
     narration:
-      "The nozzle, retaining nut and gasket are separate from the surrounding coaxial air cap. The cap’s annular passage supplies atomizing air around the liquid outlet. Inspect these separated components above the carrier; this view is not a disassembly procedure.",
+      "Inspect the nozzle, nut, gasket and air cap. The cap supplies atomizing air around the liquid outlet.",
     position: [2.9, 0.6, 6.5],
     target: [0.15, -1.4, 1.3],
     fov: 34,
     labels: ["air_cap", "nozzle_nut", "nozzle", "valve_heater"],
+    spotlight: ["nozzle"],
     explode: ["coaxial_air", "air_cap", "nozzle_nut", "nozzle"],
     context: ["coaxial_air"],
   },
@@ -146,11 +191,12 @@ const views: GuideView[] = [
     id: "motion",
     title: "Explore motion and transport",
     narration:
-      "The X/Y guides position the head, while the Z carriage supports vertical movement. Encoder strips, drive pulleys and a cable chain are visible behind the head. Below, four conveyor rails carry belts and five pulleys each, with carrier sensors and stops alongside.",
+      "X/Y guides and the Z carriage position the head. Below, conveyor belts move carriers past sensors and stops.",
     position: [7.5, 5.3, 12.2],
     target: [0, 0.25, -0.5],
     fov: 42,
     labels: ["motion_gantry", "conveyor", "carrier_sensors", "substrate_tray"],
+    spotlight: ["motion_gantry"],
     explode: ["motion_gantry", "carrier_sensors", "substrate_tray"],
     context: [
       "support_frame",
@@ -164,7 +210,7 @@ const views: GuideView[] = [
     id: "vision",
     title: "Inspect vision and calibration",
     narration:
-      "The head camera and laser height sensor inspect the work area. A separate upward-facing lookup camera uses reticle glass at the service station. The adjacent scale provides the inline weigh station. Their exact positions depend on the installed machine configuration.",
+      "Inspect the head camera, height sensor, upward-facing lookup camera and weigh station. Placement varies with machine configuration.",
     position: [6, 3.3, 8.1],
     target: [1.9, -0.65, 0.05],
     fov: 36,
@@ -174,6 +220,7 @@ const views: GuideView[] = [
       "lookup_camera",
       "weigh_station",
     ],
+    spotlight: ["vision_camera"],
     explode: [
       "vision_camera",
       "laser_height_sensor",
@@ -186,11 +233,12 @@ const views: GuideView[] = [
     id: "service",
     title: "Follow the purge and waste system",
     narration:
-      "The service station includes the purge cup, lid and seals. Waste tubing runs through the venturi system to a refuse bottle, whose float and full sensor monitor collected fluid. The view separates the station and bottle to expose the connections.",
+      "Purge waste flows through the venturi to the refuse bottle. Its float and full sensor monitor collected fluid.",
     position: [7.5, 2.4, 8],
     target: [3, -1.1, 1.4],
     fov: 36,
     labels: ["purge_station", "waste_bottle", "weigh_station"],
+    spotlight: ["purge_station"],
     explode: ["purge_station", "waste_bottle"],
     xray: ["waste_bottle"],
     context: ["lookup_camera"],
@@ -199,7 +247,7 @@ const views: GuideView[] = [
     id: "assembled",
     title: "Return to the assembled machine",
     narration:
-      "The parts return to their assembled positions. The partial enclosure keeps the working area visible, with the interlocks and emergency stop shown for orientation. Revisit any step or rotate the model to explore the details at your own pace.",
+      "Parts return to their assembled positions. Rotate to inspect the enclosure, interlocks and emergency stop, or revisit any step.",
     position: [8.1, 5.6, 13.2],
     target: [0, 0.35, -0.2],
     fov: 42,
@@ -224,16 +272,19 @@ export function assemblyGuide(): {
       const visible = new Set([
         ...view.labels,
         ...(view.context ?? []),
-        ...(view.explode ?? []),
+        ...(view.spotlight ?? []),
       ]);
       const shot: Shot = {
         id: view.id,
         name: view.title,
-        durationMs: 2200,
+        durationMs: 3200,
         position: [view.position],
         target: [view.target],
         fov: [view.fov ?? 38, view.fov ?? 38],
         labels: view.labels,
+        coreLabels: view.coreLabels,
+        spotlight: view.spotlight,
+        separationStart: 0.22,
         explode: view.explode ?? [],
         xray: view.xray ?? [],
         ghost: groupIds.filter((id) => !visible.has(id)),
@@ -251,8 +302,8 @@ export function assemblyGuide(): {
         control: illustration,
         condition: "start",
         mechanism: "restriction",
-        modelNode: view.labels[0],
-        highlightIds: view.labels,
+        modelNode: view.spotlight?.[0] ?? view.labels[0],
+        highlightIds: view.spotlight ?? view.labels,
         partStates: {},
         position: null,
       };

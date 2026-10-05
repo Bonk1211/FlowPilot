@@ -1196,9 +1196,13 @@ function IncidentWorkspaceContent({
                   <Activity
                     mode={route.page === "simulation" ? "visible" : "hidden"}
                   >
-                    <section aria-label="Simulation workspace">
+                    <section
+                      className="simulation-workspace"
+                      aria-label="Simulation workspace"
+                    >
                       {showLab && (
                         <ExperimentLab
+                          settings={simulationPanel}
                           incident={incident}
                           planIds={labPlans}
                           requested={route.experimentRuns}
@@ -1230,6 +1234,7 @@ function IncidentWorkspaceContent({
                       )}
                       {!showLab && (
                         <MechanismView
+                          settings={simulationPanel}
                           immersive
                           hypotheses={assessment?.hypotheses}
                           hypothesisId={hypothesisId}
@@ -1248,7 +1253,6 @@ function IncidentWorkspaceContent({
                           }
                         />
                       )}
-                      {simulationPanel}
                     </section>
                   </Activity>
                 )}
