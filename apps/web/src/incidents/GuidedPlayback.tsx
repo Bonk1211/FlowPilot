@@ -371,9 +371,33 @@ export function GuidedPlayback({
           <div className="guided-source">
             <StatusChip kind="simulated" detail="not measured" />
             <p>
-              Part names: S932 consolidated reference, §2.2–2.3. Geometry and
-              separation are illustrative.
+              Based on the S932 reference (§2, 4, 8–9) and Nordson DJ-2200
+              documentation. Geometry and placement are illustrative.
             </p>
+            <details>
+              <summary>Model references</summary>
+              <p>
+                Valve appearance follows the{" "}
+                <a
+                  href="https://nc-p-001.sitecorecontenthub.cloud/api/public/content/347a9db638b24881971204d5e660d19f?v=51d7862b"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Nordson datasheet
+                </a>
+                . Internal component names follow the{" "}
+                <a
+                  href="https://nc-p-001.sitecorecontenthub.cloud/api/public/content/31bd3f7e505044a0a6a86cb500602659"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  DJ-2200 parts list
+                </a>
+                . The S932 reference supplies the BFS, motion, conveyor and
+                service assemblies. Original S932 drawings and measured
+                dimensions were not available.
+              </p>
+            </details>
           </div>
           {fullScreenError && <p role="status">{fullScreenError}</p>}
         </aside>

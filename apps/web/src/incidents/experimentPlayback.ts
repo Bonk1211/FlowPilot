@@ -142,6 +142,9 @@ export function trackSummary(
 }
 
 const partNames: Record<string, string> = {
+  bfs_lid: "the BFS lid",
+  bfs_sensors: "the BFS level sensors",
+  nozzle_nut: "the nozzle nut",
   bfs_bottle: "the BFS bottle",
   bfs_air: "the BFS reservoir-pressure air line",
   pickup_tube: "the pickup tube",

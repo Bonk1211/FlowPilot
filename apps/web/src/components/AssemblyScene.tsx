@@ -12,6 +12,7 @@ import {
 } from "@phosphor-icons/react";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
 import type { ProcedureStep } from "@flowpilot/contracts";
 import { cameraPresets, modelNodes } from "../prototype/model";
 import {
@@ -233,6 +234,14 @@ export default function AssemblyScene({
     container.append(renderer.domElement);
 
     const scene = new THREE.Scene();
+    // Broad reflections keep machined parts readable as the camera turns.
+    const environment = new RoomEnvironment();
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const environmentMap = pmrem.fromScene(environment, 0.06);
+    scene.environment = environmentMap.texture;
+    scene.environmentIntensity = 0.65;
+    environment.dispose();
+    pmrem.dispose();
     scene.fog = new THREE.FogExp2(0x10191e, 0.025);
     scene.add(new THREE.HemisphereLight(0xeaf7f5, 0x17242b, 2.4));
     const key = new THREE.DirectionalLight(0xffffff, 4.2);
@@ -296,7 +305,7 @@ export default function AssemblyScene({
       Object.assign(window, { __flowpilotScene: { state, renderer, scene } });
 
     new GLTFLoader().load(
-      "/models/generic-fluid-dispenser.glb",
+      "/models/generic-fluid-dispenser.glb?v=s932-detail-1",
       (gltf) => {
         const parts = (gltf.scene.getObjectByName("generic_fluid_dispenser") ??
           gltf.scene.children[0]) as THREE.Group | undefined;
@@ -523,6 +532,7 @@ export default function AssemblyScene({
       dispose(state.parts);
       ground.geometry.dispose();
       groundMaterial.dispose();
+      environmentMap.dispose();
       renderer.dispose();
       renderer.forceContextLoss();
       renderer.domElement.remove();

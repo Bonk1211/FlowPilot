@@ -13,6 +13,7 @@ import {
   smootherstep,
 } from "../apps/web/src/scene/shots.ts";
 import { experimentShots } from "../apps/web/src/scene/experimentShots.ts";
+import { assemblyGuide } from "../apps/web/src/incidents/assemblyGuide.ts";
 
 const close = (a, b, epsilon = 1e-9) =>
   a.every((value, index) => Math.abs(value - b[index]) < epsilon);
@@ -22,6 +23,20 @@ const components = {
   unstable_delivery: ["bfs_bottle", "bfs_air", "pickup_tube", "fluid_qd"],
   material_condition: ["bfs_bottle", "feed_tube", "dj2200_valve", "nozzle"],
 };
+
+const bytes = readFileSync(
+  new URL(
+    "../apps/web/public/models/generic-fluid-dispenser.glb",
+    import.meta.url,
+  ),
+);
+const model = JSON.parse(
+  bytes.subarray(20, 20 + bytes.readUInt32LE(12)).toString(),
+);
+const descendants = (node) => [
+  node,
+  ...(node.children ?? []).flatMap((id) => descendants(model.nodes[id])),
+];
 
 test("easing starts and settles without a jolt and never overshoots", () => {
   assert.equal(smootherstep(0), 0);
@@ -146,11 +161,21 @@ test("each experiment takes apart only its own parts, in the order the liquid me
       ],
     );
     const apart = shots[2];
+    const related = [
+      ...ids,
+      ...(ids.includes("nozzle") ? ["air_cap", "nozzle_nut"] : []),
+      ...(ids.includes("bfs_bottle") ? ["bfs_lid", "bfs_sensors"] : []),
+    ];
     for (const id of apart.explode)
-      assert.ok(ids.includes(id) || id === "air_cap", `${mechanism}: ${id}`);
+      assert.ok(related.includes(id), `${mechanism}: ${id}`);
     assert.ok(!apart.explode.includes("dj2200_valve"));
     for (const id of apart.ghost) assert.ok(!apart.explode.includes(id));
-    assert.deepEqual(apart.labels, [...apart.explode, "dj2200_valve"]);
+    assert.deepEqual(apart.labels, [
+      ...apart.explode.filter(
+        (id) => !["bfs_lid", "bfs_sensors", "nozzle_nut"].includes(id),
+      ),
+      "dj2200_valve",
+    ]);
     assert.ok(
       shots[0].explode.length > 0,
       "guide opens on an exploded assembly",
@@ -193,23 +218,12 @@ test("each experiment takes apart only its own parts, in the order the liquid me
     "bfs_bottle",
     "pickup_tube",
     "fluid_qd",
+    "bfs_lid",
+    "bfs_sensors",
   ]);
 });
 
 test("annotations attach to a named mesh in the correct part, at a point on that mesh", () => {
-  const bytes = readFileSync(
-    new URL(
-      "../apps/web/public/models/generic-fluid-dispenser.glb",
-      import.meta.url,
-    ),
-  );
-  const model = JSON.parse(
-    bytes.subarray(20, 20 + bytes.readUInt32LE(12)).toString(),
-  );
-  const descendants = (node) => [
-    node,
-    ...(node.children ?? []).flatMap((id) => descendants(model.nodes[id])),
-  ];
   for (const id of groupIds) {
     const annotation = partAnnotations[id];
     const group = model.nodes.find((node) => node.name === id);
@@ -231,6 +245,91 @@ test("annotations attach to a named mesh in the correct part, at a point on that
   }
   assert.equal(partAnnotations.fluid_qd.text, "Valve fluid QD");
   assert.equal(partAnnotations.coaxial_air.text, "Coaxial atomizing air");
+});
+
+test("the reference guide covers the full assembly independently of simulated experiments", () => {
+  const { steps } = assemblyGuide();
+  assert.deepEqual(
+    steps.map((step) => step.id),
+    [
+      "establish",
+      "follow",
+      "apart",
+      "valve",
+      "nozzle",
+      "motion",
+      "vision",
+      "service",
+      "assembled",
+    ],
+  );
+  const labeled = new Set(steps.flatMap((step) => step.shot.labels));
+  for (const id of [
+    "bfs_lid",
+    "bfs_sensors",
+    "needle_assembly",
+    "valve_heater",
+    "nozzle_nut",
+    "motion_gantry",
+    "conveyor",
+    "carrier_sensors",
+    "laser_height_sensor",
+    "lookup_camera",
+    "weigh_station",
+    "purge_station",
+    "waste_bottle",
+    "machine_enclosure",
+  ])
+    assert.ok(labeled.has(id), `${id}: introduced in the assembly guide`);
+  assert.ok(steps[0].shot.explode.length > 0);
+  assert.deepEqual(steps.at(-1).shot.explode, []);
+  for (const step of steps) {
+    assert.equal(step.shot.marker, null, `${step.id}: no hypothetical defect`);
+    assert.equal(step.position, null, `${step.id}: no experiment result`);
+    for (const id of [
+      ...step.shot.labels,
+      ...step.shot.explode,
+      ...step.shot.ghost,
+      ...step.shot.xray,
+    ])
+      assert.ok(groupIds.includes(id), `${step.id}: ${id} is a model group`);
+  }
+});
+
+test("the model retains documented assembly details and identifies its geometry as illustrative", () => {
+  const nodesIn = (id) =>
+    descendants(model.nodes.find((node) => node.name === id));
+  assert.equal(
+    nodesIn("bfs_lid").filter((node) => node.name === "lid-clamping-knob")
+      .length,
+    3,
+  );
+  const conveyor = nodesIn("conveyor");
+  assert.equal(
+    conveyor.filter((node) => node.name === "conveyor-rail").length,
+    4,
+  );
+  assert.equal(
+    conveyor.filter((node) => node.name === "conveyor-pulley").length,
+    20,
+  );
+  const needle = nodesIn("needle_assembly");
+  for (const name of [
+    "needle-shaft",
+    "air-piston",
+    "return-spring",
+    "needle-seat",
+  ])
+    assert.ok(
+      needle.some((node) => node.name === name && node.mesh !== undefined),
+      `${name}: physical detail in the needle assembly`,
+    );
+  const metadata = model.nodes.find(
+    (node) => node.name === "generic_fluid_dispenser",
+  ).extras;
+  assert.match(metadata.geometryStatus, /illustrative.*not manufacturer CAD/i);
+  assert.match(metadata.configuration, /BFS.*DJ-2200/);
+  assert.ok(metadata.sources.includes("docs/S932_3D_Model_Sources.md"));
 });
 
 test("completed camera frames remain fixed beyond the step duration", () => {

@@ -1,4 +1,4 @@
-import { groupIds, type GroupId, type Shot } from "./shots.ts";
+import { groupIds, machineGroupIds, type GroupId, type Shot } from "./shots.ts";
 
 export type Mechanism =
   "restriction" | "unstable_delivery" | "material_condition";
@@ -62,7 +62,7 @@ const base = {
   marker: null,
   deposit: "hidden",
 } satisfies Partial<Shot>;
-const quiet: GroupId[] = ["support_frame", "vision_camera"];
+const quiet: GroupId[] = ["support_frame", "vision_camera", ...machineGroupIds];
 
 /** Eight inspectable steps. Each brief transition settles and waits for Next. */
 export function experimentShots(
@@ -78,7 +78,7 @@ export function experimentShots(
   ].filter((id) => id !== "dj2200_valve");
   const keep = new Set<GroupId>([...apart, "dj2200_valve"]);
   const close = closeUps[mechanism];
-  return [
+  const shots: Shot[] = [
     {
       ...base,
       id: "establish",
@@ -181,8 +181,31 @@ export function experimentShots(
       position: [[7.4, 4.6, 9.4]],
       target: [[0, -0.15, 0]],
       fov: [36, 36],
+      ghost: quiet,
       labels: ["substrate_tray"],
       deposit: "full",
     },
   ];
+  // Keep the new lid and sensors with the separated BFS assembly. Outlet
+  // fasteners also separate whenever the nozzle is inspected.
+  return shots.map((shot) => {
+    const explode: GroupId[] = [
+      ...shot.explode,
+      ...(shot.explode.includes("bfs_bottle")
+        ? (["bfs_lid", "bfs_sensors"] as const)
+        : []),
+      ...(shot.explode.includes("nozzle") ? (["nozzle_nut"] as const) : []),
+    ];
+    const ghost: GroupId[] = [
+      ...shot.ghost,
+      ...(shot.ghost.includes("bfs_bottle")
+        ? (["bfs_lid", "bfs_sensors"] as const)
+        : []),
+    ];
+    return {
+      ...shot,
+      explode,
+      ghost: ghost.filter((id) => !explode.includes(id)),
+    };
+  });
 }

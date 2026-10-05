@@ -53,8 +53,8 @@ export function MechanismView({
     };
   }, [componentKey]);
   const guide = useMemo(
-    () => (immersive ? assemblyGuide(nodes) : null),
-    [immersive, nodes],
+    () => (immersive ? assemblyGuide() : null),
+    [immersive],
   );
   const [part, setPart] = useState<ModelNodeId | null>(null);
   const [twoD, setTwoD] = useState(false);

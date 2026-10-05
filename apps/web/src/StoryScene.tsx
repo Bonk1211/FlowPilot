@@ -158,7 +158,7 @@ export function StoryScene({
         direction: THREE.Vector3;
       }[] = [];
       new GLTFLoader().load(
-        "/models/generic-fluid-dispenser.glb",
+        "/models/generic-fluid-dispenser.glb?v=s932-detail-1",
         (gltf) => {
           if (disposed) {
             disposeTree(gltf.scene);

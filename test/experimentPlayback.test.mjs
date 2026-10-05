@@ -160,7 +160,7 @@ test("the teardown names this explanation's parts and the narration never claims
   const apart = script.steps.find((step) => step.id === "apart");
   assert.match(
     apart.narration,
-    /the pickup tube, the clear feed tube, the fluid quick-disconnect \(QD\), the nozzle and the air cap/,
+    /the pickup tube, the clear feed tube, the fluid quick-disconnect \(QD\), the nozzle, the air cap and the nozzle nut/,
   );
   for (const step of script.steps) {
     assert.match(step.caution, /not a measurement/);

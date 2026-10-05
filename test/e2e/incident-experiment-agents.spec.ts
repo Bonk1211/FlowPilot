@@ -107,7 +107,7 @@ async function chooseStep(playback: Locator, index: number) {
   if (!(await steps.isVisible()))
     await playback
       .locator("summary")
-      .filter({ hasText: "All 8 steps" })
+      .filter({ hasText: /^All \d+ steps$/ })
       .click();
   await steps.getByRole("button").nth(index).click();
 }
@@ -372,7 +372,7 @@ test("the assembly guide opens directly without running an experiment", async ({
   const viewport = playback.locator(".guided-viewport");
   const counter = playback.locator(".guided-counter");
   await expect(scene).toHaveAttribute("data-model-loaded", "true");
-  await expect(counter).toHaveText("Step 1 of 5");
+  await expect(counter).toHaveText("Step 1 of 9");
   await expect(playback).toContainText("Explore the S932 assembly");
   await expect(
     playback.locator("summary").filter({ hasText: "Simulated response" }),
@@ -395,10 +395,10 @@ test("the assembly guide opens directly without running an experiment", async ({
   });
 
   await playback.getByRole("button", { name: "Next step" }).click();
-  await expect(counter).toHaveText("Step 2 of 5");
+  await expect(counter).toHaveText("Step 2 of 9");
   await expect(playback).toContainText("Trace the flux path");
   await playback.getByRole("button", { name: "Previous step" }).click();
-  await expect(counter).toHaveText("Step 1 of 5");
+  await expect(counter).toHaveText("Step 1 of 9");
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(qdLabel).toHaveAttribute("data-shown", "true");
@@ -427,6 +427,66 @@ test("the assembly guide opens directly without running an experiment", async ({
     path: testInfo.outputPath("assembly-guide-mobile.png"),
   });
   expect(await plans(request, id)).toHaveLength(0);
+});
+
+test("the assembly guide labels the supply, valve, transport, inspection and service components", async ({
+  page,
+  request,
+}, testInfo) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const source = await incidentWith(request, ["intermittent", "unstable"]);
+  await page.goto(`/incidents/${source.incident().id}/simulation`);
+  const playback = page.getByRole("region", {
+    name: "Guided simulation playback",
+    exact: true,
+  });
+  const scene = playback.locator(".assembly-canvas");
+  await expect(scene).toHaveAttribute("data-model-loaded", "true");
+  const views = [
+    { id: "establish", parts: ["fluid_qd"] },
+    { id: "follow", parts: ["bfs_lid", "bfs_sensors"] },
+    { id: "apart", parts: ["needle_assembly", "valve_heater"] },
+    { id: "valve", parts: ["bfs_air", "valve_air", "coaxial_air"] },
+    { id: "nozzle", parts: ["air_cap", "nozzle_nut", "nozzle"] },
+    { id: "motion", parts: ["motion_gantry", "conveyor", "carrier_sensors"] },
+    {
+      id: "vision",
+      parts: [
+        "vision_camera",
+        "laser_height_sensor",
+        "lookup_camera",
+        "weigh_station",
+      ],
+    },
+    { id: "service", parts: ["purge_station", "waste_bottle"] },
+    { id: "assembled", parts: ["machine_enclosure"] },
+  ];
+  for (const [index, view] of views.entries()) {
+    if (index > 0)
+      await playback.getByRole("button", { name: "Next step" }).click();
+    await expect(playback.locator(".guided-counter")).toHaveText(
+      `Step ${index + 1} of 9`,
+    );
+    await expect(scene).toHaveAttribute("data-shot", view.id);
+    for (const id of view.parts) {
+      const label = scene.locator(`.assembly-label[data-part-id="${id}"]`);
+      await expect(label).toHaveAttribute("data-shown", "true");
+      await expect(label).toHaveAttribute("data-anchor-mesh", /\S+/);
+      await expect(scene.locator(`line[data-part-id="${id}"]`)).toHaveCSS(
+        "opacity",
+        "1",
+      );
+    }
+    if (["apart", "motion", "vision", "service"].includes(view.id))
+      await scene.screenshot({
+        path: testInfo.outputPath(`assembly-${view.id}.png`),
+      });
+  }
+  await expect(
+    playback.getByRole("button", { name: "Next step" }),
+  ).toBeDisabled();
+  expect(await plans(request, source.incident().id)).toHaveLength(0);
 });
 
 test("the playback follows the simulated values and changes what the model shows", async ({

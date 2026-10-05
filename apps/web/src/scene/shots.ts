@@ -5,6 +5,19 @@
  */
 export type Vec3 = readonly [number, number, number];
 
+/** Context around the fluid path, faded for close inspection of the valve. */
+export const machineGroupIds = [
+  "motion_gantry",
+  "conveyor",
+  "carrier_sensors",
+  "laser_height_sensor",
+  "lookup_camera",
+  "weigh_station",
+  "purge_station",
+  "waste_bottle",
+  "machine_enclosure",
+] as const;
+
 export const groupIds = [
   "bfs_bottle",
   "pickup_tube",
@@ -20,10 +33,16 @@ export const groupIds = [
   "substrate_tray",
   "support_frame",
   "spray_visualization",
+  "bfs_lid",
+  "bfs_sensors",
+  "needle_assembly",
+  "valve_heater",
+  "nozzle_nut",
+  ...machineGroupIds,
 ] as const;
 export type GroupId = (typeof groupIds)[number];
 
-/** Names from the S932 reference §2.2–2.3; anchors are local to specific meshes. */
+/** Source map: docs/S932_3D_Model_Sources.md. Anchors are mesh-local points. */
 export const partAnnotations: Record<
   GroupId,
   { text: string; mesh: string; point: Vec3 }
@@ -90,6 +109,72 @@ export const partAnnotations: Record<
     mesh: "spray-cone",
     point: [0, 0, 0],
   },
+  bfs_lid: { text: "BFS lid · three knobs", mesh: "bfs-lid", point: [0, 0, 0] },
+  bfs_sensors: {
+    text: "BFS level sensors",
+    mesh: "level-sensor",
+    point: [0, 0, 0],
+  },
+  needle_assembly: {
+    text: "Needle, piston & spring",
+    mesh: "needle-shaft",
+    point: [0, 0, 0],
+  },
+  valve_heater: {
+    text: "Valve heater",
+    mesh: "heater-cover",
+    point: [0, 0, 0.475],
+  },
+  nozzle_nut: {
+    text: "Nozzle nut & gasket",
+    mesh: "nozzle-nut",
+    point: [0, 0, 0],
+  },
+  motion_gantry: {
+    text: "XYZ motion stages",
+    mesh: "x-carriage",
+    point: [0, 0, 0],
+  },
+  conveyor: {
+    text: "Conveyor rails & belts",
+    mesh: "conveyor-rail",
+    point: [0, 0, 0],
+  },
+  carrier_sensors: {
+    text: "Carrier sensors & stops",
+    mesh: "carrier-sensor",
+    point: [0, 0, 0],
+  },
+  laser_height_sensor: {
+    text: "Laser height sensor",
+    mesh: "lhs-body",
+    point: [0, 0, 0],
+  },
+  lookup_camera: {
+    text: "Lookup camera & reticle",
+    mesh: "lookup-camera-body",
+    point: [0, 0, 0],
+  },
+  weigh_station: {
+    text: "Inline weigh station",
+    mesh: "scale-pan",
+    point: [0, 0, 0],
+  },
+  purge_station: {
+    text: "Purge cup & venturi",
+    mesh: "purge-cup",
+    point: [0, 0, 0],
+  },
+  waste_bottle: {
+    text: "Refuse bottle & float",
+    mesh: "refuse-bottle",
+    point: [0, 0, 0],
+  },
+  machine_enclosure: {
+    text: "Enclosure & interlocks",
+    mesh: "rear-panel",
+    point: [0, 0, 0],
+  },
 };
 
 /**
@@ -113,6 +198,20 @@ export const explodeOffsets: Record<GroupId, Vec3> = {
   substrate_tray: [0, -0.35, 0],
   support_frame: [0, 0, 0],
   spray_visualization: [0, -0.3, 1.9],
+  bfs_lid: [-1.1, 1.25, 0],
+  bfs_sensors: [-1.6, 0, 0.55],
+  needle_assembly: [1.35, 0.65, 1.15],
+  valve_heater: [-1.2, -0.2, 0.85],
+  nozzle_nut: [0.8, -0.15, 1.1],
+  motion_gantry: [0, 0.5, -0.5],
+  conveyor: [0, -0.12, 0],
+  carrier_sensors: [-0.35, 0.35, 0.5],
+  laser_height_sensor: [0.4, 0.1, 0.65],
+  lookup_camera: [0.55, 0.45, 0],
+  weigh_station: [0.3, 0.35, 0.4],
+  purge_station: [0.15, 0.5, 0.5],
+  waste_bottle: [0.85, 0, 0.5],
+  machine_enclosure: [0, 0, -0.6],
 };
 
 export type Shot = {

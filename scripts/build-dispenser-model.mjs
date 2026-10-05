@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import * as THREE from "three";
 import { GLTFExporter } from "three/addons/exporters/GLTFExporter.js";
+import { addMachineAssemblies } from "./s932-machine-assemblies.mjs";
 
 globalThis.FileReader ??= class FileReader {
   readAsArrayBuffer(blob) {
@@ -100,6 +101,19 @@ const caution = new THREE.MeshStandardMaterial({
 
 const root = new THREE.Group();
 root.name = "generic_fluid_dispenser";
+root.userData = {
+  title: "ASYMTEK S-932 spray-flux system — illustrative reconstruction",
+  geometryStatus:
+    "Illustrative proportions; not manufacturer CAD or a dimensional reference",
+  configuration: "BFS supply and DJ-2200 coaxial-air spray valve",
+  sources: [
+    "docs/Asymtek_S932_Consolidated_Reference.md",
+    "docs/S932_3D_Model_Sources.md",
+    "https://www.nordson.com/en/products/electronics-solutions-products/asymtek-dispensejet-dj-2200-spray-valve",
+    "https://nc-p-001.sitecorecontenthub.cloud/api/public/content/347a9db638b24881971204d5e660d19f?v=51d7862b",
+    "https://nc-p-001.sitecorecontenthub.cloud/api/public/content/31bd3f7e505044a0a6a86cb500602659",
+  ],
+};
 
 function part(name) {
   const group = new THREE.Group();
@@ -145,11 +159,11 @@ function cylinder(
   material = metal,
   rotation = [0, 0, 0],
   name,
-  segments = 64,
+  segments = 32,
 ) {
   return mesh(
     group,
-    new THREE.CylinderGeometry(radii[0], radii[1], height, segments, 4),
+    new THREE.CylinderGeometry(radii[0], radii[1], height, segments, 1),
     material,
     position,
     rotation,
@@ -168,7 +182,7 @@ function torus(
 ) {
   return mesh(
     group,
-    new THREE.TorusGeometry(radius, tube, 24, 72),
+    new THREE.TorusGeometry(radius, tube, 12, 48),
     material,
     position,
     rotation,
@@ -179,7 +193,7 @@ function torus(
 function detailRing(group, radius, position, material, rotation, name) {
   return mesh(
     group,
-    new THREE.TorusGeometry(radius, 0.006, 16, 48),
+    new THREE.TorusGeometry(radius, 0.006, 8, 40),
     material,
     position,
     rotation,
@@ -212,9 +226,9 @@ function tube(group, points, radius, material, name) {
       new THREE.CatmullRomCurve3(
         points.map((point) => new THREE.Vector3(...point)),
       ),
-      96,
+      64,
       radius,
-      16,
+      10,
       false,
     ),
     material,
@@ -245,10 +259,11 @@ function fastener(group, position, rotation = [Math.PI / 2, 0, 0]) {
     "fastener",
     24,
   );
+  const face = new THREE.Vector3(0, 0.032, 0).applyEuler(screw.rotation);
   const slot = box(
     group,
     [0.07, 0.012, 0.012],
-    [position[0], position[1] + 0.03, position[2]],
+    position.map((value, index) => value + face.getComponent(index)),
     polymer,
   );
   slot.rotation.copy(screw.rotation);
@@ -257,9 +272,16 @@ function fastener(group, position, rotation = [Math.PI / 2, 0, 0]) {
 const frame = new THREE.Group();
 frame.name = "support_frame";
 root.add(frame);
-box(frame, [7.2, 0.16, 3.8], [0, -2.42, 0], darkMetal, undefined, "base-plate");
+box(
+  frame,
+  [7.2, 0.16, 4.8],
+  [0, -2.42, -0.4],
+  darkMetal,
+  undefined,
+  "base-plate",
+);
 for (const x of [-3.35, 3.35]) {
-  for (const z of [-1.65, 1.65]) {
+  for (const z of [-2.5, 1.65]) {
     cylinder(
       frame,
       [0.12, 0.12],
@@ -272,26 +294,9 @@ for (const x of [-3.35, 3.35]) {
     );
   }
 }
-for (const x of [-3.25, 3.25]) {
-  box(
-    frame,
-    [0.18, 4.4, 0.18],
-    [x, -0.15, 1.5],
-    darkMetal,
-    undefined,
-    "upright",
-  );
-}
-box(
-  frame,
-  [6.7, 0.18, 0.18],
-  [0, 2.0, 1.5],
-  darkMetal,
-  undefined,
-  "cross-rail",
-);
 
 const reservoir = part("bfs_bottle");
+const bfsLid = part("bfs_lid");
 cylinder(
   reservoir,
   [0.68, 0.68],
@@ -302,33 +307,92 @@ cylinder(
   "pressure-vessel",
 );
 cylinder(
-  reservoir,
+  bfsLid,
   [0.72, 0.72],
   0.12,
   [-2.25, 1.58, 0.15],
   darkMetal,
   undefined,
-  "reservoir-cap",
+  "bfs-lid",
 );
 cylinder(
-  reservoir,
-  [0.42, 0.5],
-  0.28,
-  [-2.25, 1.78, 0.15],
+  bfsLid,
+  [0.28, 0.33],
+  0.14,
+  [-2.25, 1.71, 0.15],
   metal,
   undefined,
   "cap-collar",
 );
-ringStack(
-  reservoir,
-  16,
-  0.425,
-  [-2.25, 1.65, 0.15],
-  0.017,
-  1,
-  darkMetal,
+torus(
+  bfsLid,
+  0.61,
+  0.027,
+  [-2.25, 1.505, 0.15],
+  polymer,
   [Math.PI / 2, 0, 0],
-  "collar-grip",
+  "lid-o-ring",
+);
+for (let index = 0; index < 3; index += 1) {
+  const angle = (index / 3) * Math.PI * 2 + Math.PI / 2;
+  const x = -2.25 + Math.cos(angle) * 0.56;
+  const z = 0.15 + Math.sin(angle) * 0.56;
+  cylinder(
+    bfsLid,
+    [0.045, 0.045],
+    0.24,
+    [x, 1.66, z],
+    steel,
+    undefined,
+    "lid-clamping-stud",
+  );
+  cylinder(
+    bfsLid,
+    [0.115, 0.115],
+    0.1,
+    [x, 1.81, z],
+    polymer,
+    undefined,
+    "lid-clamping-knob",
+    12,
+  );
+  box(
+    bfsLid,
+    [0.25, 0.07, 0.11],
+    [x, 1.82, z],
+    polymer,
+    [0, -angle, 0],
+    "lid-knob-grip",
+  );
+}
+cylinder(
+  bfsLid,
+  [0.115, 0.115],
+  0.21,
+  [-2.25, 1.85, 0.15],
+  steel,
+  undefined,
+  "lid-fluid-outlet",
+  6,
+);
+cylinder(
+  bfsLid,
+  [0.11, 0.11],
+  0.19,
+  [-2.75, 1.7, 0.28],
+  brass,
+  [0, 0, Math.PI / 2],
+  "lid-pressure-port",
+  6,
+);
+torus(
+  bfsLid,
+  0.082,
+  0.018,
+  [-2.25, 1.945, 0.15],
+  polymer,
+  [Math.PI / 2, 0, 0],
+  "outlet-ferrule",
 );
 torus(
   reservoir,
@@ -366,6 +430,52 @@ for (const y of [0.15, 0.7, 1.25])
     "vessel-band",
   );
 
+const bfsSensors = part("bfs_sensors");
+box(
+  bfsSensors,
+  [0.1, 1.65, 0.18],
+  [-3.04, 0.62, 0.15],
+  metal,
+  undefined,
+  "sensor-mounting-rail",
+);
+for (const [y, name] of [
+  [0.45, "level-sensor"],
+  [0.1, "empty-level-sensor"],
+  [-0.2, "bottle-present-sensor"],
+]) {
+  box(
+    bfsSensors,
+    [0.18, 0.19, 0.22],
+    [-2.95, y, 0.15],
+    polymer,
+    undefined,
+    name,
+  );
+  cylinder(
+    bfsSensors,
+    [0.025, 0.025],
+    0.01,
+    [-2.95, y, 0.267],
+    caution,
+    [Math.PI / 2, 0, 0],
+    "sensor-status-window",
+    12,
+  );
+  fastener(bfsSensors, [-3.035, y, 0.25]);
+}
+tube(
+  bfsSensors,
+  [
+    [-3.02, 0.45, 0.15],
+    [-3.12, 0.65, 0.24],
+    [-3.12, 1.3, 0.3],
+  ],
+  0.025,
+  polymer,
+  "level-sensor-cable",
+);
+
 const pickup = part("pickup_tube");
 cylinder(
   pickup,
@@ -379,12 +489,12 @@ cylinder(
 );
 cylinder(
   pickup,
-  [0.1, 0.1],
-  0.18,
+  [0.055, 0.07],
+  0.1,
   [-2.25, -0.09, 0.15],
-  brass,
+  steel,
   undefined,
-  "pickup-filter",
+  "pickup-inlet",
   32,
 );
 
@@ -457,12 +567,52 @@ cylinder(
 cylinder(
   bfsAir,
   [0.21, 0.21],
-  0.06,
-  [-3.22, 2.01, 0.4],
+  0.025,
+  [-3.22, 1.95, 0.468],
   glass,
   [Math.PI / 2, 0, 0],
   "gauge-glass",
   48,
+);
+const gaugeFace = new THREE.MeshStandardMaterial({
+  name: "gauge-dial",
+  color: 0xe4e6dc,
+  roughness: 0.8,
+});
+cylinder(
+  bfsAir,
+  [0.21, 0.21],
+  0.01,
+  [-3.22, 1.95, 0.454],
+  gaugeFace,
+  [Math.PI / 2, 0, 0],
+  "gauge-dial",
+);
+box(
+  bfsAir,
+  [0.016, 0.14, 0.012],
+  [-3.25, 1.99, 0.469],
+  darkMetal,
+  [0, 0, -0.6],
+  "gauge-pointer",
+);
+box(
+  bfsAir,
+  [0.38, 0.29, 0.29],
+  [-3.25, 1.61, 0.4],
+  metal,
+  undefined,
+  "regulator-body",
+);
+cylinder(
+  bfsAir,
+  [0.145, 0.145],
+  0.18,
+  [-3.25, 1.38, 0.4],
+  polymer,
+  undefined,
+  "regulator-adjustment",
+  16,
 );
 
 const feed = part("feed_tube");
@@ -490,16 +640,43 @@ flowCore_(
   "visible-fluid-core",
   "liquid",
 );
-for (const x of [-1.65, -1.15, -0.7])
-  torus(
-    feed,
-    0.105,
-    0.018,
-    [x, 2.13, 0.05],
-    darkMetal,
-    [Math.PI / 2, 0, 0],
-    "hose-clamp",
-  );
+torus(
+  feed,
+  0.105,
+  0.02,
+  [-1.3, 2.18, 0.06],
+  darkMetal,
+  [0, Math.PI / 2, 0],
+  "hose-p-clip",
+);
+box(
+  feed,
+  [0.08, 0.19, 0.055],
+  [-1.3, 2.04, 0.06],
+  metal,
+  undefined,
+  "hose-clip-tab",
+);
+fastener(feed, [-1.3, 2.02, 0.09]);
+cylinder(
+  feed,
+  [0.13, 0.13],
+  0.13,
+  [-2.25, 1.79, 0.15],
+  steel,
+  undefined,
+  "supply-compression-nut",
+  6,
+);
+torus(
+  feed,
+  0.084,
+  0.015,
+  [-2.25, 1.88, 0.15],
+  brass,
+  [Math.PI / 2, 0, 0],
+  "supply-tube-ferrule",
+);
 
 const qd = part("fluid_qd");
 cylinder(
@@ -535,14 +712,43 @@ for (let index = 0; index < 10; index += 1) {
 }
 ringStack(
   qd,
-  12,
+  6,
   0.212,
   [-0.555, 1.31, 0],
-  0.019,
+  0.038,
   0,
   darkMetal,
   [0, Math.PI / 2, 0],
   "collar-grip",
+);
+cylinder(
+  qd,
+  [0.165, 0.165],
+  0.12,
+  [-0.18, 1.31, 0],
+  steel,
+  [0, 0, Math.PI / 2],
+  "qd-hex-adaptor",
+  6,
+);
+torus(
+  qd,
+  0.126,
+  0.018,
+  [-0.12, 1.31, 0],
+  polymer,
+  [0, Math.PI / 2, 0],
+  "qd-seal",
+);
+cylinder(
+  qd,
+  [0.115, 0.115],
+  0.11,
+  [-0.45, 1.48, 0],
+  steel,
+  undefined,
+  "hose-compression-ferrule",
+  6,
 );
 
 flowCore_(
@@ -571,14 +777,7 @@ flowCore_(
   "fluid-core-valve",
   "liquid",
 );
-box(
-  valve,
-  [1.15, 1.65, 0.9],
-  [0, 0.38, 0],
-  darkMetal,
-  undefined,
-  "valve-housing",
-);
+box(valve, [1.15, 1.65, 0.9], [0, 0.38, 0], metal, undefined, "valve-housing");
 box(valve, [1.3, 0.18, 1.05], [0, 1.18, 0], metal, undefined, "upper-manifold");
 box(
   valve,
@@ -590,19 +789,19 @@ box(
 );
 cylinder(
   valve,
-  [0.34, 0.34],
-  0.9,
-  [0, 1.72, 0],
-  darkMetal,
+  [0.27, 0.27],
+  0.74,
+  [0, 1.64, 0],
+  metal,
   undefined,
-  "solenoid-coil",
-  64,
+  "piston-bonnet",
+  32,
 );
 cylinder(
   valve,
   [0.19, 0.19],
   0.35,
-  [0, 2.34, 0],
+  [0, 2.13, 0],
   steel,
   undefined,
   "stroke-adjuster",
@@ -612,7 +811,7 @@ cylinder(
   valve,
   [0.28, 0.28],
   0.12,
-  [0, 2.55, 0],
+  [0, 2.4, 0],
   polymer,
   undefined,
   "adjustment-knob",
@@ -623,7 +822,7 @@ for (let index = 0; index < 12; index += 1) {
   box(
     valve,
     [0.04, 0.14, 0.04],
-    [Math.cos(angle) * 0.285, 2.55, Math.sin(angle) * 0.285],
+    [Math.cos(angle) * 0.285, 2.4, Math.sin(angle) * 0.285],
     metal,
     [0, -angle, 0],
     "knob-grip",
@@ -631,36 +830,34 @@ for (let index = 0; index < 12; index += 1) {
 }
 ringStack(
   valve,
-  12,
+  6,
   0.282,
-  [0, 2.485, 0],
-  0.012,
+  [0, 2.335, 0],
+  0.024,
   1,
   metal,
   [Math.PI / 2, 0, 0],
   "knob-grip",
 );
-cylinder(
+torus(
   valve,
-  [0.43, 0.43],
-  0.32,
-  [0, -0.67, 0],
-  brass,
-  undefined,
-  "heater-collar",
-  64,
-);
-ringStack(
-  valve,
-  16,
-  0.432,
-  [0, -0.815, 0],
-  0.019,
-  1,
-  steel,
+  0.23,
+  0.035,
+  [0, 1.99, 0],
+  darkMetal,
   [Math.PI / 2, 0, 0],
-  "collar-grip",
+  "micrometer-lock",
 );
+for (let index = 0; index < 8; index += 1) {
+  box(
+    valve,
+    [index % 2 ? 0.025 : 0.055, 0.007, 0.01],
+    [0, 2.02 + index * 0.034, 0.194],
+    polymer,
+    undefined,
+    "micrometer-graduation",
+  );
+}
 box(
   valve,
   [0.72, 0.22, 0.04],
@@ -697,7 +894,184 @@ box(
   "mounting-clamp",
 );
 
+// OEM spares establish these components; spacing is illustrative for inspection.
+const needleAssembly = part("needle_assembly");
+needleAssembly.userData = {
+  source: "DJ-2200 spares list, September 2024, pp. 2–3",
+  geometryStatus: "Illustrative internals",
+};
+cylinder(
+  needleAssembly,
+  [0.07, 0.07],
+  1.48,
+  [0, 0.3, 0],
+  steel,
+  undefined,
+  "needle-shaft",
+);
+cylinder(
+  needleAssembly,
+  [0.07, 0.022],
+  0.44,
+  [0, -0.66, 0],
+  steel,
+  undefined,
+  "tapered-needle",
+);
+cylinder(
+  needleAssembly,
+  [0.21, 0.21],
+  0.14,
+  [0, 1.08, 0],
+  steel,
+  undefined,
+  "air-piston",
+);
+torus(
+  needleAssembly,
+  0.205,
+  0.024,
+  [0, 1.08, 0],
+  polymer,
+  [Math.PI / 2, 0, 0],
+  "piston-seal",
+);
+cylinder(
+  needleAssembly,
+  [0.11, 0.11],
+  0.14,
+  [0, 1.22, 0],
+  steel,
+  undefined,
+  "piston-lock-nut",
+  6,
+);
+const springPoints = Array.from({ length: 121 }, (_, index) => {
+  const angle = (index / 120) * Math.PI * 12;
+  return [
+    Math.cos(angle) * 0.17,
+    1.3 + (index / 120) * 0.59,
+    Math.sin(angle) * 0.17,
+  ];
+});
+tube(needleAssembly, springPoints, 0.024, steel, "return-spring");
+cylinder(
+  needleAssembly,
+  [0.22, 0.22],
+  0.075,
+  [0, 1.94, 0],
+  steel,
+  undefined,
+  "spring-retainer",
+);
+cylinder(
+  needleAssembly,
+  [0.19, 0.19],
+  0.11,
+  [0, -0.88, 0],
+  steel,
+  undefined,
+  "needle-seat",
+);
+torus(
+  needleAssembly,
+  0.13,
+  0.026,
+  [0, -0.965, 0],
+  polymer,
+  [Math.PI / 2, 0, 0],
+  "needle-seat-seal",
+);
+
+const heater = part("valve_heater");
+box(
+  heater,
+  [1.05, 0.4, 0.95],
+  [0, -0.62, 0],
+  polymer,
+  undefined,
+  "heater-cover",
+);
+box(
+  heater,
+  [0.9, 0.29, 0.12],
+  [0, -0.62, -0.49],
+  darkMetal,
+  undefined,
+  "heater-backplate",
+);
+for (const x of [-0.42, 0.42]) {
+  for (const y of [-0.74, -0.5]) fastener(heater, [x, y, 0.485]);
+}
+tube(
+  heater,
+  [
+    [0.52, -0.58, -0.25],
+    [0.76, -0.28, -0.25],
+    [0.68, 0.2, -0.29],
+  ],
+  0.028,
+  amber,
+  "heater-lead",
+);
+cylinder(
+  heater,
+  [0.23, 0.23],
+  0.22,
+  [0, -0.89, 0],
+  steel,
+  undefined,
+  "heated-lower-body",
+  6,
+);
+
+const nozzleNut = part("nozzle_nut");
+cylinder(
+  nozzleNut,
+  [0.22, 0.22],
+  0.16,
+  [0, -1.15, 0],
+  steel,
+  undefined,
+  "nozzle-nut",
+  6,
+);
+torus(
+  nozzleNut,
+  0.18,
+  0.02,
+  [0, -1.045, 0],
+  polymer,
+  [Math.PI / 2, 0, 0],
+  "nozzle-gasket",
+);
+
 const valveAir = part("valve_air");
+box(
+  valveAir,
+  [0.42, 1.18, 0.62],
+  [0.86, 1.0, 0.12],
+  polymer,
+  undefined,
+  "actuation-solenoid",
+);
+box(
+  valveAir,
+  [0.43, 0.1, 0.63],
+  [0.86, 1.62, 0.12],
+  darkMetal,
+  undefined,
+  "solenoid-connector",
+);
+box(
+  valveAir,
+  [0.28, 0.15, 0.025],
+  [0.86, 1.29, 0.445],
+  metal,
+  undefined,
+  "solenoid-identity-plate",
+);
+fastener(valveAir, [0.86, 0.51, 0.45]);
 tube(
   valveAir,
   [
@@ -738,7 +1112,8 @@ tube(
     [2.95, 1.15, 0.7],
     [2.05, 1.1, 0.7],
     [0.9, 0.35, 0.52],
-    [0.35, -0.65, 0.15],
+    [1.0, -1.18, 0.52],
+    [0.385, -1.68, 0.2],
   ],
   0.065,
   atomizingAir,
@@ -750,7 +1125,8 @@ flowCore_(
     [2.95, 1.15, 0.7],
     [2.05, 1.1, 0.7],
     [0.9, 0.35, 0.52],
-    [0.35, -0.65, 0.15],
+    [1.0, -1.18, 0.52],
+    [0.385, -1.68, 0.2],
   ],
   0.026,
   "air-core-coaxial",
@@ -758,48 +1134,45 @@ flowCore_(
 );
 cylinder(
   coaxAir,
-  [0.13, 0.13],
-  0.32,
-  [0.35, -0.56, 0.15],
-  brass,
+  [0.075, 0.075],
+  0.15,
+  [0.385, -1.68, 0.2],
+  steel,
   [0, 0, Math.PI / 2],
   "coaxial-fitting",
   32,
 );
 
 const airCap = part("air_cap");
-cylinder(
+// An annular outlet surrounds the liquid nozzle; no unsupported port count.
+mesh(
   airCap,
-  [0.39, 0.34],
-  0.32,
-  [0, -0.98, 0],
+  new THREE.LatheGeometry(
+    [
+      [0.13, -0.055],
+      [0.36, -0.055],
+      [0.39, -0.025],
+      [0.39, 0.035],
+      [0.35, 0.065],
+      [0.13, 0.065],
+      [0.13, -0.055],
+    ].map(([radius, y]) => new THREE.Vector2(radius, y)),
+    48,
+  ),
   steel,
-  undefined,
+  [0, -1.68, 0],
+  [0, 0, 0],
   "air-cap-body",
-  72,
 );
 torus(
   airCap,
-  0.36,
-  0.07,
-  [0, -1.15, 0],
+  0.2,
+  0.025,
+  [0, -1.6, 0],
   darkMetal,
   [Math.PI / 2, 0, 0],
   "air-cap-retainer",
 );
-for (let index = 0; index < 8; index += 1) {
-  const angle = (index / 8) * Math.PI * 2;
-  cylinder(
-    airCap,
-    [0.028, 0.028],
-    0.12,
-    [Math.cos(angle) * 0.25, -1.16, Math.sin(angle) * 0.25],
-    polymer,
-    undefined,
-    "air-port",
-    16,
-  );
-}
 
 const nozzle = part("nozzle");
 flowCore_(
@@ -818,7 +1191,7 @@ cylinder(
   [0.2, 0.1],
   0.42,
   [0, -1.33, 0],
-  brass,
+  steel,
   undefined,
   "nozzle-cone",
   72,
@@ -844,10 +1217,10 @@ torus(
 );
 ringStack(
   nozzle,
-  10,
-  0.135,
-  [0, -1.51, 0],
-  0.025,
+  5,
+  0.18,
+  [0, -1.19, 0],
+  0.018,
   1,
   steel,
   [Math.PI / 2, 0, 0],
@@ -923,49 +1296,145 @@ tube(
 );
 for (const x of [1.63, 2.47])
   for (const y of [-0.46, 0.16]) fastener(camera, [x, y, -0.55]);
+// Head optics face the work area; the separate lookup camera faces upward.
+// Rotate around the body centre, preserving mesh-local annotation coordinates.
+for (const child of camera.children)
+  child.position.sub(new THREE.Vector3(2.05, -0.15, 0.05));
+camera.rotation.x = -Math.PI / 2;
+camera.position.set(1.75, 0.6, -0.2);
 
 const tray = part("substrate_tray");
-box(
-  tray,
-  [4.8, 0.15, 2.45],
-  [0, -2.18, 0],
-  darkMetal,
-  undefined,
-  "carrier-base",
-);
-box(tray, [4.35, 0.08, 2.05], [0, -2.06, 0], metal, undefined, "carrier-deck");
-box(
-  tray,
-  [3.65, 0.035, 1.55],
-  [0, -1.99, 0],
-  teal,
-  undefined,
-  "sample-surface",
-);
-for (const z of [-1.04, 1.04])
+for (const [z, width, suffix] of [
+  [0, 1.75, ""],
+  [-1.77, 1, "-rear"],
+]) {
   box(
     tray,
-    [4.65, 0.28, 0.12],
-    [0, -1.98, z],
-    steel,
+    [4.6, 0.12, width],
+    [0, -2.18, z],
+    darkMetal,
     undefined,
-    "fixture-rail",
+    `carrier-base${suffix}`,
   );
-for (const x of [-2.2, 2.2])
-  box(tray, [0.12, 0.28, 2.2], [x, -1.98, 0], steel, undefined, "end-stop");
-for (const x of [-1.75, -0.6, 0.6, 1.75]) {
-  for (const z of [-0.75, 0.75])
+  box(
+    tray,
+    [4.35, 0.08, width],
+    [0, -2.06, z],
+    metal,
+    undefined,
+    `carrier-deck${suffix}`,
+  );
+  box(
+    tray,
+    [3.65, 0.035, width - 0.2],
+    [0, -1.99, z],
+    teal,
+    undefined,
+    `sample-surface${suffix}`,
+  );
+  for (const x of [-2.1, 2.1]) {
+    box(
+      tray,
+      [0.1, 0.16, width],
+      [x, -1.98, z],
+      steel,
+      undefined,
+      "carrier-end-stop",
+    );
+    for (const offset of [-1, 1]) {
+      cylinder(
+        tray,
+        [0.055, 0.055],
+        0.06,
+        [x, -1.87, z + offset * (width / 2 - 0.1)],
+        darkMetal,
+        undefined,
+        "carrier-locating-pin",
+        16,
+      );
+    }
+  }
+  for (const x of [-1.7, 1.7]) {
     cylinder(
       tray,
       [0.07, 0.07],
-      0.09,
-      [x, -1.92, z],
-      darkMetal,
+      0.008,
+      [x, -1.967, z + width / 2 - 0.2],
+      brass,
       undefined,
-      "fixture-pin",
+      "substrate-fiducial",
       24,
     );
+  }
 }
+
+for (const [group, y, z, name] of [
+  [valveAir, 1.62, 0.55, "valve"],
+  [coaxAir, 1.15, 0.7, "coaxial"],
+]) {
+  box(
+    group,
+    [0.3, 0.28, 0.28],
+    [3.12, y, z],
+    metal,
+    undefined,
+    `${name}-regulator-body`,
+  );
+  cylinder(
+    group,
+    [0.13, 0.13],
+    0.14,
+    [3.12, y + 0.21, z],
+    polymer,
+    undefined,
+    `${name}-regulator-knob`,
+    16,
+  );
+  cylinder(
+    group,
+    [0.16, 0.16],
+    0.07,
+    [3.12, y, z + 0.18],
+    darkMetal,
+    [Math.PI / 2, 0, 0],
+    `${name}-gauge`,
+  );
+  cylinder(
+    group,
+    [0.135, 0.135],
+    0.012,
+    [3.12, y, z + 0.225],
+    gaugeFace,
+    [Math.PI / 2, 0, 0],
+    `${name}-gauge-face`,
+  );
+  box(
+    group,
+    [0.012, 0.09, 0.01],
+    [3.1, y + 0.025, z + 0.235],
+    darkMetal,
+    [0, 0, -0.55],
+    `${name}-gauge-pointer`,
+  );
+}
+
+addMachineAssemblies({
+  THREE,
+  part,
+  box,
+  cylinder,
+  torus,
+  tube,
+  fastener,
+  metal,
+  darkMetal,
+  steel,
+  polymer,
+  brass,
+  glass,
+  lens,
+  caution,
+});
 
 const plume = new THREE.Group();
 plume.name = "spray_visualization";
